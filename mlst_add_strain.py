@@ -139,7 +139,7 @@ if __name__=='__main__':
         ##add sequence MLST
         seqs = read_genome(genome)
         sys.stderr.write("Add new MLST gene to database\n")
-        print(genes)
+        # print(genes)
         for coregene in coregenes:
             if coregene not in genes:
                 continue
@@ -149,10 +149,10 @@ if __name__=='__main__':
                     raise Exception("Chromosome ID not found " + gene.chro)
                 ##add sequence and MLST
                 if gene.strand =="+":
-                    seqid = insert_sequence(cursor, str(seq.seq[gene.start-1:gene.end]))
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end]))
                 else:
-                    seqid = insert_sequence(cursor, str(seq.seq[gene.start-1:gene.end].reverse_complement()))
-                    cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end].reverse_complement()))
+                cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
                                     (name, gene.geneId(), seqid))
         db.commit()
         sys.stderr.write("FINISH\n")
