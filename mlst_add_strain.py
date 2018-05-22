@@ -12,8 +12,7 @@ import tempfile
 import subprocess
 import shutil
 
-gmapbuild_exe = "gmap_build"
-gmap_exe = "gmap"
+blat_exe = "blat"
 
 desc = "Add a strain to the wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_add_strain.py', \
@@ -26,7 +25,7 @@ command.add_argument('-i', '--identity', nargs='?', \
     help='Minimun identity to search gene (default=0.95)')
 command.add_argument('-p', '--path', nargs='?', \
     type=str, default="/usr/bin", \
-    help='Path to gmap executable (default=/usr/bin)')
+    help='Path to BLAT executable (default=/usr/bin)')
 command.add_argument('genome', \
     type=argparse.FileType("r"), \
     help='Genome of the strain')
@@ -53,27 +52,25 @@ def insert_sequence(cursor, sequence):
         cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
         return cursor.fetchone()[0]
 
-def build_gmap(path, genome, name):
-    command = [path+gmapbuild_exe, '-k', '15', '-D', tempfile.gettempdir(), '-d', name, genome.name]
+def run_blat(path, name, genome, tmpfile, tmpout, identity):
+    command = [path+blat_exe, '-maxIntron=4000', '-minIdentity='+str(identity*100),\
+               genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stdout)
     error = ""
     for line in iter(proc.stderr.readline,''):
         error += line
-    # if error != "":
-    #     sys.stdout.write("Error during build gmap\n")
-    #     raise Exception(error)
-
-def run_gmap(path, name, tmpfile, identity):
-    command = [path+gmap_exe, '--gff3-add-separators', '0', '--min-identity', str(identity),\
-               '--min-trimmed-coverage', '1', '-f', '3', '--nosplicing',\
-               '-D', tempfile.gettempdir(), '-d', name, tmpfile.name]
-    proc = subprocess.Popen(command, stderr=sys.stdout, stdout=subprocess.PIPE)
+    if error != "":
+        sys.stdout.write("Error during runnin BLAT\n")
+        raise Exception(error)
     genes = {}
-    for line in iter(proc.stdout.readline, ''):
-        if line[0] =="#":
+    for line in open(tmpout.name, 'r'):
+        try:
+            int(line.split()[0])
+        except:
             continue
-        gff = Gff(line)
-        genes.setdefault(gff.geneId(),[]).append(gff)
+        psl = Psl(line)
+        if psl.coverage() == 1:
+            genes.setdefault(psl.geneId(),[]).append(psl)
     if len(genes) == 0:
         raise Exception("No path found for the coregenome")
     return genes
@@ -84,31 +81,24 @@ def read_genome(genome):
         seqs[seq.id] = seq
     return seqs
 
-
-class Gff:
-    """A simple Gff class"""
-    def __init__(self, gffline):
-        gffelement = gffline.strip().split("\t")
-        if len(gffelement) != 9:
-            raise Exception("Gff line have not 9 elements:\n"+gffline)
-        self.chro = gffelement[0]
-        self.start = int(gffelement[3])
-        self.end = int(gffelement[4])
-        self.identity = int(gffelement[5])
-        self.values = {a.split("=")[0]:a.split("=")[1] for a in gffelement[8].split(";")\
-                       if len(a.split("="))==2}
-        self.strand = gffelement[6]
+class Psl:
+    """A simple Psl class"""
+    def __init__(self, pslline):
+        pslelement = pslline.rstrip("\n").split("\t")
+        if len(pslelement) != 21:
+            raise Exception("Psl line have not 21 elements:\n"+pslline)
+        self.pslelement = pslelement
+        self.chro = pslelement[13]
+        self.start = int(pslelement[15])
+        self.end = int(pslelement[16])
+        self.strand = pslelement[8]
         
-    def is_in(self, chro, pos):
-        if chro != self.chro:
-            return False
-        elif pos>self.start and pos<self.end:
-            return True
-        else:
-            return False
-
+    def coverage(self):
+        cov = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
+        return cov
+        
     def geneId(self):
-        return self.values.get("Name", None)
+        return self.pslelement[9]
     
 if __name__=='__main__':
     """Performed job on execution script""" 
@@ -119,12 +109,13 @@ if __name__=='__main__':
     if args.identity<0 or args.identity > 1:
         raise Exception("Identity must be between 0 to 1")
     path = args.path.rstrip("/")+"/"
-    if os.path.exists(path+gmap_exe) is False:
-        raise Exception("Gmap executable not found in folder: \n"+path)
+    if os.path.exists(path+blat_exe) is False:
+        raise Exception("BLAT executable not found in folder: \n"+path)
     if name is None:
         name = genome.name.split('/')[-1]
     tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
-
+    tmpout = tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=False)
+    tmpout.close()
     
     try:
         db = sqlite3.connect(database.name)
@@ -140,15 +131,10 @@ if __name__=='__main__':
         coregenes = create_coregene(cursor, tmpfile)
         tmpfile.close()
 
-        ##gmap analysis
-        sys.stderr.write("Build GMAP database      ")
-        build_gmap(path, genome, name)
-        sys.stderr.write("OK\n")
-
-        sys.stderr.write("Search coregene with GMAP      ")
-        genes = run_gmap(path, name, tmpfile, args.identity)
-        sys.stderr.write("OK\n")
-        sys.stderr.write("Finish run GMAP, found " + str(len(genes)) + " genes\n")
+        ##BLAT analysis
+        sys.stderr.write("Search coregene with BLAT\n")
+        genes = run_blat(path, name, genome, tmpfile, tmpout, args.identity)
+        sys.stderr.write("Finish run BLAT, found " + str(len(genes)) + " genes\n")
         
         ##add sequence MLST
         seqs = read_genome(genome)
@@ -165,20 +151,19 @@ if __name__=='__main__':
                 raise Exception("Chromosome ID not found " + gene[0].chro)
             ##add sequence and MLST
             if gene[0].strand =="+":
-                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start-1:gene[0].end]))
+                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start:gene[0].end]))
             else:
-                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start-1:gene[0].end].reverse_complement()))
-            cursor2.execute('''INSERT INTO mlst(souche, gene, seqid)
-                              VALUES(?,?,?)''', (name, gene[0].geneId(), seqid))
+                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start:gene[0].end].reverse_complement()))
+            cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
+                            (name, gene[0].geneId(), seqid))
         db.commit()
         sys.stderr.write("FINISH\n")
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         db.close()
         if os.path.exists(tmpfile.name):        
             os.remove(tmpfile.name)
-        gmapdir = tempfile.gettempdir()+"/"+name
-        if os.path.exists(gmapdir):
-            shutil.rmtree(gmapdir)
+        if os.path.exists(tmpout.name):        
+            os.remove(tmpout.name)
