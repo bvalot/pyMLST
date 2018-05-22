@@ -37,7 +37,6 @@ command.add_argument('database', \
 def get_mlst(cursor, strain, shema):
     coregenes = [None]*len(shema)
     cursor.execute('''SELECT gene,seqid FROM mlst WHERE souche=?''', (strain,))
-    val = cursor.fetchone()
     for row in cursor.fetchall():
         coregenes[shema.index(row[0])] = row[1]
     return coregenes
