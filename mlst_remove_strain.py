@@ -50,8 +50,8 @@ if __name__=='__main__':
             sys.stderr.write("OK\n")
 
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         db.close()

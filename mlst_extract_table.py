@@ -176,8 +176,8 @@ if __name__=='__main__':
             output.write("Sequences\t"+str(get_number_sequences(cursor))+"\n")
         else:
             raise Exception("This export format is not supported: " + export)
-    except Exception as e:
-        #db.rollback()
-        raise e
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

@@ -155,9 +155,9 @@ if __name__=='__main__':
             for s in strains:
                 output.write('>'+ s + "\n")
                 output.write("\n".join(sequences.get(s)) + "\n")
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         db.close()
         if os.path.exists(tmpfile.name):        

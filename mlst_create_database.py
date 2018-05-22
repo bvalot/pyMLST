@@ -50,8 +50,8 @@ if __name__=='__main__':
             cursor2.execute('''INSERT INTO mlst(souche, gene, seqid)
                               VALUES(?,?,?)''', (name, gene.id, cursor.lastrowid))
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         db.close()
