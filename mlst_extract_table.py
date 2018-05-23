@@ -105,7 +105,7 @@ if __name__=='__main__':
             ## Test different case for validation
             valid = []
             if args.keep is True:
-                if tmp:
+                if len(tmp) > 1:
                     valid.append(True)
                 else:
                     valid.append(False)
