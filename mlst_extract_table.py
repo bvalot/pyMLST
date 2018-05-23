@@ -156,6 +156,7 @@ if __name__=='__main__':
                         towrite.append("")
                     else:
                         towrite.append(";".join(map(str,val)))
+                output.write("\t".join(towrite) + "\n")
         elif export == "stat":
             output.write("Strains\t"+str(len(strains))+"\n")
             output.write("Coregenes\t"+str(len(shema))+"\n")
