@@ -83,7 +83,7 @@ if __name__=='__main__':
         strains = get_all_strain(cursor)
         ##Minimun number of strain
         if args.mincover < 0 or args.mincover > len(strains):
-            raise Exception("Mincover must be between 0 to number of strains : " + str(args.mincover))
+            raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
 
         ##read shema
         shema = get_shema(cursor)
