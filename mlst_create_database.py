@@ -38,8 +38,11 @@ if __name__=='__main__':
                 raise Exception("Two sequences have the same gene ID : " + seq.geneid)
             else:
                 genes.add(gene.id)
-            cursor.execute('''INSERT INTO sequences(sequence)
+            try:
+                cursor.execute('''INSERT INTO sequences(sequence)
                               VALUES(?)''', (str(gene.seq),))
+            except sqlite3.IntegrityError:
+                raise Exception("Two gene have the same sequence " + gene.id)
             cursor2.execute('''INSERT INTO mlst(souche, gene, seqid)
                               VALUES(?,?,?)''', (name, gene.id, cursor.lastrowid))
         db.commit()
