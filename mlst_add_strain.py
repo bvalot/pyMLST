@@ -149,9 +149,9 @@ if __name__=='__main__':
                     raise Exception("Chromosome ID not found " + gene.chro)
                 ##add sequence and MLST
                 if gene.strand =="+":
-                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end]))
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end]).upper())
                 else:
-                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end].reverse_complement()))
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end].reverse_complement()).upper())
                 cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
                                     (name, gene.geneId(), seqid))
         db.commit()

@@ -56,7 +56,7 @@ def run_mafft(path, tmpfile):
         else:
             raise Exception("Problem during run mafft" + line)
     if seq != "":
-        genes[int(ids)] = seq     
+        genes[int(ids)] = seq.upper()     
     # print(genes)
     return genes
 
