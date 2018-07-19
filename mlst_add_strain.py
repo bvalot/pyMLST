@@ -122,7 +122,7 @@ if __name__=='__main__':
         cursor = db.cursor()
         cursor2 = db.cursor()
 
-        ##verify strain not alrealdy on the database
+        ##verify strain not already on the database
         cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche=?''', (name,))
         if cursor.fetchone() is not None:
             raise Exception("Strain is already present in database:\n"+name)
@@ -139,23 +139,21 @@ if __name__=='__main__':
         ##add sequence MLST
         seqs = read_genome(genome)
         sys.stderr.write("Add new MLST gene to database\n")
+        # print(genes)
         for coregene in coregenes:
             if coregene not in genes:
                 continue
-            gene = genes.get(coregene)
-            if len(gene) > 1 :
-                sys.stderr.write("Gene found in duplicate: " + coregene + " \n")
-                continue
-            seq = seqs.get(gene[0].chro, None)
-            if seq is None:
-                raise Exception("Chromosome ID not found " + gene[0].chro)
-            ##add sequence and MLST
-            if gene[0].strand =="+":
-                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start:gene[0].end]))
-            else:
-                seqid = insert_sequence(cursor, str(seq.seq[gene[0].start:gene[0].end].reverse_complement()))
-            cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
-                            (name, gene[0].geneId(), seqid))
+            for gene in genes.get(coregene):
+                seq = seqs.get(gene.chro, None)
+                if seq is None:
+                    raise Exception("Chromosome ID not found " + gene.chro)
+                ##add sequence and MLST
+                if gene.strand =="+":
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end]).upper())
+                else:
+                    seqid = insert_sequence(cursor, str(seq.seq[gene.start:gene.end].reverse_complement()).upper())
+                cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
+                                    (name, gene.geneId(), seqid))
         db.commit()
         sys.stderr.write("FINISH\n")
     except Exception:

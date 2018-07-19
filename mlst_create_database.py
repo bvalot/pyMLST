@@ -9,11 +9,8 @@ import sqlite3
 from Bio import SeqIO
 
 desc = "Create a wgMLST database from a template"
-command = argparse.ArgumentParser(prog='mlst_create_strain.py', \
+command = argparse.ArgumentParser(prog='mlst_create_database.py', \
     description=desc, usage='%(prog)s [options] coregene database')
-# command.add_argument('-s', '--strain', nargs='?', \
-#     type=str, default=None, \
-#     help='Name of the strain of coregene sequence (default:coregene name)')
 command.add_argument('coregene', \
     type=argparse.FileType("r"), \
     help='Coregene fasta file as template of MLST')
@@ -25,10 +22,6 @@ if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()
     database = args.database
-    # name = args.strain
-    # if name is None:
-    #     name = args.coregene.name.split('/')[-1]
-    # print(name)
     name = "ref"
     database.close()
     genes = set()
@@ -45,8 +38,11 @@ if __name__=='__main__':
                 raise Exception("Two sequences have the same gene ID : " + seq.geneid)
             else:
                 genes.add(gene.id)
-            cursor.execute('''INSERT INTO sequences(sequence)
-                              VALUES(?)''', (str(gene.seq),))
+            try:
+                cursor.execute('''INSERT INTO sequences(sequence)
+                              VALUES(?)''', (str(gene.seq).upper(),))
+            except sqlite3.IntegrityError:
+                raise Exception("Two gene have the same sequence " + gene.id)
             cursor2.execute('''INSERT INTO mlst(souche, gene, seqid)
                               VALUES(?,?,?)''', (name, gene.id, cursor.lastrowid))
         db.commit()

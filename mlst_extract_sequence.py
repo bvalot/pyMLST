@@ -56,7 +56,7 @@ def run_mafft(path, tmpfile):
         else:
             raise Exception("Problem during run mafft" + line)
     if seq != "":
-        genes[int(ids)] = seq     
+        genes[int(ids)] = seq.upper()     
     # print(genes)
     return genes
 
@@ -66,7 +66,7 @@ def get_geneids(cursor, gene):
     cursor.execute('''SELECT souche, seqid FROM mlst WHERE gene=? and souche!=?''', (gene,ref))
     geneids = {}
     for row in cursor.fetchall():
-        geneids[row[0]] = row[1]
+        geneids.setdefault(row[0], []).append(row[1])
     return geneids
 
 def get_sequence(cursor, ids):
@@ -83,11 +83,12 @@ def write_tmp_seqs(tmpfile, seqs):
     tmp.close()
 
 def add_sequence_strain(geneid, seqs, strains, sequences):
+    """Add sequence to multialign, take first gene in case of repeat""" 
     for s in strains:
-        if geneid.get(s) is None:
+        if not geneid.get(s):
             sequences.get(s).append('-' * len(seqs.values()[0]))
         else:
-            sequences.get(s).append(seqs.get(geneid.get(s)))
+            sequences.get(s).append(seqs.get(geneid.get(s)[0]))
 
 
 if __name__=='__main__':
@@ -117,8 +118,8 @@ if __name__=='__main__':
         ##Minimun number of strain
         cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (ref,))
         strains = [i[0] for i in cursor.fetchall()]
-        if args.mincover < 0 or args.mincover > len(strains):
-            raise Exception("Mincover must be between 0 to number of strains : " + str(args.mincover))
+        if args.mincover <= 1 or args.mincover > len(strains):
+            raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
         
         if args.align is False:
             ##no multialign
@@ -126,26 +127,29 @@ if __name__=='__main__':
                 geneid = get_geneids(cursor, g)
                 if len(geneid) < args.mincover:
                     continue
-                seqs = get_sequence(cursor2, set(geneid.values()))
+                seqs = get_sequence(cursor2, set([item for sublist in geneid.values() for item in sublist]))
                 for seq in seqs.items():
                     output.write(">"+ g + "|" + str(seq[0]) + " ")
-                    output.write(";".join([i[0] for i in geneid.items() if i[1] == seq[0]]) + "\n")
+                    output.write(";".join([i[0] for i in geneid.items() if seq[0] in i[1]]) + "\n")
                     output.write(seq[1] + "\n")
         else:
             ##multialign
             sequences = {s:[] for s in strains}
             for i,g in enumerate(coregene):
-                sys.stderr.write(str(i) + "/" + str(len(coregene)) + " | " + g + "     ")
+                sys.stderr.write(str(i+1) + "/" + str(len(coregene)) + " | " + g + "     ")
                 geneid = get_geneids(cursor, g)
                 if len(geneid) < args.mincover :
-                    sys.stderr.write("NO\n")
+                    sys.stderr.write("No: Less mincover \n")
                     continue
-                seqs = get_sequence(cursor2, set(geneid.values()))
+                if max(map(len,geneid.values()))>1:
+                    sys.stderr.write("No: Repeat gene\n")
+                    continue
+                seqs = get_sequence(cursor2, set([item for sublist in geneid.values() for item in sublist]))
                 if len(set(map(len,seqs.values()))) == 1 and args.realign is False:
-                    sys.stderr.write("direct")
+                    sys.stderr.write("Direct")
                     add_sequence_strain(geneid, seqs, strains, sequences)
                 else:
-                    sys.stderr.write("align")
+                    sys.stderr.write("Align")
                     write_tmp_seqs(tmpfile, seqs)
                     corrseqs = run_mafft(path, tmpfile)
                     add_sequence_strain(geneid, corrseqs, strains, sequences)
