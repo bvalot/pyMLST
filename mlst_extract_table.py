@@ -60,8 +60,8 @@ def compare_strain(strain1, strain2, valid_shema):
         if a not in valid_shema:
             continue
         if i and j:
-            if len(i) == len(j):
-                if i!=j:
+            if len(i) == len(j) and len(i) == 1:
+                if i[0]!=j[0]:
                     count +=1
             else:
                 if not set(i).intersection(set(j)):
