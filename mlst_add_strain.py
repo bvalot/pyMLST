@@ -108,9 +108,11 @@ if __name__=='__main__':
     name = args.strain
     if args.identity<0 or args.identity > 1:
         raise Exception("Identity must be between 0 to 1")
-    path = args.path.rstrip("/")+"/"
-    if os.path.exists(path+blat_exe) is False:
-        raise Exception("BLAT executable not found in folder: \n"+path)
+    path = args.path
+    if path:
+        path = path.rstrip("/")+"/"
+        if os.path.exists(path+blat_exe) is False:
+            raise Exception("BLAT executable not found in folder: \n"+path)
     if name is None:
         name = genome.name.split('/')[-1]
     tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
