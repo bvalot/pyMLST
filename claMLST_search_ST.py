@@ -72,7 +72,7 @@ def run_blat(path, genome, tmpfile, tmpout, identity):
         except:
             continue
         psl = Psl(line)
-        if psl.coverage() == 1:
+        if psl.coverage == 1:
             genes.setdefault(psl.geneId(),[]).append(psl)
     if len(genes) == 0:
         raise Exception("No path found for the coregenome")
@@ -95,13 +95,27 @@ class Psl:
         self.start = int(pslelement[15])
         self.end = int(pslelement[16])
         self.strand = pslelement[8]
-        
-    def coverage(self):
-        cov = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
-        return cov
+        self.coverage = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
+        if self.coverage !=1 and self.coverage>=0.9:
+            self.correct()
         
     def geneId(self):
         return self.pslelement[9]
+
+    def correct(self):
+        if int(self.pslelement[11]) != 0:
+            diff = int(self.pslelement[11])
+            if self.strand == "+":
+                self.start = self.start - diff
+            else:
+                self.end = self.end + diff
+        elif int(self.pslelement[10]) != int(self.pslelement[12]):
+            diff = int(self.pslelement[10]) - int(self.pslelement[12])
+            if self.strand == "+":
+                self.end = self.end + diff
+            else:
+                self.start = self.start - diff   
+        self.coverage = 1
     
 if __name__=='__main__':
     """Performed job on execution script""" 
@@ -149,6 +163,9 @@ if __name__=='__main__':
                 sequence = str(seq.seq[gene.start:gene.end]).upper()
                 if gene.strand !="+":
                     sequence = str(seq.seq[gene.start:gene.end].reverse_complement()).upper()
+                ##verify complet sequence
+                if len(sequence) != (gene.end-gene.start):
+                    continue
                 ##write fasta file with coregene
                 if args.fasta is not None:
                     args.fasta.write(">"+coregene+"\n")
