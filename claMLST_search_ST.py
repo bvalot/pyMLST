@@ -96,7 +96,7 @@ class Psl:
         self.end = int(pslelement[16])
         self.strand = pslelement[8]
         self.coverage = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
-        if self.coverage !=1 and self.coverage>=0.9:
+        if self.coverage !=1 and self.coverage>=0.95:
             self.correct()
         
     def geneId(self):
