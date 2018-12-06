@@ -118,7 +118,7 @@ if __name__=='__main__':
         ##Minimun number of strain
         cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (ref,))
         strains = [i[0] for i in cursor.fetchall()]
-        if args.mincover <= 1 or args.mincover > len(strains):
+        if args.mincover < 1 or args.mincover > len(strains):
             raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
         
         if args.align is False:
