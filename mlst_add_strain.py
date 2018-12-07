@@ -93,7 +93,7 @@ class Psl:
         self.end = int(pslelement[16])
         self.strand = pslelement[8]
         self.coverage = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
-        if self.coverage !=1 and self.coverage>=0.9:
+        if self.coverage !=1 and self.coverage>=0.95:
             self.correct()
         
     def geneId(self):
@@ -154,8 +154,7 @@ if __name__=='__main__':
         
         ##add sequence MLST
         seqs = read_genome(genome)
-        sys.stderr.write("Add new MLST gene to database\n")
-        # print(genes)
+        bad = 0
         for coregene in coregenes:
             if coregene not in genes:
                 continue
@@ -165,16 +164,25 @@ if __name__=='__main__':
                     raise Exception("Chromosome ID not found " + gene.chro)
                 ##add sequence and MLST
                 if gene.strand =="+":
-                    sequence = str(seq.seq[gene.start:gene.end]).upper()
+                    sequence = seq.seq[gene.start:gene.end]
                 else:
-                    sequence = str(seq.seq[gene.start:gene.end].reverse_complement()).upper()
+                    sequence = seq.seq[gene.start:gene.end].reverse_complement()
+                ##Verify sequence correct
                 if len(sequence) != (gene.end-gene.start):
-                    sys.stderr.write("Gene " + gene.id + " incomplet\n")
+                    ## sys.stderr.write("Gene " + gene.geneId() + " incomplet\n")
+                    bad += 1
                     continue
-                seqid = insert_sequence(cursor, sequence)
+                try:
+                    tmp = sequence.translate(table=11, cds=True)
+                except:
+                    ## sys.stderr.write("Gene " + gene.geneId() + " not correct\n")
+                    bad += 1
+                    continue
+                seqid = insert_sequence(cursor, str(sequence).upper())
                 cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
                                     (name, gene.geneId(), seqid))
         db.commit()
+        sys.stderr.write("Add " + str(len(genes)-bad) + " new MLST gene to database\n")
         sys.stderr.write("FINISH\n")
     except Exception:
         db.rollback()
