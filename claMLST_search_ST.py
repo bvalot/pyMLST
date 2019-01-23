@@ -14,7 +14,7 @@ import shutil
 
 blat_exe = "blat"
 
-desc = "Search ST numbre for a strain"
+desc = "Search ST number for a strain"
 command = argparse.ArgumentParser(prog='claMLST_search_ST.py', \
     description=desc, usage='%(prog)s [options] genome database')
 command.add_argument('-i', '--identity', nargs='?', \
