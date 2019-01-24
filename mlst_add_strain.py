@@ -53,7 +53,7 @@ def insert_sequence(cursor, sequence):
         return cursor.fetchone()[0]
 
 def run_blat(path, name, genome, tmpfile, tmpout, identity):
-    command = [path+blat_exe, '-maxIntron=4000', '-minIdentity='+str(identity*100),\
+    command = [path+blat_exe, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
                genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stdout)
     error = ""
