@@ -17,30 +17,30 @@ The entry is a draft genome produced by assembler, but also other genome store i
 
 ## Installation
 
-pyMLST need an additionnal python library to run:
+pyMLST needs an additionnal python library to run:
 - Biopython (>=1.68)
 ```
 sudo apt install python-biopython 
 ```
 
-pyMLST used 2 external tools to run alignment :
+pyMLST uses 2 external tools to run alignment:
 - Mafft (>=7.307)
 ```
 sudo apt install mafft 
 ```
 - Blat (v35).
-You need to compiled source or obtained executable at:
+You need to compile source or obtaine executable at:
 [https://genome.ucsc.edu/FAQ/FAQblat.html](https://genome.ucsc.edu/FAQ/FAQblat.html)
 
 ## cg/wgMLST Analysis
 
-An complete analysis of wgMLST were performed by using a succession of python script.  
+A complete analysis of wgMLST was performed using a succession of python script.  
 
 ### Create database
 
-First, you need to create a database containing the schema to used. 
-The schema is a multi-fasta files containing sequence of genes in nucleotide format.
-You can obtained schema for :
+First, you need to create a database containing the scheme to use. 
+The scheme is a multi-fasta files containing sequence of genes in nucleotide format.
+You can obtained scheme for :
 - Core genome analysis as described <https://www.cgmlst.org/> or in publications.
 - Whole genome analysis by using genes annoted in an publish genome closed to your strains.
 
