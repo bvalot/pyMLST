@@ -23,6 +23,9 @@ command.add_argument('-s', '--strain', nargs='?', \
 command.add_argument('-i', '--identity', nargs='?', \
     type=float, default=0.95, \
     help='Minimun identity to search gene (default=0.95)')
+command.add_argument('-c', '--coverage', nargs='?', \
+    type=float, default=0.9, \
+    help='Minimun coverage to search gene (default=0.9)')
 command.add_argument('-p', '--path', nargs='?', \
     type=str, default="/usr/bin", \
     help='Path to BLAT executable (default=/usr/bin)')
@@ -40,8 +43,9 @@ def create_coregene(cursor, tmpfile):
     coregenes = []
     for row in all_rows:
         cursor.execute('''SELECT sequence FROM sequences WHERE id=?''', (row[1],))
-        tmpfile.write('>' + row[0] + "\n" + cursor.fetchone()[0] + "\n")
-        coregenes.append(row[0])
+        seq = cursor.fetchone()[0]
+        tmpfile.write('>' + row[0] + "\n" + seq + "\n")
+        coregenes.append((row[0], seq))
     return coregenes
 
 def insert_sequence(cursor, sequence):
@@ -52,7 +56,7 @@ def insert_sequence(cursor, sequence):
         cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
         return cursor.fetchone()[0]
 
-def run_blat(path, name, genome, tmpfile, tmpout, identity):
+def run_blat(path, name, genome, tmpfile, tmpout, identity, coverage):
     command = [path+blat_exe, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
                genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stdout)
@@ -69,7 +73,7 @@ def run_blat(path, name, genome, tmpfile, tmpout, identity):
         except:
             continue
         psl = Psl(line)
-        if psl.coverage == 1:
+        if psl.coverage >=coverage and psl.coverage <= 1:
             genes.setdefault(psl.geneId(),[]).append(psl)
     if len(genes) == 0:
         raise Exception("No path found for the coregenome")
@@ -80,6 +84,16 @@ def read_genome(genome):
     for seq in SeqIO.parse(genome, 'fasta'):
         seqs[seq.id] = seq
     return seqs
+
+def testCDS(seq, reverse):
+    try:
+        if reverse:
+            seq.reverse_complement().translate(table="Bacterial", cds=True)
+        else:
+            seq.translate(table="Bacterial", cds=True)
+    except:
+        return False
+    return True
 
 class Psl:
     """A simple Psl class"""
@@ -92,27 +106,85 @@ class Psl:
         self.start = int(pslelement[15])
         self.end = int(pslelement[16])
         self.strand = pslelement[8]
-        self.coverage = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
-        if self.coverage !=1 and self.coverage>=0.95:
-            self.correct()
+        self.rstart = int(pslelement[11])
+        self.rend = int(pslelement[12])
+        self.rtotal = int(pslelement[10])
+        self.coverage = (float(self.rend) - self.rstart)/self.rtotal
+        # if self.coverage !=1 and self.coverage>=0.95:
+        #     self.correct()
         
     def geneId(self):
         return self.pslelement[9]
 
-    def correct(self):
-        if int(self.pslelement[11]) != 0:
-            diff = int(self.pslelement[11])
+    def searchCDS(self, seq):
+        ##modifs start and stop not create
+        if self.rstart !=0 and self.rend != self.rtotal:
+            return False
+        ##modifs start
+        if self.rstart !=0:
+            modulo = (self.end-self.start)%3
+            diff = self.rstart
             if self.strand == "+":
-                self.start = self.start - diff
+                val = [i for i in range(self.start+modulo, self.start-diff*2, -3) \
+                       if testCDS(seq.seq[i:self.end], False)]
+                if len(val)==1:
+                    self.start=val[0]
+                    return True
+                elif len(val) >1:
+                    sys.stderr.write("Choice best start for gene " + gene.geneId() + "\n" + str(val) + "\n")
+                    self.start = val[0]
+                    return True
+                else:
+                    return False
             else:
-                self.end = self.end + diff
-        elif int(self.pslelement[10]) != int(self.pslelement[12]):
-            diff = int(self.pslelement[10]) - int(self.pslelement[12])
+                val = [i for i in range(self.end-modulo, self.end+diff*2, 3) \
+                       if testCDS(seq.seq[self.start:i], True)]
+                if len(val) == 1:
+                    self.end = val[0]
+                    return True
+                elif len(val) >1:
+                    sys.stderr.write("Choice best start for gene " + gene.geneId() + "\n" + str(val) + "\n")
+                    self.end = val[0]
+                    return True
+                else:
+                    return False
+        ##modifs end
+        elif self.rend != self.rtotal:
+            modulo = (self.end-self.start)%3
+            diff = self.rtotal - self.rend
             if self.strand == "+":
-                self.end = self.end + diff
+                val = [i for i in range(self.end-modulo, self.end+diff*2, 3) \
+                       if testCDS(seq.seq[self.start:i], False)]
+                if len(val) == 1:
+                    self.end = val[0]
+                    return True
+                else:
+                    return False
             else:
-                self.start = self.start - diff   
-        self.coverage = 1
+                val = [i for i in range(self.start+modulo, self.start-diff*2, -3) \
+                       if testCDS(seq.seq[i:self.end], True)]
+                if len(val) == 1:
+                    self.start = val[0]
+                    return True
+                else:
+                    return False
+        else:
+            raise Exception("A problem of coverage for gene " + gene.geneId())
+    
+    # def correct(self):
+    #     if int(self.pslelement[11]) != 0:
+    #         diff = int(self.pslelement[11])
+    #         if self.strand == "+":
+    #             self.start = self.start - diff
+    #         else:
+    #             self.end = self.end + diff
+    #     elif int(self.pslelement[10]) != int(self.pslelement[12]):
+    #         diff = int(self.pslelement[10]) - int(self.pslelement[12])
+    #         if self.strand == "+":
+    #             self.end = self.end + diff
+    #         else:
+    #             self.start = self.start - diff   
+    #     self.coverage = 1
     
 if __name__=='__main__':
     """Performed job on execution script""" 
@@ -149,35 +221,50 @@ if __name__=='__main__':
 
         ##BLAT analysis
         sys.stderr.write("Search coregene with BLAT\n")
-        genes = run_blat(path, name, genome, tmpfile, tmpout, args.identity)
+        genes = run_blat(path, name, genome, tmpfile, tmpout, args.identity, args.coverage)
         sys.stderr.write("Finish run BLAT, found " + str(len(genes)) + " genes\n")
         
         ##add sequence MLST
         seqs = read_genome(genome)
         bad = 0
         for coregene in coregenes:
-            if coregene not in genes:
+            if coregene[0] not in genes:
                 continue
-            for gene in genes.get(coregene):
+            for gene in genes.get(coregene[0]):
                 seq = seqs.get(gene.chro, None)
                 if seq is None:
                     raise Exception("Chromosome ID not found " + gene.chro)
+
+                ##Correct coverage
+                if gene.coverage != 1:
+                    if gene.searchCDS(seq) is False:
+                        sys.stderr.write("Gene " + gene.geneId() + " partial\n")
+                        bad += 1
+                        continue
+                    else:
+                        sys.stderr.write("Gene " + gene.geneId() + " correct\n")
+                
                 ##add sequence and MLST
                 if gene.strand =="+":
                     sequence = seq.seq[gene.start:gene.end]
                 else:
                     sequence = seq.seq[gene.start:gene.end].reverse_complement()
+                    
                 ##Verify sequence correct
                 if len(sequence) != (gene.end-gene.start):
-                    ## sys.stderr.write("Gene " + gene.geneId() + " incomplet\n")
+                    sys.stderr.write("Gene " + gene.geneId() + " incomplet\n")
                     bad += 1
                     continue
                 try:
-                    tmp = sequence.translate(table=11, cds=True)
+                    tmp = sequence.translate(table="Bacterial", cds=True)
                 except:
-                    ## sys.stderr.write("Gene " + gene.geneId() + " not correct\n")
+                    sys.stderr.write("Gene " + gene.geneId() + " not correct ")
+                    sys.stderr.write("Contig " + seq.id + " Start " + str(gene.start) + \
+                                     " end " + str(gene.end) +"\n")
                     bad += 1
                     continue
+
+                ##Insert data in database
                 seqid = insert_sequence(cursor, str(sequence).upper())
                 cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
                                     (name, gene.geneId(), seqid))
