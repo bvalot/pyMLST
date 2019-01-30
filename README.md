@@ -2,18 +2,18 @@
 python Mlst Local Search Tool
 
 ## Purpose
-Typing of bacteria is an important task of public health in hospital. 
-The use of next generation sequencing for analyse or survey epidimic strain is in expansion.
+Typing bacteria is an important public health task in hospital. 
+The use of next generation sequencing to analyse or survey epidimic strain is rising.
 For this purpose, core or whole genome Multilocus Sequence Typing (cgMLST / wgMLST) has become the new standard.
-It was an extension of the traditionnal MLST method that use an short list of hoose keeping genes. 
+It is an extension of the traditionnal MLST method that uses a short list of housekeeping genes. 
 Here, a large set of gene corresponding to the core or the whole genome is used.
-Similarly to MLST, each unique sequence corresponds to an specific allele and 
+Similarly to MLST, each unique sequence matches a specific allele and 
 the combination of allele determines the sequence type (ST) of the strain.
 
 pyMLST have been developped to performed this task. 
-In comparaison to other tools, it used an local sqlite database to store allele sequences and mlst profiles. 
-This permits to iteratively enlarge the collection of strains to compare. 
-The entry is a draft genome produced by assembler, but also other genome store in sequence database.
+In comparaison to other tools, it uses a local sqlite database to store allele sequences and mlst profiles. 
+This allows to iteratively enlarge the collection of strains to compare. 
+The entry is a draft genome produced by an assembler, but also other genomes store in sequence database.
 
 ## Installation
 
@@ -34,15 +34,15 @@ You need to compile source or obtaine executable at:
 
 ## cg/wgMLST Analysis
 
-A complete analysis of wgMLST was performed using a succession of python script.  
+A complete analysis of wgMLST is performed using a succession of python script.  
 
 ### Create database
 
 First, you need to create a database containing the scheme to use. 
-The scheme is a multi-fasta files containing sequence of genes in nucleotide format.
-You can obtained scheme for :
+The scheme is a multi-fasta file containing sequences of genes in nucleotide format.
+You can obtained scheme for:
 - Core genome analysis as described <https://www.cgmlst.org/> or in publications.
-- Whole genome analysis by using genes annoted in an publish genome closed to your strains.
+- Whole genome analysis by using annoted genes of a publish genome close to your strains.
 
 ```
 mlst_create_database.py -h
@@ -52,7 +52,7 @@ Create a wgMLST database from a template
 
 positional arguments:
   coregene    Coregene fasta file as template of MLST
-  database    Sqlite database to stock MLST
+  database    Sqlite database to store MLST
 
 optional arguments:
   -h, --help  show this help message and exit
@@ -61,7 +61,7 @@ optional arguments:
 ### Add strain
 
 Next, you need to add your strain iteratively to the database. 
-A draft genome is sufficient (we recommended to used [Spades](http://cab.spbu.ru/software/spades/) for assembly).
+A draft genome can be used (we recommende to use [Spades](http://cab.spbu.ru/software/spades/) for assembly).
 You can also add reference genome for comparison.
 
 ```
@@ -72,7 +72,7 @@ Add a strain to the wgMLST database
 
 positional arguments:
   genome                Genome of the strain
-  database              Sqlite database to stock MLST
+  database              Sqlite database to store MLST
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -86,26 +86,26 @@ optional arguments:
 
 ### Export results (profiles / distances)
 
-This script permits to obtained informations on the database and extract result depending of the **-e** option selected.
-- **stat**: List the contains in database
+This script allows to obtain informations on the database and extract result depending on the **-e** option selected.
+- **stat**: List the content in database.
 - **strain**: List the strains present in the database, 
-in combination with **-c** options, you can obtained the number of gene found for each strains.
+in combination with **-c** option, you can obtained the number of gene found for each strain.
 - **gene**: List the genes present in the database. 
-In combination with **-m** option, you can restrict to the gene present in the majority of strains.
-- **mlst**: Table containing the mlst profile of each strains. 
+In combination with **-m** option, you can restrict to genes present in the majority of strains.
+- **mlst**: Table containing the mlst profile of each strain. 
 To simplify the result, you can export only genes with different alleles with the **-k** option.
 - **distance**: Matrix of distances between strains. 
-Each distance between a paired of strains are calculated as the number of genes with a different alleles omitting the missing data.
-For the calculation, you can used only genes present in a sufficient number of strains with the **-m** option. 
+Each distance between a paire of strains is calculated as the number of genes with a different alleles, omitting the missing data.
+For the calculation, you can use only genes present in a sufficient number of strains with the **-m** option. 
 
 ```
 ./mlst_extract_table.py -h
 usage: mlst_extract_table.py [options] database
 
-Extract MLST table from an wgMLST database
+Extract MLST table from a wgMLST database
 
 positional arguments:
-  database              Sqlite database to stock MLST
+  database              Sqlite database to store MLST
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -119,10 +119,10 @@ optional arguments:
   -c, --count           In strain mode, count the number of gene present in
                         the database
   -m [MINCOVER], --mincover [MINCOVER]
-                        Minimun number of strain found to conserved a gene
+                        Minimun number of strain found to keep a gene
                         (default:0)
   -k, --keep            Keep only gene with different allele (omit missing)
-  -V, --inverse         Conserved only gene that not pass filter of mincover
+  -V, --inverse         Keep only gene that do not meet the filter of mincover
                         or keep options
 ```
 
@@ -131,8 +131,8 @@ optional arguments:
 This script gives access to allele sequences present in the database. 
 You can specify a list of genes to export with **-l** option. 
 
-You can also report an multialign fasta files with genes concatened using **-a** option. 
-The file can be used directly for phylogenetic analysis using maximun likelihood or bayesien approaches.
+You can also report a multialign fasta file with genes concatened using **-a** option. 
+The file can be use directly for phylogenetic analysis using maximun likelihood or bayesien approaches.
 
 ```
 ./mlst_extract_sequence.py -h                                     
@@ -141,7 +141,7 @@ usage: mlst_extract_sequence.py [options] database
 Get sequences from wgMLST database
 
 positional arguments:
-  database              Sqlite database to stock MLST
+  database              Sqlite database to store MLST
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -153,7 +153,7 @@ optional arguments:
                         gene files (default:No)
   -r, --realign         Realign gene with same length (Default:No)
   -m [MINCOVER], --mincover [MINCOVER]
-                        Minimun number of strain found to conserved a coregene
+                        Minimun number of strain found to keep a coregene
                         (default:1)
   -p [PATH], --path [PATH]
                         Path to mafft executable (default=/usr/bin)
@@ -161,27 +161,27 @@ optional arguments:
 
 ## classical MLST Analysis
 
-Additionnaly, pyMLST is able to search classical MLST and return alleles number and Sequence Type. 
+Furthermore, pyMLST is able to search classical MLST and return alleles number and Sequence Type. 
 
 ### Creation of MLST database
 
 You need to download list of alleles and mlst profile of your specie of interest at <https://pubmlst.org/data/>.
 
-To create database, pyMLST need that the gene name present in the mlst profile header correspond to the name of the fasta file.
-As example, rpoB gene indicated in the header of mlst profile must correspond to rpoB.fas file. 
-You also need to remove additionnal column corresponding to clonal complex in the mlst profile file, if present.
+To create database, pyMLST needs the gene name present in the mlst profile header to match the name of the fasta file.
+As an example, rpoB gene in the header of mlst profile must match rpoB.fas file. 
+You also need to remove additionnal column corresponding to clonal complex in the mlst profile file, if existing.
 
 ```
 ./claMLST_create_database.py -h
-usage: claMLST_create_database.py [options] database shema alleles
+usage: claMLST_create_database.py [options] database sheme alleles
 
-Create a classical MLST database from a shema
+Create a classical MLST database from a sheme
 
 positional arguments:
-  database    Sqlite database to stock MLST
-  shema       Tabular file containing MLST shema
-  alleles     Fasta files containing alleles for each MLST genes, One file per
-              genes
+  database    Sqlite database to store MLST
+  sheme       Tabular file containing MLST sheme
+  alleles     Fasta files containing alleles for each MLST genes, one file per
+              gene
 
 optional arguments:
   -h, --help  show this help message and exit
@@ -190,7 +190,7 @@ optional arguments:
 ### Search MLST profile of a strain
 
 Similarly to wgMLST analysis, you need a draft genome to find the mlst profile.
-In case of a new allele is present, you can obtained the sequence with the **-f** option.
+In case a new allele is present, you can obtain the sequence with the **-f** option.
 
 ```
 ./claMLST_search_ST.py -h
@@ -200,7 +200,7 @@ Search ST number for a strain
 
 positional arguments:
   genome                Genome of the strain
-  database              Sqlite database containing MLST shema
+  database              Sqlite database containing MLST sheme
 
 optional arguments:
   -h, --help            show this help message and exit
