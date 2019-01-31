@@ -116,44 +116,89 @@ class Psl:
     def geneId(self):
         return self.pslelement[9]
 
-    def searchCDS(self, seq):
+    def getSequence(self, seq):
+        if self.strand =="+":
+            sequence = seq.seq[self.start:self.end]
+        else:
+            sequence = seq.seq[self.start:self.end].reverse_complement()
+        ##Verify sequence correct
+        if len(sequence) != (self.end-self.start):
+            raise Exception("Gene " + gene.geneId() + " incomplete\n")
+        return sequence
+
+    def searchCorrectCDS(self, seq, coverage):
+        prot = self.getSequence(seq)
+        ##modifs start and stop not create
+        if prot.startswith("M") is False and prot.endswith("*") is False:
+            return False
+        windows = int((1-coverage)*self.rtotal)
+        if prot.startswith("M") is False:
+            return self.__searchCDS(seq, True, False, windows, 0)
+        elif prot.endswith("*") is False:
+            return self.__searchCDS(seq, False, True, windows, 0)
+        else:
+            raise Exception("A problem of start/stop  for gene " + gene.geneId())
+
+    def searchPartialCDS(self, seq, coverage):
         ##modifs start and stop not create
         if self.rstart !=0 and self.rend != self.rtotal:
             return False
-        ##modifs start
+        windows = int((1-coverage)*self.rtotal)
         if self.rstart !=0:
-            modulo = (self.end-self.start)%3
             diff = self.rstart
+            return self.__searchCDS(seq, True, False, windows, diff)
+        elif self.rend != self.rtotal:
+            diff = self.rtotal - self.rend
+            return self.__searchCDS(seq, False, True, windows, diff)
+        else:
+            raise Exception("A problem of start/stop for gene " + gene.geneId())
+    
+    def __searchCDS(self, seq, start, stop, windows, diff):
+        ##correct windows/diff multiple of 3
+        windows = windows - windows%3
+        diff = diff - diff%3
+        ##modifs start and stop not create
+        if start and stop:
+            return False
+        ##modifs start
+        if start:
+            ##modulo = (self.end-self.start)%3
             if self.strand == "+":
-                val = [i for i in range(self.start+modulo, self.start-diff*2, -3) \
+                theoStart = self.__getTheoricStart(diff)
+                val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
                        if testCDS(seq.seq[i:self.end], False)]
                 if len(val)==1:
                     self.start=val[0]
                     return True
                 elif len(val) >1:
-                    sys.stderr.write("Choice best start for gene " + gene.geneId() + "\n" + str(val) + "\n")
-                    self.start = val[0]
+                    best = self.__getBest(val)
+                    sys.stderr.write("Choice best start for gene " + gene.geneId() + " " \
+                                     + str(best) + " " + str(val) + "\n")
+                    self.start = best
                     return True
                 else:
                     return False
             else:
-                val = [i for i in range(self.end-modulo, self.end+diff*2, 3) \
+                theoEnd = self.__getTheoricEnd(diff)
+                val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
                        if testCDS(seq.seq[self.start:i], True)]
                 if len(val) == 1:
                     self.end = val[0]
                     return True
                 elif len(val) >1:
-                    sys.stderr.write("Choice best start for gene " + gene.geneId() + "\n" + str(val) + "\n")
-                    self.end = val[0]
+                    best = self.__getBest(val)
+                    sys.stderr.write("Choice best start for gene " + gene.geneId() + " " \
+                                     + str(best) + " " + str(val) + "\n")
+                    self.end = best
                     return True
                 else:
                     return False
         ##modifs end
-        elif self.rend != self.rtotal:
-            modulo = (self.end-self.start)%3
-            diff = self.rtotal - self.rend
+        elif stop:
+            ##modulo = (self.end-self.start)%3
             if self.strand == "+":
-                val = [i for i in range(self.end-modulo, self.end+diff*2, 3) \
+                theoEnd = self.__getTheoricEnd(diff)
+                val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
                        if testCDS(seq.seq[self.start:i], False)]
                 if len(val) == 1:
                     self.end = val[0]
@@ -161,16 +206,34 @@ class Psl:
                 else:
                     return False
             else:
-                val = [i for i in range(self.start+modulo, self.start-diff*2, -3) \
+                theoStart = self.__getTheoricStart(diff)
+                val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
                        if testCDS(seq.seq[i:self.end], True)]
                 if len(val) == 1:
                     self.start = val[0]
                     return True
                 else:
                     return False
-        else:
-            raise Exception("A problem of coverage for gene " + gene.geneId())
-    
+
+    def __getTheoricStart(self, diff):
+        modulo = (self.end-self.start)%3
+        return self.start + modulo - diff
+
+    def __getTheoricEnd(self, diff):
+        modulo = (self.end-self.start)%3
+        return self.end - modulo + diff
+        
+    def __getBest(self, val):
+        best = val[0]
+        for v in val[1:]:
+            if self.strand == "+":
+                if abs(abs(self.end - v) - self.rtotal) < abs(abs(self.end - best) - self.rtotal):
+                    best = v
+            else:
+                if abs(abs(v - self.start) - self.rtotal) < abs(abs(best - self.start) - self.rtotal):
+                    best = v
+        return best
+                
     # def correct(self):
     #     if int(self.pslelement[11]) != 0:
     #         diff = int(self.pslelement[11])
@@ -237,33 +300,25 @@ if __name__=='__main__':
 
                 ##Correct coverage
                 if gene.coverage != 1:
-                    if gene.searchCDS(seq) is False:
-                        sys.stderr.write("Gene " + gene.geneId() + " partial\n")
+                    if gene.searchPartialCDS(seq, args.coverage) is False:
+                        sys.stderr.write("Gene " + gene.geneId() + " partial: removed\n")
                         bad += 1
                         continue
                     else:
-                        sys.stderr.write("Gene " + gene.geneId() + " correct\n")
-                
-                ##add sequence and MLST
-                if gene.strand =="+":
-                    sequence = seq.seq[gene.start:gene.end]
-                else:
-                    sequence = seq.seq[gene.start:gene.end].reverse_complement()
-                    
-                ##Verify sequence correct
-                if len(sequence) != (gene.end-gene.start):
-                    sys.stderr.write("Gene " + gene.geneId() + " incomplet\n")
-                    bad += 1
-                    continue
-                try:
-                    tmp = sequence.translate(table="Bacterial", cds=True)
-                except:
-                    sys.stderr.write("Gene " + gene.geneId() + " not correct ")
-                    sys.stderr.write("Contig " + seq.id + " Start " + str(gene.start) + \
-                                     " end " + str(gene.end) +"\n")
-                    bad += 1
-                    continue
+                        sys.stderr.write("Gene " + gene.geneId() + " fill: added\n")
 
+                ##Verify CDS
+                if testCDS(gene.getSequence(seq), False) is False:
+                    if gene.searchCorrectCDS(seq, args.coverage) is False:
+                        sys.stderr.write("Gene " + gene.geneId() + " not correct: removed\n")
+                        bad += 1
+                        continue
+                    else:
+                        sys.stderr.write("Gene " + gene.geneId() + " correct: added\n")
+ 
+                ##add sequence and MLST
+                sequence = gene.getSequence(seq)
+                
                 ##Insert data in database
                 seqid = insert_sequence(cursor, str(sequence).upper())
                 cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
