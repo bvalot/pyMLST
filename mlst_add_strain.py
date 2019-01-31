@@ -11,9 +11,8 @@ from Bio import SeqIO
 import tempfile
 import subprocess
 import shutil
-from lib.psl import Psl,testCDS
-
-blat_exe = "blat"
+import lib.psl as psl
+import lib.blat as blat
 
 desc = "Add a strain to the wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_add_strain.py', \
@@ -57,29 +56,6 @@ def insert_sequence(cursor, sequence):
         cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
         return cursor.fetchone()[0]
 
-def run_blat(path, name, genome, tmpfile, tmpout, identity, coverage):
-    command = [path+blat_exe, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
-               genome.name, tmpfile.name, tmpout.name]
-    proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stdout)
-    error = ""
-    for line in iter(proc.stderr.readline,''):
-        error += line
-    if error != "":
-        sys.stdout.write("Error during runnin BLAT\n")
-        raise Exception(error)
-    genes = {}
-    for line in open(tmpout.name, 'r'):
-        try:
-            int(line.split()[0])
-        except:
-            continue
-        psl = Psl(line)
-        if psl.coverage >=coverage and psl.coverage <= 1:
-            genes.setdefault(psl.geneId(),[]).append(psl)
-    if len(genes) == 0:
-        raise Exception("No path found for the coregenome")
-    return genes
-
 def read_genome(genome):
     seqs = {}
     for seq in SeqIO.parse(genome, 'fasta'):
@@ -94,16 +70,11 @@ if __name__=='__main__':
     name = args.strain
     if args.identity<0 or args.identity > 1:
         raise Exception("Identity must be between 0 to 1")
-    path = args.path
-    if path:
-        path = path.rstrip("/")+"/"
-        if os.path.exists(path+blat_exe) is False:
-            raise Exception("BLAT executable not found in folder: \n"+path)
+    path = blat.test_blat_exe(args.path)
     if name is None:
         name = genome.name.split('/')[-1]
-    tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
-    tmpout = tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=False)
-    tmpout.close()
+
+    tmpfile, tmpout = blat.blat_tmp()
     
     try:
         db = sqlite3.connect(database.name)
@@ -121,7 +92,7 @@ if __name__=='__main__':
 
         ##BLAT analysis
         sys.stderr.write("Search coregene with BLAT\n")
-        genes = run_blat(path, name, genome, tmpfile, tmpout, args.identity, args.coverage)
+        genes = blat.run_blat(path, genome, tmpfile, tmpout, args.identity, args.coverage)
         sys.stderr.write("Finish run BLAT, found " + str(len(genes)) + " genes\n")
         
         ##add sequence MLST
@@ -145,7 +116,7 @@ if __name__=='__main__':
                         sys.stderr.write("Gene " + gene.geneId() + " fill: added\n")
 
                 ##Verify CDS
-                if testCDS(gene.getSequence(seq), False) is False:
+                if psl.testCDS(gene.getSequence(seq), False) is False:
                     if gene.searchCorrectCDS(seq, args.coverage) is False:
                         sys.stderr.write("Gene " + gene.geneId() + " not correct: removed\n")
                         bad += 1
