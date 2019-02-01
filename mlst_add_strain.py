@@ -8,8 +8,6 @@ import os
 import argparse
 import sqlite3
 from Bio import SeqIO
-import tempfile
-import subprocess
 import shutil
 import lib.psl as psl
 import lib.blat as blat

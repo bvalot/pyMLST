@@ -49,6 +49,21 @@ class Psl:
             raise Exception("Gene " + self.geneId() + " incomplete\n")
         return sequence
 
+    def searchCorrect(self):
+        if int(self.pslelement[11]) != 0:
+            diff = int(self.pslelement[11])
+            if self.strand == "+":
+                self.start = self.start - diff
+            else:
+                self.end = self.end + diff
+        elif int(self.pslelement[10]) != int(self.pslelement[12]):
+            diff = int(self.pslelement[10]) - int(self.pslelement[12])
+            if self.strand == "+":
+                self.end = self.end + diff
+            else:
+                self.start = self.start - diff   
+        self.coverage = 1
+    
     def searchCorrectCDS(self, seq, coverage):
         prot = self.getSequence(seq)
         ##modifs start and stop not create
@@ -156,3 +171,4 @@ class Psl:
                 if abs(abs(v - self.start) - self.rtotal) < abs(abs(best - self.start) - self.rtotal):
                     best = v
         return best
+
