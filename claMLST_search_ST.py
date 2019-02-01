@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Search ST number for an assembly"""
 
 import sys
@@ -11,6 +16,7 @@ from Bio import SeqIO
 import shutil
 import lib.psl as psl
 import lib.blat as blat
+from lib import __version__
 
 desc = "Search ST number for a strain"
 command = argparse.ArgumentParser(prog='claMLST_search_ST.py', \
@@ -35,7 +41,8 @@ command.add_argument('genome', \
     help='Genome of the strain')
 command.add_argument('database', \
     type=argparse.FileType("r"), \
-    help='Sqlite database containing MLST shema')
+    help='Sqlite database containing MLST sheme')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 def create_coregene(cursor, tmpfile):
     ref = int(1)

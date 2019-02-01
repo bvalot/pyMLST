@@ -1,16 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Extract MLST table from an wgMLST database"""
 
 import sys
 import os
 import argparse
 import sqlite3
+from lib import __version__
 
 ref="ref"
 
-desc = "Extract MLST table from an wgMLST database"
+desc = "Extract MLST table from a wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_extract_table.py', \
     description=desc, usage='%(prog)s [options] database')
 command.add_argument('-o', '--output', nargs='?', \
@@ -25,14 +31,15 @@ command.add_argument('-c', '--count', action='store_true', \
     help='In strain mode, count the number of gene present in the database')
 command.add_argument('-m', '--mincover', nargs='?', \
     type=int, default=0, \
-    help='Minimun number of strain found to conserved a gene (default:0)')
+    help='Minimun number of strain found to keep a gene (default:0)')
 command.add_argument('-k', '--keep', action='store_true', \
     help='Keep only gene with different allele (omit missing)')
 command.add_argument('-V', '--inverse', action='store_true', \
-    help='Conserved only gene that not pass filter of mincover or keep options')
+    help='Keep only gene that do not meet the filter of mincover or keep options')
 command.add_argument('database', \
     type=argparse.FileType("r"), \
-    help='Sqlite database to stock MLST')
+    help='Sqlite database to store MLST')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 def get_mlst(cursor, strain, shema):
     coregenes = [[] for i in range(0,len(shema))]

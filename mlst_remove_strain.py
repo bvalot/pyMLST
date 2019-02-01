@@ -1,14 +1,20 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Remove strains to an wgMLST database"""
 
 import sys
 import os
 import argparse
 import sqlite3
+from lib import __version__
 
-desc = "Remove strains to an wgMLST database and sequences specificaly associated"
+desc = "Remove strain to a wgMLST database and sequences specificaly associated"
 command = argparse.ArgumentParser(prog='mlst_remove_strain.py', \
     description=desc, usage='%(prog)s [options] database strains')
 command.add_argument('database', \
@@ -16,7 +22,8 @@ command.add_argument('database', \
     help='Sqlite database of the wgMLST')
 command.add_argument('strains', nargs='*',\
     type=str, help='List of strains to removed from database')
-    
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
+
 if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()    

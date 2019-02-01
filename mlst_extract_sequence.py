@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Get sequence from wgMLST database"""
 
 import sys
@@ -10,6 +15,7 @@ import sqlite3
 from Bio import SeqIO
 import tempfile
 import subprocess
+from lib import __version__
 
 mafft_exe = "mafft"
 ref = 'ref'
@@ -29,14 +35,14 @@ command.add_argument('-r', '--realign', action='store_true', \
     help='Realign gene with same length (Default:No)')
 command.add_argument('-m', '--mincover', nargs='?', \
     type=int, default=1, \
-    help='Minimun number of strain found to conserved a coregene (default:1)')
+    help='Minimun number of strain found to keep a coregene (default:1)')
 command.add_argument('-p', '--path', nargs='?', \
     type=str, default="/usr/bin", \
     help='Path to mafft executable (default=/usr/bin)')
 command.add_argument('database', \
     type=argparse.FileType("r"), \
-    help='Sqlite database to stock MLST')
-
+    help='Sqlite database to store MLST')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 def run_mafft(path, tmpfile):
     command = [path+mafft_exe, '--quiet', tmpfile.name]

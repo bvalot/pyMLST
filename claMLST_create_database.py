@@ -1,25 +1,32 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Create a classical MLST database"""
 
 import sys
 import argparse
 import sqlite3
 from Bio import SeqIO
+from lib import __version__
 
-desc = "Create a classical MLST database from a shema"
+desc = "Create a classical MLST database from a sheme"
 command = argparse.ArgumentParser(prog='claMLST_create_database.py', \
-    description=desc, usage='%(prog)s [options] database shema alleles')
+    description=desc, usage='%(prog)s [options] database sheme alleles')
 command.add_argument('database', \
     type=argparse.FileType("w"), \
-    help='Sqlite database to stock MLST')
-command.add_argument('shema', \
+    help='Sqlite database to store MLST')
+command.add_argument('sheme', \
     type=argparse.FileType("r"), \
-    help='Tabular file containing MLST shema')
+    help='Tabular file containing MLST sheme')
 command.add_argument('alleles', nargs='+', \
     type=argparse.FileType("r"), \
-    help='Fasta files containing alleles for each MLST genes, One file per genes')
+    help='Fasta files containing alleles for each MLST genes, one file per gene')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 if __name__=='__main__':
     """Performed job on execution script""" 
@@ -28,17 +35,17 @@ if __name__=='__main__':
     name = "ref"
     database.close()
     
-    ##Verify shema list with fasta files   
-    header = args.shema.readline().rstrip("\n").split("\t")
+    ##Verify sheme list with fasta files   
+    header = args.sheme.readline().rstrip("\n").split("\t")
     if len(header) != len(args.alleles)+1:
-        raise Exception("The number of genes in shema don't correspond to the number of fasta file\n" \
+        raise Exception("The number of genes in sheme don't correspond to the number of fasta file\n" \
                         + " ".join(header)  + "\n")
     fastas = {}
     for f in args.alleles:
         name = f.name.split("/")[-1]
         name = name[:name.rfind(".")]
         if name not in header:
-            raise Exception("Gene " + name + " not found in shema\n"+ " ".join(header))
+            raise Exception("Gene " + name + " not found in sheme\n"+ " ".join(header))
         fastas[name]=f
         
     try:
@@ -69,8 +76,8 @@ if __name__=='__main__':
                               VALUES(?,?,?)''', (str(seq.seq).upper(),g,allele))
                 alleles.get(g).add(allele)
         
-        ##load MLST shema
-        for line in args.shema:
+        ##load MLST sheme
+        for line in args.sheme:
             h = line.rstrip("\n").split("\t")
             st = int(h[0])
             for g,a in zip(header[1:],h[1:]):

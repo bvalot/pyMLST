@@ -1,25 +1,32 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""Remove gene to an wgMLST database"""
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
+"""Remove gene to a wgMLST database"""
 
 import sys
 import os
 import argparse
 import sqlite3
+from lib import __version__
 
-desc = "Remove gene to an wgMLST database and sequences specificaly associated"
+desc = "Remove gene to a wgMLST database and sequences specificaly associated"
 command = argparse.ArgumentParser(prog='mlst_remove_gene.py', \
     description=desc, usage='%(prog)s [options] database')
 command.add_argument('-l', '--lists', \
     type=argparse.FileType("r"), \
-    help='List of genes to removed on the wgMLST database')
+    help='File list of genes to removed on the wgMLST database')
 command.add_argument('-g', '--gene', \
     type=str, \
     help='Gene(s) to removed on the wgMLST database. Multiples references could be add with space')
 command.add_argument('database', \
     type=argparse.FileType("r"), \
     help='Sqlite database of the wgMLST')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
     
 if __name__=='__main__':
     """Performed job on execution script""" 

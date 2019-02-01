@@ -1,12 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+##Copyright (c) 2019 Benoit Valot
+##benoit.valot@univ-fcomte.fr
+##UMR 6249 Chrono-Environnement, Besançon, France
+##Licence GPL
+
 """Create a wgMLST database"""
 
 import sys
 import argparse
 import sqlite3
 from Bio import SeqIO
+from lib import __version__
 
 desc = "Create a wgMLST database from a template"
 command = argparse.ArgumentParser(prog='mlst_create_database.py', \
@@ -16,7 +22,8 @@ command.add_argument('coregene', \
     help='Coregene fasta file as template of MLST')
 command.add_argument('database', \
     type=argparse.FileType("w"), \
-    help='Sqlite database to stock MLST')
+    help='Sqlite database to store MLST')
+command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 if __name__=='__main__':
     """Performed job on execution script""" 
