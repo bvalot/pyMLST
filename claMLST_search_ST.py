@@ -8,11 +8,9 @@ import os
 import argparse
 import sqlite3
 from Bio import SeqIO
-import tempfile
-import subprocess
 import shutil
-
-blat_exe = "blat"
+import lib.psl as psl
+import lib.blat as blat
 
 desc = "Search ST number for a strain"
 command = argparse.ArgumentParser(prog='claMLST_search_ST.py', \
@@ -20,6 +18,9 @@ command = argparse.ArgumentParser(prog='claMLST_search_ST.py', \
 command.add_argument('-i', '--identity', nargs='?', \
     type=float, default=0.9, \
     help='Minimun identity to search gene (default=0.9)')
+command.add_argument('-c', '--coverage', nargs='?', \
+    type=float, default=0.9, \
+    help='Minimun coverage to search gene (default=0.9)')
 command.add_argument('-f', '--fasta', \
     type=argparse.FileType("w"), \
     help='Write fasta file with gene allele')
@@ -55,67 +56,11 @@ def insert_sequence(cursor, sequence):
         cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
         return cursor.fetchone()[0]
 
-def run_blat(path, genome, tmpfile, tmpout, identity):
-    command = [path+blat_exe, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
-               genome.name, tmpfile.name, tmpout.name]
-    proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stderr)
-    error = ""
-    for line in iter(proc.stderr.readline,''):
-        error += line
-    if error != "":
-        sys.stdout.write("Error during runnin BLAT\n")
-        raise Exception(error)
-    genes = {}
-    for line in open(tmpout.name, 'r'):
-        try:
-            int(line.split()[0])
-        except:
-            continue
-        psl = Psl(line)
-        if psl.coverage == 1:
-            genes.setdefault(psl.geneId(),[]).append(psl)
-    if len(genes) == 0:
-        raise Exception("No path found for the coregenome")
-    return genes
-
 def read_genome(genome):
     seqs = {}
     for seq in SeqIO.parse(genome, 'fasta'):
         seqs[seq.id] = seq
     return seqs
-
-class Psl:
-    """A simple Psl class"""
-    def __init__(self, pslline):
-        pslelement = pslline.rstrip("\n").split("\t")
-        if len(pslelement) != 21:
-            raise Exception("Psl line have not 21 elements:\n"+pslline)
-        self.pslelement = pslelement
-        self.chro = pslelement[13]
-        self.start = int(pslelement[15])
-        self.end = int(pslelement[16])
-        self.strand = pslelement[8]
-        self.coverage = (float(self.pslelement[12]) - int(self.pslelement[11]))/int(self.pslelement[10])
-        if self.coverage !=1 and self.coverage>=0.95:
-            self.correct()
-        
-    def geneId(self):
-        return self.pslelement[9]
-
-    def correct(self):
-        if int(self.pslelement[11]) != 0:
-            diff = int(self.pslelement[11])
-            if self.strand == "+":
-                self.start = self.start - diff
-            else:
-                self.end = self.end + diff
-        elif int(self.pslelement[10]) != int(self.pslelement[12]):
-            diff = int(self.pslelement[10]) - int(self.pslelement[12])
-            if self.strand == "+":
-                self.end = self.end + diff
-            else:
-                self.start = self.start - diff   
-        self.coverage = 1
     
 if __name__=='__main__':
     """Performed job on execution script""" 
@@ -124,12 +69,8 @@ if __name__=='__main__':
     genome = args.genome
     if args.identity<0 or args.identity > 1:
         raise Exception("Identity must be between 0 to 1")
-    path = args.path.rstrip("/")+"/"
-    if os.path.exists(path+blat_exe) is False:
-        raise Exception("BLAT executable not found in folder: \n"+path)
-    tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
-    tmpout = tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=False)
-    tmpout.close()
+    path = blat.test_blat_exe(args.path)
+    tmpfile, tmpout = blat.blat_tmp()
     
     try:
         db = sqlite3.connect(database.name)
@@ -142,7 +83,7 @@ if __name__=='__main__':
 
         ##BLAT analysis
         sys.stderr.write("Search coregene with BLAT\n")
-        genes = run_blat(path, genome, tmpfile, tmpout, args.identity)
+        genes = blat.run_blat(path, genome, tmpfile, tmpout, args.identity, args.coverage)
         sys.stderr.write("Finish run BLAT, found " + str(len(genes)) + " genes\n")
         
         ##Search sequence MLST
@@ -159,17 +100,26 @@ if __name__=='__main__':
                 seq = seqs.get(gene.chro, None)
                 if seq is None:
                     raise Exception("Chromosome ID not found " + gene.chro)
+
+                ##verify coverage and correct
+                if gene.coverage !=1:
+                    gene.searchCorrect()
+                    sys.stderr.write("Gene " + gene.geneId() + " fill: added\n")
+
+                    
                 ##get sequence
-                sequence = str(seq.seq[gene.start:gene.end]).upper()
-                if gene.strand !="+":
-                    sequence = str(seq.seq[gene.start:gene.end].reverse_complement()).upper()
+                sequence = str(gene.getSequence(seq)).upper()
+
                 ##verify complet sequence
                 if len(sequence) != (gene.end-gene.start):
+                    sys.stderr.write("Gene " + gene.geneId() + " removed\n")
                     continue
+
                 ##write fasta file with coregene
                 if args.fasta is not None:
                     args.fasta.write(">"+coregene+"\n")
                     args.fasta.write(sequence+"\n")
+
                 ##search allele
                 cursor.execute('''SELECT allele FROM sequences WHERE sequence=? and gene=?''', \
                                (sequence, coregene))
