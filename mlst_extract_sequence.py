@@ -54,7 +54,7 @@ def run_mafft(path, tmpfile):
         if ids is None and line[0] == '>':
             ids = line.lstrip('>').rstrip("\n")
         elif ids is not None and line[0] == '>':
-            genes[int(ids)] = seq
+            genes[int(ids)] = seq.upper()
             ids = line.lstrip('>').rstrip("\n")
             seq = ""
         elif ids is not None:

@@ -44,9 +44,9 @@ class Psl:
             sequence = seq.seq[self.start:self.end]
         else:
             sequence = seq.seq[self.start:self.end].reverse_complement()
-        ##Verify sequence correct
-        if len(sequence) != (self.end-self.start):
-            raise Exception("Gene " + self.geneId() + " incomplete\n")
+        # ##Verify sequence correct
+        # if len(sequence) != (self.end-self.start):
+        #     raise Exception("Gene " + self.geneId() + " incomplete\n")
         return sequence
 
     def searchCorrect(self):
