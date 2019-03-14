@@ -34,6 +34,8 @@ command.add_argument('-m', '--mincover', nargs='?', \
     help='Minimun number of strain found to keep a gene (default:0)')
 command.add_argument('-k', '--keep', action='store_true', \
     help='Keep only gene with different allele (omit missing)')
+command.add_argument('-d', '--duplicate', action='store_false', \
+    help='Conserve duplicate gene (default remove)')
 command.add_argument('-V', '--inverse', action='store_true', \
     help='Keep only gene that do not meet the filter of mincover or keep options')
 command.add_argument('database', \
@@ -104,11 +106,14 @@ if __name__=='__main__':
         for i,g in enumerate(shema):
             count = 0
             tmp = set()
+            duplicate = False
             for s in strains:
                 val = mlst.get(s)[i]
                 if val:
                     count += 1
                     tmp = tmp.union(set(val))
+                    if len(val) > 1:
+                        duplicate = True
             ## Test different case for validation
             valid = []
             if args.keep is True:
@@ -122,11 +127,18 @@ if __name__=='__main__':
                 valid.append(True)
             else:
                 valid.append(False)
+            if args.duplicate:
+                if duplicate:
+                    valid.append(False)
+                else:
+                 valid.append(True)   
+            else:
+                valid.append(True)
             if args.inverse is False:
-                if sum(valid) == 2:
+                if sum(valid) == 3:
                     valid_shema.append(i)
             else:
-                if sum(valid) < 2:
+                if sum(valid) < 3:
                     valid_shema.append(i)                
         
         ##export different case with choices
