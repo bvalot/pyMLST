@@ -55,6 +55,9 @@ positional arguments:
   database    Sqlite database to store MLST
 
 optional arguments:
+  -c, --concatenate  Automaticaly concatenate redondancy of genes with same
+                     sequence
+  -r, --remove       Automaticaly remove genes with duplicate sequence
   -h, --help  show this help message and exit
 ```
 
@@ -80,6 +83,8 @@ optional arguments:
                         Name of the strain (default:genome name)
   -i [IDENTITY], --identity [IDENTITY]
                         Minimun identity to search gene (default=0.95)
+  -c [COVERAGE], --coverage [COVERAGE]
+                        Minimun coverage to search gene (default=0.9)
   -p [PATH], --path [PATH]
                         Path to BLAT executable (default=/usr/bin)
 ```
@@ -122,6 +127,7 @@ optional arguments:
                         Minimun number of strain found to keep a gene
                         (default:0)
   -k, --keep            Keep only gene with different allele (omit missing)
+  -d, --duplicate       Conserve duplicate gene (default remove)
   -V, --inverse         Keep only gene that do not meet the filter of mincover
                         or keep options
 ```
