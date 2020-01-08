@@ -13,6 +13,7 @@ import os
 import argparse
 import sqlite3
 from lib import __version__
+import lib.sql as sql
 
 desc = "Remove strain to a wgMLST database and sequences specificaly associated"
 command = argparse.ArgumentParser(prog='mlst_remove_strain.py', \
@@ -30,12 +31,15 @@ if __name__=='__main__':
     database = args.database
     strains = args.strains
 
-    if 'ref' in  args.strains:
+    if sql.ref in args.strains:
         raise Exception("Ref schema could not be remove from this database")
     
     try:
         db = sqlite3.connect(database.name)
         cursor = db.cursor()
+
+        ## index old database
+        sql.index_database(cursor)
         
         for strain in strains:
             sys.stderr.write(strain + "     ")
@@ -51,9 +55,9 @@ if __name__=='__main__':
             
             ##remove seqs if no other strain have this seq
             for seqid in seqids:
-                cursor.execute('''SELECT seqid FROM mlst WHERE seqid=?''', (seqid[0],))
-                if cursor.fetchone() is None:
-                    cursor.execute('''DELETE FROM sequences WHERE id=? ''', (seqid[0],))
+                cursor.execute('''DELETE from sequences as s
+                                  where not exists (
+                                  select 1 from mlst where seqid=?)''', (seqid[0],))
             sys.stderr.write("OK\n")
 
         db.commit()
