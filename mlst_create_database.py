@@ -13,6 +13,7 @@ import argparse
 import sqlite3
 from Bio import SeqIO
 from lib import __version__
+import lib.sql as sql
 
 desc = "Create a wgMLST database from a template"
 command = argparse.ArgumentParser(prog='mlst_create_database.py', \
@@ -51,7 +52,6 @@ if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()
     database = args.database
-    name = "ref"
     database.close()
     genes = set()
     toremove = set()
@@ -60,7 +60,7 @@ if __name__=='__main__':
         cursor = db.cursor()
         cursor2 = db.cursor()
         cursor.execute('''CREATE TABLE IF NOT EXISTS
-                      sequences(id INTEGER PRIMARY KEY, sequence TEXT unique)''')
+                          sequences(id INTEGER PRIMARY KEY, sequence TEXT unique)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS
                           mlst(id INTEGER PRIMARY KEY, souche TEXT, gene TEXT, seqid INTEGER)''')
         for gene in SeqIO.parse(args.coregene, 'fasta'):
@@ -69,20 +69,22 @@ if __name__=='__main__':
             else:
                 genes.add(gene.id)
             try:
-                cursor.execute('''INSERT INTO sequences(sequence)
-                                  VALUES(?)''', (str(gene.seq).upper(),))
-                cursor2.execute('''INSERT INTO mlst(souche, gene, seqid)
-                                   VALUES(?,?,?)''', (name, gene.id, cursor.lastrowid))
+                seqid = sql.add_sequence(cursor, str(gene.seq))
+                sql.add_mlst(cursor2, sql.ref, gene.id, seqid)
             except sqlite3.IntegrityError:
                 if args.concatenate:
                     update_duplicate(cursor, gene)
                 elif args.remove:
-                    toremove.add(str(gene.seq).upper())      
+                    toremove.add(str(gene.seq).upper())  
                 else:
                     raise Exception("Two gene have the same sequence " + gene.id + \
                                     "\nUse -c or -r options to manage it")
         if toremove:
             remove_duplicate(cursor, toremove)
+
+        ## Add index
+        sql.index_database(cursor)
+        
         db.commit()
     except Exception:
         db.rollback()

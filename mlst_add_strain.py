@@ -17,6 +17,7 @@ import shutil
 import lib.psl as psl
 import lib.blat as blat
 from lib import __version__
+import lib.sql as sql
 
 desc = "Add a strain to the wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_add_strain.py', \
@@ -42,23 +43,20 @@ command.add_argument('database', \
 command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
 
 def create_coregene(cursor, tmpfile):
-    ref = "ref"
-    cursor.execute('''SELECT gene, seqid FROM mlst WHERE souche=?''', (ref,))
-    all_rows = cursor.fetchall()
+    cursor.execute('''SELECT gene, sequence FROM mlst JOIN sequences 
+                      ON mlst.seqid = sequences.id
+                      WHERE mlst.souche = ?''', (sql.ref,))
     coregenes = []
-    for row in all_rows:
-        cursor.execute('''SELECT sequence FROM sequences WHERE id=?''', (row[1],))
-        seq = cursor.fetchone()[0]
-        tmpfile.write('>' + row[0] + "\n" + seq + "\n")
-        coregenes.append((row[0], seq))
+    for row in cursor.fetchall():
+        tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
+        coregenes.append(row[0])
     return coregenes
-
+    
 def insert_sequence(cursor, sequence):
     try:
-        cursor.execute('''INSERT INTO sequences(sequence) VALUES(?)''', (sequence,))
-        return cursor.lastrowid
+        return sql.add_sequence(cursor, sequence)
     except sqlite3.IntegrityError:
-        cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
+        cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence.upper(),))
         return cursor.fetchone()[0]
 
 def read_genome(genome):
@@ -86,6 +84,9 @@ if __name__=='__main__':
         cursor = db.cursor()
         cursor2 = db.cursor()
 
+        ##index database for old one
+        sql.index_database(cursor)
+
         ##verify strain not already on the database
         cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche=?''', (name,))
         if cursor.fetchone() is not None:
@@ -104,9 +105,9 @@ if __name__=='__main__':
         seqs = read_genome(genome)
         bad = 0
         for coregene in coregenes:
-            if coregene[0] not in genes:
+            if coregene not in genes:
                 continue
-            for gene in genes.get(coregene[0]):
+            for gene in genes.get(coregene):
                 seq = seqs.get(gene.chro, None)
                 if seq is None:
                     raise Exception("Chromosome ID not found " + gene.chro)
@@ -133,9 +134,9 @@ if __name__=='__main__':
                 sequence = gene.getSequence(seq)
                 
                 ##Insert data in database
-                seqid = insert_sequence(cursor, str(sequence).upper())
-                cursor2.execute('''INSERT INTO mlst(souche, gene, seqid) VALUES(?,?,?)''', \
-                                    (name, gene.geneId(), seqid))
+                seqid = insert_sequence(cursor, str(sequence))
+                sql.add_mlst(cursor2, name, gene.geneId(), seqid)
+
         db.commit()
         sys.stderr.write("Add " + str(len(genes)-bad) + " new MLST gene to database\n")
         sys.stderr.write("FINISH\n")
