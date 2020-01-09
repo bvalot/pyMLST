@@ -11,7 +11,8 @@ import sqlite3
 ref = "ref"
 
 def index_database(cursor):
-    cursor.execute('''CREATE INDEX IF NOT EXISTS ID_index ON mlst (souche, gene)''')
+    cursor.execute('''CREATE INDEX IF NOT EXISTS ID_souche ON mlst (souche)''')
+    cursor.execute('''CREATE INDEX IF NOT EXISTS ID_gene ON mlst (gene)''')
     cursor.execute('''CREATE INDEX IF NOT EXISTS ID_seqid ON mlst (seqid)''')
 
 def add_sequence(cursor, seq):
