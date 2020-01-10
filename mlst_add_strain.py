@@ -70,12 +70,15 @@ if __name__=='__main__':
     args = command.parse_args()    
     database = args.database
     genome = args.genome
-    name = args.strain
     if args.identity<0 or args.identity > 1:
         raise Exception("Identity must be between 0 to 1")
     path = blat.test_blat_exe(args.path)
+
+    name = args.strain
     if name is None:
         name = genome.name.split('/')[-1]
+    if ";" in name:
+        raise Exception("Strain name must not contains special ';'\n")
 
     tmpfile, tmpout = blat.blat_tmp()
     
