@@ -25,3 +25,15 @@ def add_mlst(cursor, souche, gene, seqid):
     """Add MLST information to database"""
     cursor.execute('''INSERT INTO mlst(souche, gene, seqid)
                        VALUES(?,?,?)''', (souche, gene, seqid))
+def get_duplicate_gene(cursor):
+    cursor.execute('''SELECT gene
+                      FROM mlst m
+                      WHERE exists (
+                      select 1 from mlst
+                      where souche = m.souche
+                      and gene = m.gene
+                      and id != m.id
+                      )
+                      AND m.souche != ?
+                      GROUP BY gene''', (ref,))
+    return set([row[0] for row in cursor.fetchall()])

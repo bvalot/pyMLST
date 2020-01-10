@@ -50,19 +50,6 @@ def get_all_gene(cursor):
     cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
     return [row[0] for row in cursor.fetchall()]
 
-def get_duplicate_gene(cursor):
-    cursor.execute('''SELECT gene
-                      FROM mlst m
-                      WHERE exists (
-                      select 1 from mlst
-                      where souche = m.souche
-                      and gene = m.gene
-                      and id != m.id
-                      )
-                      AND m.souche != ?
-                      GROUP BY gene''', (sql.ref,))
-    return [row[0] for row in cursor.fetchall()]
-
 def get_count_seqid_by_gene(cursor):
     cursor.execute('''SELECT gene, count(distinct seqid)
                       from mlst
@@ -100,7 +87,7 @@ def get_distance_between_strain(cursor, valid_shema):
     return distance
 
 def get_mlst(cursor, valid_shema):
-    cursor.execute('''SELECT gene, souche, group_concat(seqid) as seqid
+    cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
                       FROM mlst
                       WHERE souche != ?
                       AND gene IN ( {} )
@@ -135,7 +122,7 @@ if __name__=='__main__':
         allgene = get_all_gene(cursor)
         
         ## duplicate gene
-        dupli = set(get_duplicate_gene(cursor))
+        dupli = sql.get_duplicate_gene(cursor)
 
         ## cover without duplication
         count = get_count_souche_by_gene(cursor)
