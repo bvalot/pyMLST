@@ -13,6 +13,7 @@ import os
 import argparse
 import sqlite3
 from lib import __version__
+import lib.sql as sql
 
 desc = "Remove gene to a wgMLST database and sequences specificaly associated"
 command = argparse.ArgumentParser(prog='mlst_remove_gene.py', \
@@ -32,7 +33,7 @@ if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()    
     database = args.database
-
+    
     ##list genes to removed
     genes = []
     if args.lists is not None:
@@ -47,6 +48,9 @@ if __name__=='__main__':
     try:
         db = sqlite3.connect(database.name)
         cursor = db.cursor()
+
+        ## index for old database
+        sql.index_database(cursor)
         
         for gene in genes:
             sys.stderr.write(gene + "     ")
@@ -62,9 +66,9 @@ if __name__=='__main__':
             
             ##remove seqs if no other gene have this seq
             for seqid in seqids:
-                cursor.execute('''SELECT seqid FROM mlst WHERE seqid=?''', (seqid[0],))
-                if cursor.fetchone() is None:
-                    cursor.execute('''DELETE FROM sequences WHERE id=? ''', (seqid[0],))
+                cursor.execute('''DELETE from sequences as s
+                                  where not exists (
+                                  select 1 from mlst where seqid=?)''', (seqid[0],))
             sys.stderr.write("OK\n")
 
         db.commit()

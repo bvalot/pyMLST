@@ -13,8 +13,7 @@ import os
 import argparse
 import sqlite3
 from lib import __version__
-
-ref="ref"
+import lib.sql as sql
 
 desc = "Extract MLST table from a wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_extract_table.py', \
@@ -42,41 +41,63 @@ command.add_argument('database', \
     type=argparse.FileType("r"), \
     help='Sqlite database to store MLST')
 command.add_argument('-v', '--version', action='version', version="pyMLST: "+__version__)
-
-def get_mlst(cursor, strain, shema):
-    coregenes = [[] for i in range(0,len(shema))]
-    cursor.execute('''SELECT gene,seqid FROM mlst WHERE souche=?''', (strain,))
-    for row in cursor.fetchall():
-        coregenes[shema.index(row[0])].append(row[1])
-    return coregenes
-
-def get_shema(cursor):
-    ref = "ref"
-    cursor.execute('''SELECT gene FROM mlst WHERE souche=?''', (ref,))
-    return [a[0] for a in cursor.fetchall()]
  
 def get_all_strain(cursor):
-    cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (ref,))
+    cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
     return [a[0] for a in cursor.fetchall()]
 
+def get_all_gene(cursor):
+    cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
+    return [row[0] for row in cursor.fetchall()]
+
+def get_count_seqid_by_gene(cursor):
+    cursor.execute('''SELECT gene, count(distinct seqid)
+                      from mlst
+                      WHERE souche != ?
+                      GROUP BY gene''', (sql.ref,))
+    return {row[0]:row[1] for row in cursor.fetchall()}
+
+def get_count_souche_by_gene(cursor):
+    cursor.execute('''SELECT gene, count(distinct souche)
+                      from mlst
+                      WHERE souche != ?
+                      GROUP by gene''', (sql.ref,))
+    return {row[0]:row[1] for row in cursor.fetchall()}
+
 def get_number_sequences(cursor):
-    cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (ref,))
+    cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (sql.ref,))
     return len(cursor.fetchall())
-    
-def compare_strain(strain1, strain2, valid_shema):
-    count = 0
-    for a,(i,j) in enumerate(zip(strain1, strain2)):
-        if a not in valid_shema:
-            continue
-        if i and j:
-            if len(i) == len(j) and len(i) == 1:
-                if i[0]!=j[0]:
-                    count +=1
-            else:
-                if not set(i).intersection(set(j)):
-                    count += 1
-    return count
-    
+
+def get_distance_between_strain(cursor, valid_shema):
+    cursor.execute('''SELECT m1.souche, m2.souche, count( distinct m1.gene)
+                      FROM mlst as m1 
+                      JOIN mlst as m2 
+                      ON m1.gene = m2.gene 
+                      AND m1.souche != m2.souche 
+                      AND m1.seqid != m2.seqid
+                      WHERE m1.gene IN ( {} )
+                      AND m1.souche != ?
+                      AND m2.souche != ?
+                      GROUP BY m1.souche, m2.souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), \
+                   (sql.ref, sql.ref))
+    distance = {}
+    for row in cursor.fetchall():
+        x = distance.setdefault(row[0], {})
+        x[row[1]] = row[2]
+    return distance
+
+def get_mlst(cursor, valid_shema):
+    cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
+                      FROM mlst
+                      WHERE souche != ?
+                      AND gene IN ( {} )
+                      GROUP BY gene, souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), (sql.ref,))
+    mlst = {}
+    for row in cursor.fetchall():
+        x = mlst.setdefault(row[0], {})
+        x[row[1]] = row[2]
+    return mlst
+
 if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()
@@ -88,47 +109,46 @@ if __name__=='__main__':
         db = sqlite3.connect(database.name)
         cursor = db.cursor()
 
+        ##index
+        sql.index_database(cursor)
+
         ##read samples mlst
         strains = get_all_strain(cursor)
         ##Minimun number of strain
         if args.mincover < 0 or args.mincover > len(strains):
             raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
 
-        ##read shema
-        shema = get_shema(cursor)
+        ## allgene
+        allgene = get_all_gene(cursor)
+        
+        ## duplicate gene
+        dupli = sql.get_duplicate_gene(cursor)
 
-        mlst = {}
-        for strain in strains:
-            mlst[strain] = get_mlst(cursor, strain, shema)
+        ## cover without duplication
+        count = get_count_souche_by_gene(cursor)
+
+        ## Count distinct gene
+        diff = get_count_seqid_by_gene(cursor)
 
         ##filter coregene that is not sufficient mincover or keep only different or return inverse
         valid_shema = []
-        for i,g in enumerate(shema):
-            count = 0
-            tmp = set()
-            duplicate = False
-            for s in strains:
-                val = mlst.get(s)[i]
-                if val:
-                    count += 1
-                    tmp = tmp.union(set(val))
-                    if len(val) > 1:
-                        duplicate = True
-            ## Test different case for validation
+        
+        ## Test different case for validation
+        for g in allgene:  
             valid = []
             if args.keep is True:
-                if len(tmp) > 1:
+                if diff.get(g, 0) > 1:
                     valid.append(True)
                 else:
                     valid.append(False)
             else:
                 valid.append(True)
-            if count >= args.mincover:
+            if count.get(g, 0) >= args.mincover:
                 valid.append(True)
             else:
                 valid.append(False)
             if args.duplicate:
-                if duplicate:
+                if g in dupli:
                     valid.append(False)
                 else:
                  valid.append(True)   
@@ -136,49 +156,51 @@ if __name__=='__main__':
                 valid.append(True)
             if args.inverse is False:
                 if sum(valid) == 3:
-                    valid_shema.append(i)
+                    valid_shema.append(g)
             else:
                 if sum(valid) < 3:
-                    valid_shema.append(i)                
+                    valid_shema.append(g)
+
+        ##report
+        sys.stderr.write("Number of coregene used : " + str(len(valid_shema)) + \
+                         "/" + str(len(allgene)) + "\n")
         
         ##export different case with choices
         if export == "strain":
             if args.count is False:
                 output.write("\n".join(strains) +"\n")
             else:
+                cursor.execute('''SELECT souche, count(distinct gene)
+                                  FROM mlst
+                                  WHERE gene IN ( {} )
+                                  GROUP BY souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])))
+                tmp = {row[0]:row[1] for row in cursor.fetchall()}
                 for strain in strains:
-                    output.write(strain+"\t")
-                    count = 0
-                    for i in valid_shema:
-                        val = mlst.get(strain)[i]
-                        if val:
-                            count += 1
-                    output.write(str(count)+"\n")  
-        elif export == "gene": 
-            output.write("\n".join([g for i,g in enumerate(shema) if i in valid_shema]) + "\n")
+                    output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
+        elif export == "gene":
+            output.write("\n".join(sorted(valid_shema)) + "\n")
         elif export == "distance":
-            #output.write("\t" + "\t".join(strains)+"\n")
+            if args.duplicate is False:
+                sys.stderr.write("WARNINGS : Calculate distance between strains " + \
+                           "using duplicate genes could reported bad result\n")
             output.write(str(len(strains)) + "\n")
+            distance = get_distance_between_strain(cursor, valid_shema)
             for s1 in strains:
                 output.write(s1 + "\t")
-                c = [str(compare_strain(mlst.get(s1), mlst.get(s2), valid_shema)) for s2 in strains]
+                c = [str(distance.get(s1, {}).get(s2, 0)) for s2 in strains]
                 output.write("\t".join(c) + "\n")
         elif export == "mlst":
             output.write("GeneId\t" + "\t".join(strains)+"\n")
-            for i,g in enumerate(shema):
-                if i not in valid_shema:
-                    continue
+            mlst = get_mlst(cursor, valid_shema)
+            for g in valid_shema:
                 towrite = [g]
+                mlstg= mlst.get(g, {})
                 for s in strains:
-                    val = mlst.get(s)[i]
-                    if not val:
-                        towrite.append("")
-                    else:
-                        towrite.append(";".join(map(str,val)))
+                    towrite.append(mlstg.get(s, ""))
                 output.write("\t".join(towrite) + "\n")
         elif export == "stat":
             output.write("Strains\t"+str(len(strains))+"\n")
-            output.write("Coregenes\t"+str(len(shema))+"\n")
+            output.write("Coregenes\t"+str(len(allgene))+"\n")
             output.write("Sequences\t"+str(get_number_sequences(cursor))+"\n")
         else:
             raise Exception("This export format is not supported: " + export)
