@@ -138,6 +138,8 @@ if __name__=='__main__':
                               GROUP BY gene''', (sql.ref,))
             coregene = [l[0] for l in cursor.fetchall() if l[1] >= args.mincover]
 
+        sys.stderr.write("Number of gene to analyses : " + str(len(coregene)) + "\n")
+
         if args.align is False:
             ##no multialign
             for g in coregene:

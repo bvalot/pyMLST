@@ -68,7 +68,8 @@ if __name__=='__main__':
             for seqid in seqids:
                 cursor.execute('''DELETE from sequences as s
                                   where not exists (
-                                  select 1 from mlst where seqid=?)''', (seqid[0],))
+                                  select 1 from mlst where seqid=s.id)
+                                  and id=?''', (seqid[0],))
             sys.stderr.write("OK\n")
 
         db.commit()
