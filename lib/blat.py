@@ -21,7 +21,7 @@ def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stderr)
     error = ""
     for line in proc.stderr:
-        error += line
+        error += line.decode()
     if error != "":
         sys.stderr.write("Error during running BLAT\n")
         raise Exception(error)
