@@ -9,7 +9,7 @@
 import sys
 import subprocess
 import tempfile
-from psl import Psl
+from .psl import Psl
 import os
 
 blat_exe = "blat"
@@ -21,7 +21,7 @@ def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stderr)
     error = ""
     for line in iter(proc.stderr.readline,''):
-        error += line
+        error += line.decode()
     if error != "":
         sys.stderr.write("Error during running BLAT\n")
         raise Exception(error)
