@@ -14,6 +14,8 @@ import argparse
 import sqlite3
 from lib import __version__
 import lib.sql as sql
+import pandas as pd
+import numpy as np
 
 desc = "Extract MLST table from a wgMLST database"
 command = argparse.ArgumentParser(prog='mlst_extract_table.py', \
@@ -22,8 +24,9 @@ command.add_argument('-o', '--output', nargs='?', \
     type=argparse.FileType("w"), default=sys.stdout, \
     help='Export MLST table to (default=stdout)')
 command.add_argument('-e', '--export', default="mlst", \
-    choices=("mlst", "distance", "strain", "gene", "stat"), \
+    choices=("mlst", "grapetree", "distance", "strain", "gene", "stat"), \
     help="; ".join(["Defined the export format", "mlst: MLST table (Default)",\
+                    "grapetree: csv output for grapetree", \
                    "distance: the distance matrix", "strain: the strain list", \
                     "gene: the gene list", "stat: statistics of the database"]))
 command.add_argument('-c', '--count', action='store_true', \
@@ -198,6 +201,19 @@ if __name__=='__main__':
                 for s in strains:
                     towrite.append(mlstg.get(s, ""))
                 output.write("\t".join(towrite) + "\n")
+        elif export == "grapetree":
+            mlst = get_mlst(cursor, valid_shema)
+            df = pd.DataFrame(columns=["#GeneId"] + strains)
+            for g in valid_shema:
+                row = {"#GeneId": g}
+                mlstg= mlst.get(g, {})
+                for s in strains:
+                    row[s] = mlstg.get(s, np.NaN)
+                df = df.append(row, ignore_index=True)
+            df = df.set_index('#GeneId')
+            df = df.transpose()
+            df = df.fillna(-1).astype(int)
+            df.to_csv(output, sep='\t')
         elif export == "stat":
             output.write("Strains\t"+str(len(strains))+"\n")
             output.write("Coregenes\t"+str(len(allgene))+"\n")
