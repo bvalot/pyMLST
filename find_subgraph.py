@@ -83,7 +83,8 @@ if __name__=='__main__':
     ##count sample not found
     samps2 = set(samps)
     grps = []
-    for subG in nx.connected_component_subgraphs(G):
+    for subG in [G.subgraph(c) for c in nx.connected_components(G)]:
+
         inds = []
         for n in subG.nodes():
             samps2.remove(n)
