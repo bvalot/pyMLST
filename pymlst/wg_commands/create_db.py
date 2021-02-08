@@ -35,9 +35,11 @@ def remove_duplicate(cursor, toremove):
         cursor.execute('''DELETE FROM mlst WHERE seqid=? ''', (seqid,))
 
 @click.command()
-@click.option('--concatenate', '-c', is_flag=True,
+@click.option('--concatenate', '-c',
+              is_flag=True,
               help='Automaticaly concatenate redondancy of genes with same sequence')
-@click.option('--remove', '-r', is_flag=True,
+@click.option('--remove', '-r',
+              is_flag=True,
               help='Automaticaly remove genes with duplicate sequence')
 @click.argument('coregene', type=click.File('r'))
 @click.argument('database', type=click.File('w'))
