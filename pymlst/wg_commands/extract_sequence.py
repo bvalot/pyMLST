@@ -85,13 +85,15 @@ def add_sequence_strain(seqs, strains, sequences):
               type=click.File('w'),
               default=sys.stdout,
               help='Output result on fasta format in (default:stdout)')
-@click.option('--liste', '-l', type=click.File('r'), default=None,
+@click.option('--liste', '-l',
+              type=click.File('r'), default=None,
               help='List of coregene to extract (default:all)')
 @click.option('--align', '-a',
               is_flag=True,
               help='Report a concatened multi-fasta file ' \
               'instead of only gene files (default:No)')
-@click.option('--realign', '-r', is_flag=True,
+@click.option('--realign', '-r',
+              is_flag=True,
               help='Realign gene with same length (Default:No)')
 @click.option('--mincover', '-m',
               type=int, default=1,
