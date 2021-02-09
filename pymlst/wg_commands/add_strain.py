@@ -10,14 +10,11 @@
 
 import sys
 import os
-import argparse
 import sqlite3
 from Bio import SeqIO
-import shutil
 import click
 from pymlst.lib import psl
 from pymlst.lib import blat
-from pymlst.lib import __version__
 from pymlst.lib import sql
 
 blat_path = '/usr/bin/'
@@ -64,7 +61,7 @@ def read_genome(genome):
 def cli(strain, identity, coverage, genome, database):
     """Add a strain to wgMLST database"""
     
-    if identity<0 or identity > 1:
+    if identity < 0 or identity > 1:
         raise Exception("Identity must be between 0 to 1")
     path = blat.test_blat_exe(blat_path)
 
