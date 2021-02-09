@@ -26,8 +26,8 @@ class CommandCLA(click.MultiCommand):
             eval(code, ns, ns)
         return ns['cli']
 
-commandCLA = CommandCLA(help='claMLST\'s subcommands are loaded from a '
+cli = CommandCLA(help='claMLST\'s subcommands are loaded from a '
             'plugin folder dynamically.')
 
 if __name__ == '__main__':
-    commandCLA()
+    cli()

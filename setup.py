@@ -54,7 +54,7 @@ setup(
     entry_points="""
     [console_scripts]
     wgMLST=pymlst.wgMLST:cli
-    claMLST=pymlst.claMLST:commandCL
+    claMLST=pymlst.claMLST:cli
     """,
     python_requires=">=0.0.1",
     license='GPLv3',  # noqa
