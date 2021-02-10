@@ -1,22 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-##Copyright (c) 2019 Benoit Valot
-##benoit.valot@univ-fcomte.fr
-##UMR 6249 Chrono-Environnement, Besançon, France
-##Licence GPL
+# Copyright (c) 2019 Benoit Valot
+# benoit.valot@univ-fcomte.fr
+# UMR 6249 Chrono-Environnement, Besançon, France
+# Licence GPL
 
 """Create a wgMLST database"""
 
 import sys
-import argparse
 
 import sqlite3
 import click
 from Bio import SeqIO
 
-from pymlst.lib import __version__
 from pymlst.lib import sql
+
 
 def update_duplicate(cursor, gene):
     cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (str(gene.seq).upper(),))
@@ -26,6 +25,7 @@ def update_duplicate(cursor, gene):
     othergene = cursor.fetchone()[0]
     cursor.execute('''UPDATE mlst SET gene = ? WHERE seqid = ?''', (othergene+";"+gene.id, seqid))
 
+
 def remove_duplicate(cursor, toremove):
     sys.stderr.write("Remove duplicate sequence :" + str(len(toremove)) + "\n")
     for seq in toremove:
@@ -34,7 +34,8 @@ def remove_duplicate(cursor, toremove):
         cursor.execute('''DELETE FROM sequences WHERE id=? ''', (seqid,))
         cursor.execute('''DELETE FROM mlst WHERE seqid=? ''', (seqid,))
 
-@click.command()
+
+@click.command(name="create_db")
 @click.option('--concatenate', '-c',
               is_flag=True,
               help='Automaticaly concatenate redondancy of genes with same sequence')
@@ -75,7 +76,7 @@ def cli(coregene, database, concatenate, remove):
         if toremove:
             remove_duplicate(cursor, toremove)
 
-        ## Add index
+        # Add index
         sql.index_database(cursor)
 
         db.commit()

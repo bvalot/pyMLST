@@ -63,10 +63,10 @@ def cli(output, threshold, count, distance):
     G = nx.Graph()
     G.add_nodes_from(samps)
 
-    for i,s in enumerate(samps):
-        for j,d in enumerate(dists[i]):
+    for i, s in enumerate(samps):
+        for j, d in enumerate(dists[i]):
             d = int(d)
-            if i==j or d > threshold:
+            if i == j or d > threshold:
                 continue
             G.add_edge(samps[i], samps[j], weight=d)
 
@@ -82,7 +82,7 @@ def cli(output, threshold, count, distance):
             inds.append(samps.index(n))
         grps.append(inds)
     
-    grps.sort(key=len,reverse=True)
+    grps.sort(key=len, reverse=True)
 
     # write result
     write_count(count, "Group\t" + "\t".join(samps) + "\n")
@@ -92,7 +92,7 @@ def cli(output, threshold, count, distance):
         for n in g:
             a[n] = 1
             output.write(" " + samps[n])
-        write_count(count, str(i) + "\t" + "\t".join(map(str,a))+ "\n")
+        write_count(count, str(i) + "\t" + "\t".join(map(str, a)) + "\n")
         output.write("\n")
 
     if count:

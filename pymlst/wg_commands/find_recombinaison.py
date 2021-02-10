@@ -25,7 +25,7 @@ def compar_seqs(seqs):
     dim = len(seqs[0])
     for j in range(0, len(seqs[0])):
         d = set([s[j] for s in seqs])
-        if '-' in d :
+        if '-' in d:
             d.remove('-')
         if len(d) > 1:
             count += 1
@@ -70,11 +70,11 @@ def cli(output, genes, alignment):
         indice += 1
 
     # check sequences are correctly align
-    for i,seqs in enumerate(sequences):
+    for i, seqs in enumerate(sequences):
         if len(set([len(s) for s in seqs])) > 1:
             print(set([len(s) for s in seqs]))
             raise Exception("Following genes seems to be not align: " + genes[i])
 
-    for i,seqs in enumerate(sequences):
+    for i, seqs in enumerate(sequences):
         c = compar_seqs(seqs)
         output.write(genes[i] + "\t" + str(c) + "\t" + str(len(seqs[0])) + "\n")

@@ -1,27 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-##Copyright (c) 2019 Benoit Valot
-##benoit.valot@univ-fcomte.fr
-##UMR 6249 Chrono-Environnement, Besançon, France
-##Licence GPL
+# Copyright (c) 2019 Benoit Valot
+# benoit.valot@univ-fcomte.fr
+# UMR 6249 Chrono-Environnement, Besançon, France
+# Licence GPL
 
 """Get sequence from wgMLST database"""
 
 import sys
 import os
-import argparse
+
 import sqlite3
 import click
-from Bio import SeqIO
+
 import tempfile
 import subprocess
-from pymlst.lib import __version__
+
 from pymlst.lib import sql
 
 mafft_exe = '/usr/bin/mafft'
 
 desc = "Get sequences from wgMLST database"
+
 
 def run_mafft(path, tmpfile):
     command = [path, '--quiet', tmpfile.name]
@@ -45,6 +46,7 @@ def run_mafft(path, tmpfile):
     # print(genes)
     return genes
 
+
 def get_sequences_for_gene(cursor, gene):
     cursor.execute('''SELECT m.seqid, group_concat(m.souche, ";"), s.sequence
                       FROM mlst as m
@@ -60,11 +62,13 @@ def get_sequences_for_gene(cursor, gene):
         seqs.append([seq[0], tmp, seq[2]])
     return seqs
 
+
 def write_tmp_seqs(tmpfile, seqs):
     tmp = open(tmpfile.name, 'w+t')
     for s in seqs:
         tmp.write(">"+str(s[0])+"\n"+s[2]+"\n")
     tmp.close()
+
 
 def add_sequence_strain(seqs, strains, sequences):
     """Add sequence to multialign, take first gene in case of repeat"""
@@ -80,6 +84,7 @@ def add_sequence_strain(seqs, strains, sequences):
         else:
             raise Exception("repeat gene must be excluded for align export\n")
 
+
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
@@ -90,14 +95,14 @@ def add_sequence_strain(seqs, strains, sequences):
               help='List of coregene to extract (default:all)')
 @click.option('--align', '-a',
               is_flag=True,
-              help='Report a concatened multi-fasta file ' \
+              help='Report a concatened multi-fasta file '
               'instead of only gene files (default:No)')
 @click.option('--realign', '-r',
               is_flag=True,
               help='Realign gene with same length (Default:No)')
 @click.option('--mincover', '-m',
               type=int, default=1,
-              help='Minimun number of strain found ' \
+              help='Minimun number of strain found '
               'to keep a coregene (default:1)')
 @click.argument('database',
                 type=click.File('r'))
@@ -112,16 +117,16 @@ def cli(output, liste, align, realign, mincover, database):
         cursor = db.cursor()
         cursor2 = db.cursor()
 
-        ##index old database
+        # index old database
         sql.index_database(cursor)
 
-        ##Minimun number of strain
+        # Minimun number of strain
         cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
         strains = [i[0] for i in cursor.fetchall()]
         if mincover < 1 or mincover > len(strains):
             raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
 
-        ## Coregene
+        #  Coregene
         coregene = []
         if liste is not None:
             coregene = [l.rstrip("\n") for l in iter(liste.readline, '')]
@@ -134,22 +139,22 @@ def cli(output, liste, align, realign, mincover, database):
         sys.stderr.write("Number of gene to analyses : " + str(len(coregene)) + "\n")
 
         if align is False:
-            ##no multialign
+            # no multialign
             for g in coregene:
                 seqs = get_sequences_for_gene(cursor, g)
                 for seq in seqs:
-                    output.write(">"+ g + "|" + str(seq[0]) + " " \
+                    output.write(">" + g + "|" + str(seq[0]) + " "
                                  + ";".join(seq[1]) + "\n")
                     output.write(seq[2] + "\n")
         else:
-            ## multialign
-            ## search duplicate
+            # multialign
+            # search duplicate
             dupli = sql.get_duplicate_gene(cursor)
 
             sequences = {s:[] for s in strains}
-            for i,g in enumerate(coregene):
+            for i, g in enumerate(coregene):
                 sys.stderr.write(str(i+1) + "/" + str(len(coregene)) + " | " + g + "     ")
-                ##geneid = get_geneids(cursor, g)
+                # geneid = get_geneids(cursor, g)
                 if g in dupli:
                     sys.stderr.write("No: Repeat gene\n")
                     continue
@@ -169,9 +174,9 @@ def cli(output, liste, align, realign, mincover, database):
                     add_sequence_strain(seqs, strains, sequences)
                 sys.stderr.write("\n")
 
-            ##output align result
+            # output align result
             for s in strains:
-                output.write('>'+ s + "\n")
+                output.write('>' + s + "\n")
                 output.write("\n".join(sequences.get(s)) + "\n")
     except Exception:
         db.rollback()

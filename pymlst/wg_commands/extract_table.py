@@ -1,32 +1,34 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-##Copyright (c) 2019 Benoit Valot
-##benoit.valot@univ-fcomte.fr
-##UMR 6249 Chrono-Environnement, Besançon, France
-##Licence GPL
+# Copyright (c) 2019 Benoit Valot
+# benoit.valot@univ-fcomte.fr
+# UMR 6249 Chrono-Environnement, Besançon, France
+# Licence GPL
 
 """Extract MLST table from an wgMLST database"""
 
 import sys
-import os
-import argparse
+
 import sqlite3
 import click
-from pymlst.lib import __version__
+
 from pymlst.lib import sql
 import pandas as pd
 import numpy as np
 
 desc = "Extract MLST table from a wgMLST database"
 
+
 def get_all_strain(cursor):
     cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
     return [a[0] for a in cursor.fetchall()]
 
+
 def get_all_gene(cursor):
     cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
     return [row[0] for row in cursor.fetchall()]
+
 
 def get_count_seqid_by_gene(cursor):
     cursor.execute('''SELECT gene, count(distinct seqid)
@@ -35,16 +37,19 @@ def get_count_seqid_by_gene(cursor):
                       GROUP BY gene''', (sql.ref,))
     return {row[0]:row[1] for row in cursor.fetchall()}
 
+
 def get_count_souche_by_gene(cursor):
     cursor.execute('''SELECT gene, count(distinct souche)
                       from mlst
                       WHERE souche != ?
                       GROUP by gene''', (sql.ref,))
-    return {row[0]:row[1] for row in cursor.fetchall()}
+    return {row[0]: row[1] for row in cursor.fetchall()}
+
 
 def get_number_sequences(cursor):
     cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (sql.ref,))
     return len(cursor.fetchall())
+
 
 def get_distance_between_strain(cursor, valid_shema):
     cursor.execute('''SELECT m1.souche, m2.souche, count( distinct m1.gene)
@@ -64,6 +69,7 @@ def get_distance_between_strain(cursor, valid_shema):
         x[row[1]] = row[2]
     return distance
 
+
 def get_mlst(cursor, valid_shema):
     cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
                       FROM mlst
@@ -75,6 +81,7 @@ def get_mlst(cursor, valid_shema):
         x = mlst.setdefault(row[0], {})
         x[row[1]] = row[2]
     return mlst
+
 
 @click.command()
 @click.option('--output', '-o',
@@ -110,31 +117,31 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
         db = sqlite3.connect(database.name)
         cursor = db.cursor()
 
-        ##index
+        # index
         sql.index_database(cursor)
 
-        ##read samples mlst
+        # read samples mlst
         strains = get_all_strain(cursor)
-        ##Minimun number of strain
+        # Minimun number of strain
         if mincover < 0 or mincover > len(strains):
             raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
 
-        ## allgene
+        # allgene
         allgene = get_all_gene(cursor)
 
-        ## duplicate gene
+        # duplicate gene
         dupli = sql.get_duplicate_gene(cursor)
 
-        ## cover without duplication
+        # cover without duplication
         count = get_count_souche_by_gene(cursor)
 
-        ## Count distinct gene
+        # Count distinct gene
         diff = get_count_seqid_by_gene(cursor)
 
-        ##filter coregene that is not sufficient mincover or keep only different or return inverse
+        # filter coregene that is not sufficient mincover or keep only different or return inverse
         valid_shema = []
 
-        ## Test different case for validation
+        # Test different case for validation
         for g in allgene:
             valid = []
             if keep is True:
@@ -152,7 +159,7 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
                 if g in dupli:
                     valid.append(False)
                 else:
-                 valid.append(True)
+                    valid.append(True)
             else:
                 valid.append(True)
             if inverse is False:
@@ -162,11 +169,11 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
                 if sum(valid) < 3:
                     valid_shema.append(g)
 
-        ##report
+        # report
         sys.stderr.write("Number of coregene used : " + str(len(valid_shema)) + \
                          "/" + str(len(allgene)) + "\n")
 
-        ##export different case with choices
+        # export different case with choices
         if export == "strain":
             if count is False:
                 output.write("\n".join(strains) +"\n")
@@ -182,8 +189,8 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
             output.write("\n".join(sorted(valid_shema)) + "\n")
         elif export == "distance":
             if duplicate is False:
-                sys.stderr.write("WARNINGS : Calculate distance between strains " + \
-                           "using duplicate genes could reported bad result\n")
+                sys.stderr.write("WARNINGS : Calculate distance between strains " +
+                                 "using duplicate genes could reported bad result\n")
             output.write(str(len(strains)) + "\n")
             distance = get_distance_between_strain(cursor, valid_shema)
             for s1 in strains:

@@ -10,7 +10,7 @@
 
 import sys
 import os
-import argparse
+
 import sqlite3
 
 import click
@@ -126,12 +126,12 @@ def cli(identity, coverage, fasta, output, genome, database):
                     fasta.write(sequence + "\n")
 
                 # search allele
-                cursor.execute('''SELECT allele FROM sequences WHERE sequence=? and gene=?''', \
+                cursor.execute('''SELECT allele FROM sequences WHERE sequence=? and gene=?''',
                                (sequence, coregene))
                 row = cursor.fetchone()
                 if row is not None:
                     allele.get(coregene).append(str(row[0]))
-                    cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''', \
+                    cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
                                    (coregene, row[0]))
                     for row2 in cursor.fetchall():
                         st.get(coregene).add(row2[0])

@@ -8,6 +8,7 @@ from .__init__ import __version__
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'cla_commands')
 
+
 class CommandCLA(click.MultiCommand):
 
     def list_commands(self, ctx):
@@ -26,8 +27,9 @@ class CommandCLA(click.MultiCommand):
             eval(code, ns, ns)
         return ns['cli']
 
+
 cli = CommandCLA(help='claMLST\'s subcommands are loaded from a '
-            'plugin folder dynamically.')
+                      'plugin folder dynamically.')
 
 if __name__ == '__main__':
     cli()

@@ -55,6 +55,7 @@ setup(
     [console_scripts]
     wgMLST=pymlst.wgMLST:cli
     claMLST=pymlst.claMLST:cli
+    testCmd=pymlst.test_cmd:sync
     """,
     python_requires=">=0.0.1",
     license='GPLv3',  # noqa

@@ -31,15 +31,15 @@ def cli(database, scheme, alleles):
     # Verify sheme list with fasta files
     header = scheme.readline().rstrip("\n").split("\t")
     if len(header) != len(alleles)+1:
-        raise Exception("The number of genes in sheme don't correspond to the number of fasta file\n" \
-                        + " ".join(header)  + "\n")
+        raise Exception("The number of genes in sheme don't correspond to the number of fasta file\n"
+                        + " ".join(header) + "\n")
     fastas = {}
     for f in alleles:
         name = f.name.split("/")[-1]
         name = name[:name.rfind(".")]
         if name not in header:
-            raise Exception("Gene " + name + " not found in sheme\n"+ " ".join(header))
-        fastas[name]=f
+            raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
+        fastas[name] = f
         
     try:
         db = sqlite3.connect(database.name)
@@ -51,13 +51,13 @@ def cli(database, scheme, alleles):
                           mlst(id INTEGER PRIMARY KEY, st INTEGER, gene TEXT, allele INTEGER)''')
         # load sequence allele
         alleles = {}
-        for g,f in fastas.items():
+        for g, f in fastas.items():
             alleles[g] = set()
             for seq in SeqIO.parse(f, 'fasta'):
                 try:
-                    if len(seq.id.split("_"))==2:
+                    if len(seq.id.split("_")) == 2:
                         allele = int(seq.id.split("_")[1])
-                    elif len(seq.id.split("-"))==2:
+                    elif len(seq.id.split("-")) == 2:
                         allele = int(seq.id.split("-")[1])
                     elif f.name.split(".")[0] in seq.id:
                         allele = int(seq.id.replace(f.name.split(".")[0], ""))
@@ -73,9 +73,9 @@ def cli(database, scheme, alleles):
         for line in scheme:
             h = line.rstrip("\n").split("\t")
             st = int(h[0])
-            for g,a in zip(header[1:],h[1:]):
+            for g,a in zip(header[1:], h[1:]):
                 if int(a) not in alleles.get(g):
-                    sys.stderr.write("Unable to find the allele number "+a+" for gene "+g+ "; replace by 0\n")
+                    sys.stderr.write("Unable to find the allele number "+a+" for gene "+g + "; replace by 0\n")
                     # raise Exception("Unable to find the allele number "+a+" for gene "+g+ "\n" )
                     cursor2.execute('''INSERT INTO mlst(st, gene, allele)
                               VALUES(?,?,?)''', (st, g, 0))
