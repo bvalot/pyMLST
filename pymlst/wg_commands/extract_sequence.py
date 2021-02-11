@@ -6,7 +6,7 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Get sequence from wgMLST database"""
+"""Get a sequence from a wgMLST database"""
 
 import sys
 import os
@@ -21,7 +21,7 @@ from pymlst.lib import sql
 
 mafft_exe = '/usr/bin/mafft'
 
-desc = "Get sequences from wgMLST database"
+desc = "Get a sequence from a wgMLST database"
 
 
 def run_mafft(path, tmpfile):
@@ -29,7 +29,7 @@ def run_mafft(path, tmpfile):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     genes = {}
     ids = None
-    seq=""
+    seq = ""
     for line in iter(proc.stdout.readline, ''):
         if ids is None and line[0] == '>':
             ids = line.lstrip('>').rstrip("\n")
@@ -40,7 +40,7 @@ def run_mafft(path, tmpfile):
         elif ids is not None:
             seq += line.rstrip("\n")
         else:
-            raise Exception("Problem during run mafft" + line)
+            raise Exception("A problem occurred while running mafft" + line)
     if seq != "":
         genes[int(ids)] = seq.upper()
     # print(genes)
@@ -71,9 +71,9 @@ def write_tmp_seqs(tmpfile, seqs):
 
 
 def add_sequence_strain(seqs, strains, sequences):
-    """Add sequence to multialign, take first gene in case of repeat"""
+    """Add a sequence to multi-align, take the first gene in case of repetition"""
     size = 0
-    if len(seqs)>0:
+    if len(seqs) > 0:
         size = len(seqs[0][2])
     for s in strains:
         seq = [i[2] for i in seqs if s in i[1]]
@@ -82,32 +82,32 @@ def add_sequence_strain(seqs, strains, sequences):
         elif len(seq) == 1:
             sequences.get(s).append(seq[0])
         else:
-            raise Exception("repeat gene must be excluded for align export\n")
+            raise Exception("repeated gene must be excluded in order to align export\n")
 
 
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
               default=sys.stdout,
-              help='Output result on fasta format in (default:stdout)')
-@click.option('--liste', '-l',
+              help='Output result in fasta format (default:stdout)')
+@click.option('--list', '-l',
               type=click.File('r'), default=None,
-              help='List of coregene to extract (default:all)')
+              help='List of coregenes to extract (default:all)')
 @click.option('--align', '-a',
               is_flag=True,
               help='Report a concatened multi-fasta file '
               'instead of only gene files (default:No)')
 @click.option('--realign', '-r',
               is_flag=True,
-              help='Realign gene with same length (Default:No)')
+              help='Realign genes with same length (Default:No)')
 @click.option('--mincover', '-m',
               type=int, default=1,
               help='Minimun number of strain found '
               'to keep a coregene (default:1)')
 @click.argument('database',
                 type=click.File('r'))
-def cli(output, liste, align, realign, mincover, database):
-    """Get sequences from wgMLST database"""
+def cli(output, list, align, realign, mincover, database):
+    """Get sequences from a wgMLST database"""
 
     tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
     tmpfile.close()
@@ -128,15 +128,15 @@ def cli(output, liste, align, realign, mincover, database):
 
         #  Coregene
         coregene = []
-        if liste is not None:
-            coregene = [l.rstrip("\n") for l in iter(liste.readline, '')]
+        if list is not None:
+            coregene = [l.rstrip("\n") for l in iter(list.readline, '')]
         else:
             cursor.execute('''SELECT gene, COUNT(distinct souche) FROM mlst
                               WHERE souche != ?
                               GROUP BY gene''', (sql.ref,))
             coregene = [l[0] for l in cursor.fetchall() if l[1] >= mincover]
 
-        sys.stderr.write("Number of gene to analyses : " + str(len(coregene)) + "\n")
+        sys.stderr.write("Number of gene to analyse : " + str(len(coregene)) + "\n")
 
         if align is False:
             # no multialign

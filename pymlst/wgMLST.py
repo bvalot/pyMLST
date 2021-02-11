@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
 import click
 import os
-from .__init__ import __version__
+
+from click import Option
+
+from pymlst import version
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'wg_commands')
 
@@ -28,8 +30,22 @@ class CommandWG(click.MultiCommand):
         return ns['cli']
 
 
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo('Version: ' + version.__version__)
+    click.echo('Release: ' + version.__release__)
+    ctx.exit()
+
+
 cli = CommandWG(help='wgMLST\'s subcommands are loaded from a '
                      'plugin folder dynamically.')
+
+opt = Option(['--version', '-v'], is_flag=True, callback=print_version,
+             expose_value=False, is_eager=True,
+             help='Prints PyMLST version.')
+
+cli.params.append(opt)
 
 if __name__ == '__main__':
     cli()

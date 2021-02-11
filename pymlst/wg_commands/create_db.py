@@ -38,10 +38,10 @@ def remove_duplicate(cursor, toremove):
 @click.command(name="create_db")
 @click.option('--concatenate', '-c',
               is_flag=True,
-              help='Automaticaly concatenate redondancy of genes with same sequence')
+              help='Automatically concatenate genes with duplicated sequences')
 @click.option('--remove', '-r',
               is_flag=True,
-              help='Automaticaly remove genes with duplicate sequence')
+              help='Automatically remove genes with duplicated sequences')
 @click.argument('coregene', type=click.File('r'))
 @click.argument('database', type=click.File('w'))
 def cli(coregene, database, concatenate, remove):
@@ -71,7 +71,7 @@ def cli(coregene, database, concatenate, remove):
                 elif remove:
                     toremove.add(str(gene.seq).upper())
                 else:
-                    raise Exception("Two gene have the same sequence " + gene.id + \
+                    raise Exception("Two genes have the same sequence " + gene.id +
                                     "\nUse -c or -r options to manage it")
         if toremove:
             remove_duplicate(cursor, toremove)
