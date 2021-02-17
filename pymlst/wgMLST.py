@@ -16,7 +16,7 @@ class CommandWG(click.MultiCommand):
     def list_commands(self, ctx):
         rv = []
         for filename in os.listdir(plugin_folder):
-            if filename.endswith('.py'):
+            if filename.endswith('.py') and not filename.startswith('__init__'):
                 rv.append(filename[:-3])
         rv.sort()
         return rv
