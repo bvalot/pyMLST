@@ -1,7 +1,6 @@
 from pymlst.wg_commands.db.model import Base, Mlst, Sequence
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
 
 
 class Database:
@@ -15,42 +14,39 @@ class Database:
             Base.metadata.create_all(self.engine)
 
     def add_mlst(self, souche, gene, seqid):
+        """Adds an MLST gene bound to an existing sequence"""
         self.session.add(Mlst(souche=souche, gene=gene, seqid=seqid))
 
     def add_sequence(self, sequence):
+        """Adds a sequence if it doesn't already exist"""
+        existing = self.session.query(Sequence) \
+                       .filter(Sequence.sequence == sequence) \
+                       .first()
+
+        if existing is not None:
+            return False, existing.id
+
         entry = Sequence(sequence=sequence)
-        try:
-            # res = self.session.execute(
-            #     Sequence.__table__.insert().values(sequence=sequence)
-            # )
-            self.session.add(entry)
-            self.session.flush()
-        except IntegrityError:  # duplicated sequence
-            return -1
-        return entry.id
+        self.session.add(entry)
+        self.session.flush()
 
-    def concatenate_gene(self, gene):
-        seq = self.session.query(Sequence) \
-                    .filter_by(sequence=str(gene.seq).upper()) \
-                    .first()
+        return True, entry.id
+
+    def concatenate_gene(self, seq_id, gene_name):
+        """Associates a new gene to an existing sequence using concatenation"""
         existing_gene = self.session.query(Mlst) \
-                            .filter_by(seqid=seq.seqid) \
+                            .filter_by(seqid=seq_id) \
                             .first()
-        existing_gene.id += ';' + gene.id
+        existing_gene.gene += ';' + gene_name
 
-    def remove_sequences(self, sequences):
-        ids = []
-        for seq in sequences:
-            ids.append(self.session.query(Sequence)
-                           .filter_by(sequence=seq)
-                           .first()
-                           .id)
+    def remove_sequences(self, ids):
+        """Removes sequences and their associated genes"""
         self.session.query(Sequence) \
                     .filter(Sequence.id.in_(ids)) \
-                    .delete()
+                    .delete(synchronize_session=False)
         self.session.query(Mlst) \
-            .filter(Mlst.seqid.in_(ids)) \
-            .delete()
+                    .filter(Mlst.seqid.in_(ids)) \
+                    .delete(synchronize_session=False)
 
     def commit(self):
         self.session.commit()
