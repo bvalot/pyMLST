@@ -10,35 +10,27 @@
 
 import sys
 import os
-import sqlite3
+
 from Bio import SeqIO
 import click
+import time
 from pymlst.lib import psl
 from pymlst.lib import blat
 from pymlst.lib import sql
+from pymlst.wg_commands.db.database import Database
 
 blat_path = '/usr/bin/'
 
 desc = "Add a strain to the wgMLST database"
 
 
-def create_coregene(cursor, tmpfile):
-    cursor.execute('''SELECT gene, sequence FROM mlst JOIN sequences
-                      ON mlst.seqid = sequences.id
-                      WHERE mlst.souche = ?''', (sql.ref,))
+def create_coregene(db, tmpfile):
+    ref_genes = db.get_gene_by_souche(sql.ref)
     coregenes = []
-    for row in cursor.fetchall():
-        tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
+    for row in ref_genes:
+        tmpfile.write('>' + row.gene + "\n" + row.sequence + "\n")
         coregenes.append(row[0])
     return coregenes
-
-
-def insert_sequence(cursor, sequence):
-    try:
-        return sql.add_sequence(cursor, sequence)
-    except sqlite3.IntegrityError:
-        cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence.upper(),))
-        return cursor.fetchone()[0]
 
 
 def read_genome(genome):
@@ -64,7 +56,8 @@ def read_genome(genome):
                 type=click.File("r"))
 def cli(strain, identity, coverage, genome, database):
     """Add a strain to the wgMLST database"""
-    
+    start = time.time()
+
     if identity < 0 or identity > 1:
         raise Exception("Identity must be between 0 and 1")
     path = blat.test_blat_exe(blat_path)
@@ -78,20 +71,14 @@ def cli(strain, identity, coverage, genome, database):
     tmpfile, tmpout = blat.blat_tmp()
 
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-        cursor2 = db.cursor()
-
-        # index database for old one
-        sql.index_database(cursor)
+        db = Database(os.path.abspath(database.name))
 
         # verify that the strain is not already in the database
-        cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche=?''', (name,))
-        if cursor.fetchone() is not None:
+        if db.contains_souche(name):
             raise Exception("Strain is already present in database:\n"+name)
 
         # read coregene
-        coregenes = create_coregene(cursor, tmpfile)
+        coregenes = create_coregene(db, tmpfile)
         tmpfile.close()
 
         # BLAT analysis
@@ -132,12 +119,15 @@ def cli(strain, identity, coverage, genome, database):
                 sequence = gene.getSequence(seq)
 
                 # Insert data in database
-                seqid = insert_sequence(cursor, str(sequence))
-                sql.add_mlst(cursor2, name, gene.geneId(), seqid)
+                seqid = db.add_sequence(str(sequence))[1]
+                db.add_mlst(name, gene.geneId(), seqid)
 
         db.commit()
         sys.stderr.write("Add " + str(len(genes)-bad) + " new MLST gene to database\n")
         sys.stderr.write("FINISH\n")
+
+        end = time.time()
+        print('Elapsed time: ', end - start)
     except Exception:
         db.rollback()
         raise

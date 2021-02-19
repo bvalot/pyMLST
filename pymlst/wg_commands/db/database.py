@@ -1,5 +1,6 @@
 from pymlst.wg_commands.db.model import Base, Mlst, Sequence
 from sqlalchemy import create_engine
+from sqlalchemy import and_
 from sqlalchemy.orm import sessionmaker
 
 
@@ -19,24 +20,24 @@ class Database:
 
     def add_sequence(self, sequence):
         """Adds a sequence if it doesn't already exist"""
-        existing = self.session.query(Sequence) \
-                       .filter(Sequence.sequence == sequence) \
-                       .first()
+        existing = self.session.query(Sequence.id) \
+                               .filter(Sequence.sequence == sequence) \
+                               .first()
 
         if existing is not None:
             return False, existing.id
 
-        entry = Sequence(sequence=sequence)
-        self.session.add(entry)
+        new_seq = Sequence(sequence=sequence)
+        self.session.add(new_seq)
         self.session.flush()
 
-        return True, entry.id
+        return True, new_seq.id
 
     def concatenate_gene(self, seq_id, gene_name):
         """Associates a new gene to an existing sequence using concatenation"""
         existing_gene = self.session.query(Mlst) \
-                            .filter_by(seqid=seq_id) \
-                            .first()
+                                    .filter_by(seqid=seq_id) \
+                                    .first()
         existing_gene.gene += ';' + gene_name
 
     def remove_sequences(self, ids):
@@ -47,6 +48,16 @@ class Database:
         self.session.query(Mlst) \
                     .filter(Mlst.seqid.in_(ids)) \
                     .delete(synchronize_session=False)
+
+    def get_gene_by_souche(self, souche):
+        return self.session.query(Mlst.gene, Sequence.sequence) \
+                           .filter(and_(Mlst.souche == souche, Mlst.seqid == Sequence.id)) \
+                           .all()
+
+    def contains_souche(self, souche):
+        return self.session.query(Mlst) \
+                           .filter(Mlst.souche == souche) \
+                           .first() is not None
 
     def commit(self):
         self.session.commit()
