@@ -15,7 +15,7 @@ import sys
 from Bio import SeqIO
 
 from pymlst.lib import sql
-from pymlst.wg_commands.db.database import Database
+from pymlst.wg_commands.db.database import DatabaseCore
 
 
 @click.command(name="create_db")
@@ -32,7 +32,7 @@ def cli(coregene, database, concatenate, remove):
 
     database.close()
     verybegin = time.time()
-    db = Database(os.path.abspath(database.name), create=True)
+    db = DatabaseCore(os.path.abspath(database.name))
     genes = set()
     to_remove = set()
 

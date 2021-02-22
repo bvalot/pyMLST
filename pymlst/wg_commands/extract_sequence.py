@@ -18,6 +18,7 @@ import tempfile
 import subprocess
 
 from pymlst.lib import sql
+from pymlst.wg_commands.db.database import Database
 
 mafft_exe = '/usr/bin/mafft'
 
@@ -113,6 +114,11 @@ def cli(output, list, align, realign, mincover, database):
     tmpfile.close()
 
     try:
+        db2 = Database(os.path.abspath(database.name))
+        res = db2.get_gene_sequences('b4705', 'ref')  # TEST
+        for r in res:
+            print('res lign: ', r)
+
         db = sqlite3.connect(database.name)
         cursor = db.cursor()
         cursor2 = db.cursor()
