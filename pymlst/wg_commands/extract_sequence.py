@@ -11,14 +11,14 @@
 import sys
 import os
 
-import sqlite3
 import click
 
 import tempfile
 import subprocess
 
 from pymlst.lib import sql
-from pymlst.wg_commands.db.database import Database
+from pymlst.lib.benchmark import benchmark
+from pymlst.wg_commands.db.database import DatabaseCore
 
 mafft_exe = '/usr/bin/mafft'
 
@@ -41,27 +41,11 @@ def run_mafft(path, tmpfile):
         elif ids is not None:
             seq += line.rstrip("\n")
         else:
-            raise Exception("A problem occurred while running mafft" + line)
+            raise Exception("A problem occurred while running mafft" + str(line))
     if seq != "":
         genes[int(ids)] = seq.upper()
-    # print(genes)
+
     return genes
-
-
-def get_sequences_for_gene(cursor, gene):
-    cursor.execute('''SELECT m.seqid, group_concat(m.souche, ";"), s.sequence
-                      FROM mlst as m
-                      JOIN sequences as s
-                      ON m.seqid = s.id
-                      WHERE m.souche != ?
-                      AND m.gene = ?
-                      GROUP BY m.seqid''', (sql.ref, gene))
-    seqs = []
-    for seq in cursor.fetchall():
-        tmp = seq[1].split(";")
-        tmp.sort()
-        seqs.append([seq[0], tmp, seq[2]])
-    return seqs
 
 
 def write_tmp_seqs(tmpfile, seqs):
@@ -85,7 +69,6 @@ def add_sequence_strain(seqs, strains, sequences):
         else:
             raise Exception("repeated gene must be excluded in order to align export\n")
 
-
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
@@ -107,6 +90,7 @@ def add_sequence_strain(seqs, strains, sequences):
               'to keep a coregene (default:1)')
 @click.argument('database',
                 type=click.File('r'))
+@benchmark  # TEST
 def cli(output, list, align, realign, mincover, database):
     """Get sequences from a wgMLST database"""
 
@@ -114,21 +98,10 @@ def cli(output, list, align, realign, mincover, database):
     tmpfile.close()
 
     try:
-        db2 = Database(os.path.abspath(database.name))
-        res = db2.get_gene_sequences('b4705', 'ref')  # TEST
-        for r in res:
-            print('res lign: ', r)
-
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-        cursor2 = db.cursor()
-
-        # index old database
-        sql.index_database(cursor)
+        db = DatabaseCore(os.path.abspath(database.name))
 
         # Minimun number of strain
-        cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
-        strains = [i[0] for i in cursor.fetchall()]
+        strains = [i[0] for i in db.get_different_souches(sql.ref)]
         if mincover < 1 or mincover > len(strains):
             raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
 
@@ -137,17 +110,14 @@ def cli(output, list, align, realign, mincover, database):
         if list is not None:
             coregene = [l.rstrip("\n") for l in iter(list.readline, '')]
         else:
-            cursor.execute('''SELECT gene, COUNT(distinct souche) FROM mlst
-                              WHERE souche != ?
-                              GROUP BY gene''', (sql.ref,))
-            coregene = [l[0] for l in cursor.fetchall() if l[1] >= mincover]
+            coregene = [l[0] for l in db.get_genes_coverages(sql.ref) if l[1] >= mincover]
 
         sys.stderr.write("Number of gene to analyse : " + str(len(coregene)) + "\n")
 
         if align is False:
             # no multialign
             for g in coregene:
-                seqs = get_sequences_for_gene(cursor, g)
+                seqs = db.get_gene_sequences(g, sql.ref)
                 for seq in seqs:
                     output.write(">" + g + "|" + str(seq[0]) + " "
                                  + ";".join(seq[1]) + "\n")
@@ -155,16 +125,17 @@ def cli(output, list, align, realign, mincover, database):
         else:
             # multialign
             # search duplicate
-            dupli = sql.get_duplicate_gene(cursor)
+            dupli = db.get_duplicated_genes(sql.ref)
+            for d in dupli:
+                print('Duplicated: ', d)
 
             sequences = {s:[] for s in strains}
             for i, g in enumerate(coregene):
                 sys.stderr.write(str(i+1) + "/" + str(len(coregene)) + " | " + g + "     ")
-                # geneid = get_geneids(cursor, g)
                 if g in dupli:
                     sys.stderr.write("No: Repeat gene\n")
                     continue
-                seqs = get_sequences_for_gene(cursor, g)
+                seqs = db.get_gene_sequences(g, sql.ref)
                 size = set()
                 for seq in seqs:
                     size.add(len(seq[2]))

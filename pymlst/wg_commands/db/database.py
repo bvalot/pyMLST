@@ -4,8 +4,10 @@ from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, VARBINARY
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import select
-import hashlib
+from sqlalchemy.sql import select, exists
+from sqlalchemy.sql import distinct
+from sqlalchemy.sql.operators import in_op as in_
+from pymlst.lib.benchmark import benchmark
 
 
 class Database:
@@ -98,9 +100,9 @@ class DatabaseCore:
 
         self.mlst = Table('mlst', metadata,
                           Column('id', Integer, primary_key=True),
-                          Column('souche', Text),
-                          Column('gene', Text),
-                          Column('seqid', Integer))
+                          Column('souche', Text, index=True),
+                          Column('gene', Text, index=True),
+                          Column('seqid', Integer, index=True))
 
         metadata.create_all(self.engine)
 
@@ -117,7 +119,7 @@ class DatabaseCore:
         """Adds a sequence if it doesn't already exist"""
         existing = self.connection.execute(
             select([self.sequences.c.id])
-            .where(self.sequences.c.sequence == sequence)
+                .where(self.sequences.c.sequence == sequence)
         ).fetchone()
 
         if existing is not None:
@@ -135,6 +137,88 @@ class DatabaseCore:
             self.mlst.update()
                 .values(gene=self.mlst.c.gene + ';' + gene_name)
                 .where(self.mlst.c.seqid == seq_id))
+
+    def remove_sequences(self, ids):
+        """Removes sequences and their associated genes"""
+        self.connection.execute(
+            self.sequences.delete()
+                .where(in_(self.sequences.c.id, ids))
+        )
+        self.connection.execute(
+            self.mlst.delete()
+                .where(in_(self.mlst.c.seqid, ids))
+        )
+
+    def get_gene_by_souche(self, souche):
+        return self.connection.execute(
+            select([self.mlst.c.gene, self.sequences.c.sequence])
+                .where(and_(
+                self.mlst.c.souche == souche,
+                self.mlst.c.seqid == self.sequences.c.id
+            ))
+        ).fetchall()
+
+    def contains_souche(self, souche):
+        return self.connection.execute(
+            select([self.mlst.c.id])
+                .where(self.mlst.c.souche == souche)
+                .limit(1)
+        ).fetchone() is not None
+
+    @benchmark
+    def get_gene_sequences(self, gene, souche):
+        res = self.connection.execute(
+            select([self.mlst.c.seqid,
+                    func.group_concat(self.mlst.c.souche, ';'),
+                    self.sequences.c.sequence])
+                .where(and_(
+                self.mlst.c.seqid == self.sequences.c.id,
+                self.mlst.c.souche != souche,
+                self.mlst.c.gene == gene))
+                .group_by(self.mlst.c.seqid)
+        ).fetchall()
+        seqs = []
+        for seq in res:
+            tmp = seq[1].split(";")
+            tmp.sort()
+            seqs.append([seq[0], tmp, seq[2]])
+        return seqs
+
+    def get_different_souches(self, souche):
+        return self.connection.execute(
+            select([self.mlst.c.souche])
+            .where(self.mlst.c.souche != souche)
+            .distinct()
+        ).fetchall()
+
+    def get_genes_coverages(self, ref):
+        return self.connection.execute(
+            select([self.mlst.c.gene,
+                    func.count(distinct(self.mlst.c.souche))])
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+
+    @benchmark
+    def get_duplicated_genes(self, ref):
+        m_alias = self.mlst.alias()
+
+        exist_sub = select([self.mlst]) \
+            .where(and_(
+                self.mlst.c.souche == m_alias.c.souche,
+                self.mlst.c.gene == m_alias.c.gene,
+                self.mlst.c.id != m_alias.c.id))
+
+        res = self.connection.execute(
+            select([self.mlst.c.gene])
+            .where(and_(
+                exists(exist_sub),
+                self.mlst.c.souche != ref
+            ))
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+
+        return set([row[0] for row in res])
 
     def commit(self):
         self.transaction.commit()
