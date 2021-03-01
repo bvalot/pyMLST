@@ -155,6 +155,8 @@ def cli(output, list, align, realign, mincover, database):
             for s in strains:
                 output.write('>' + s + "\n")
                 output.write("\n".join(sequences.get(s)) + "\n")
+
+            db.commit()
     except Exception:
         db.rollback()
         raise
