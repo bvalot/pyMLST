@@ -1,3 +1,5 @@
+from sqlalchemy.sql.functions import count
+
 from pymlst.wg_commands.db.model import Base, Mlst, Sequence
 from sqlalchemy import create_engine, text, bindparam
 from sqlalchemy import and_
@@ -126,9 +128,15 @@ class DatabaseCore:
 
     def add_sequence(self, sequence):
         """Adds a sequence if it doesn't already exist"""
-        existing = self.connection.execute(
+        query = self.get_cached_query(
+            'add_sequence',
+            lambda:
             select([self.sequences.c.id])
-                .where(self.sequences.c.sequence == sequence)
+                .where(self.sequences.c.sequence == bindparam('sequence')))
+
+        existing = self.connection.execute(
+            query,
+            sequence=sequence
         ).fetchone()
 
         if existing is not None:
@@ -219,8 +227,8 @@ class DatabaseCore:
         return self.connection.execute(
             select([self.mlst.c.gene,
                     func.count(distinct(self.mlst.c.souche))])
-                .where(self.mlst.c.souche != ref)
-                .group_by(self.mlst.c.gene)
+                    .where(self.mlst.c.souche != ref)
+                    .group_by(self.mlst.c.gene)
         ).fetchall()
 
     def get_duplicated_genes(self, ref):
@@ -242,6 +250,92 @@ class DatabaseCore:
         ).fetchall()
 
         return set([row[0] for row in res])
+
+    def get_all_strains(self, ref):
+        res = self.connection.execute(
+            select([distinct(self.mlst.c.souche)]).
+            where(self.mlst.c.souche != ref)
+        ).fetchall()
+        return [r[0] for r in res]
+
+    def get_all_genes(self, ref):
+        res = self.connection.execute(
+            select([distinct(self.mlst.c.gene)]).
+            where(self.mlst.c.souche == ref)
+        ).fetchall()
+        return [r[0] for r in res]
+
+    def count_sequences_per_gene(self, ref):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, count(distinct(self.mlst.c.seqid))])
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def count_souches_per_gene(self, ref):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, count(distinct(self.mlst.c.souche))])
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def count_genes_per_souche(self, valid_shema):
+        res = self.connection.execute(
+            select([self.mlst.c.souche, count(distinct(self.mlst.c.gene))])
+            .where(in_(self.mlst.c.gene, valid_shema))
+            .group_by(self.mlst.c.souche)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def get_sequences_number(self, ref):
+        return self.connection.execute(
+               select([count(distinct(self.mlst.c.seqid))])
+               .where(self.mlst.c.souche != ref)
+        ).fetchone()[0]
+
+    def get_strains_distances(self, ref, valid_schema):
+        m1 = self.mlst.alias()
+        m2 = self.mlst.alias()
+
+        res = self.connection.execute(
+            select(
+                [m1.c.souche, m2.c.souche, count(distinct(m1.c.gene))])
+            .select_from(
+                m1.join(m2,
+                        and_(
+                            m1.c.gene == m2.c.gene,
+                            m1.c.souche != m2.c.souche,
+                            m1.c.seqid != m2.c.seqid)))
+            .where(and_(
+                in_(m1.c.gene, valid_schema),
+                m1.c.souche != ref,
+                m2.c.souche != ref))
+            .group_by(m1.c.souche, m2.c.souche)
+        ).fetchall()
+
+        distance = {}
+        for r in res:
+            x = distance.setdefault(r[0], {})
+            x[r[1]] = r[2]
+
+        return distance
+
+    def get_mlst(self, ref, valid_schema):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, self.mlst.c.souche, func.group_concat(self.mlst.c.seqid, ';')])
+            .where(and_(self.mlst.c.souche != ref,
+                        in_(self.mlst.c.gene, valid_schema)))
+            .group_by(self.mlst.c.gene, self.mlst.c.souche)
+        ).fetchall()
+
+        mlst = {}
+
+        for r in res:
+            x = mlst.setdefault(r[0], {})
+            x[r[1]] = r[2]
+        return mlst
 
     def commit(self):
         self.transaction.commit()

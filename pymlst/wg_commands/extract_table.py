@@ -7,7 +7,7 @@
 # Licence GPL
 
 """Extract MLST table from an wgMLST database"""
-
+import os
 import sys
 
 import sqlite3
@@ -16,73 +16,76 @@ import click
 from pymlst.lib import sql
 import pandas as pd
 import numpy as np
+from pymlst.lib.benchmark import benchmark
+
+from pymlst.wg_commands.db.database import DatabaseCore
 
 desc = "Extract MLST table from a wgMLST database"
 
 
-def get_all_strain(cursor):
-    cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
-    return [a[0] for a in cursor.fetchall()]
+# def get_all_strain(cursor):
+#     cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
+#     return [a[0] for a in cursor.fetchall()]
+#
+#
+# def get_all_gene(cursor):
+#     cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
+#     return [row[0] for row in cursor.fetchall()]
+#
+#
+# def get_count_seqid_by_gene(cursor):
+#     cursor.execute('''SELECT gene, count(distinct seqid)
+#                       from mlst
+#                       WHERE souche != ?
+#                       GROUP BY gene''', (sql.ref,))
+#     return {row[0]:row[1] for row in cursor.fetchall()}
+#
+#
+# def get_count_souche_by_gene(cursor):
+#     cursor.execute('''SELECT gene, count(distinct souche)
+#                       from mlst
+#                       WHERE souche != ?
+#                       GROUP by gene''', (sql.ref,))
+#     return {row[0]: row[1] for row in cursor.fetchall()}
+#
+#
+# def get_number_sequences(cursor):
+#     cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (sql.ref,))
+#     return len(cursor.fetchall())
+#
+#
+# def get_distance_between_strain(cursor, valid_shema):
+#     cursor.execute('''SELECT m1.souche, m2.souche, count( distinct m1.gene)
+#                       FROM mlst as m1
+#                       JOIN mlst as m2
+#                       ON m1.gene = m2.gene
+#                       AND m1.souche != m2.souche
+#                       AND m1.seqid != m2.seqid
+#                       WHERE m1.gene IN ( {} )
+#                       AND m1.souche != ?
+#                       AND m2.souche != ?
+#                       GROUP BY m1.souche, m2.souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), \
+#                    (sql.ref, sql.ref))
+#     distance = {}
+#     for row in cursor.fetchall():
+#         x = distance.setdefault(row[0], {})
+#         x[row[1]] = row[2]
+#     return distance
+#
+#
+# def get_mlst(cursor, valid_shema):
+#     cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
+#                       FROM mlst
+#                       WHERE souche != ?
+#                       AND gene IN ( {} )
+#                       GROUP BY gene, souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), (sql.ref,))
+#     mlst = {}
+#     for row in cursor.fetchall():
+#         x = mlst.setdefault(row[0], {})
+#         x[row[1]] = row[2]
+#     return mlst
 
-
-def get_all_gene(cursor):
-    cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
-    return [row[0] for row in cursor.fetchall()]
-
-
-def get_count_seqid_by_gene(cursor):
-    cursor.execute('''SELECT gene, count(distinct seqid)
-                      from mlst
-                      WHERE souche != ?
-                      GROUP BY gene''', (sql.ref,))
-    return {row[0]:row[1] for row in cursor.fetchall()}
-
-
-def get_count_souche_by_gene(cursor):
-    cursor.execute('''SELECT gene, count(distinct souche)
-                      from mlst
-                      WHERE souche != ?
-                      GROUP by gene''', (sql.ref,))
-    return {row[0]: row[1] for row in cursor.fetchall()}
-
-
-def get_number_sequences(cursor):
-    cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (sql.ref,))
-    return len(cursor.fetchall())
-
-
-def get_distance_between_strain(cursor, valid_shema):
-    cursor.execute('''SELECT m1.souche, m2.souche, count( distinct m1.gene)
-                      FROM mlst as m1
-                      JOIN mlst as m2
-                      ON m1.gene = m2.gene
-                      AND m1.souche != m2.souche
-                      AND m1.seqid != m2.seqid
-                      WHERE m1.gene IN ( {} )
-                      AND m1.souche != ?
-                      AND m2.souche != ?
-                      GROUP BY m1.souche, m2.souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), \
-                   (sql.ref, sql.ref))
-    distance = {}
-    for row in cursor.fetchall():
-        x = distance.setdefault(row[0], {})
-        x[row[1]] = row[2]
-    return distance
-
-
-def get_mlst(cursor, valid_shema):
-    cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
-                      FROM mlst
-                      WHERE souche != ?
-                      AND gene IN ( {} )
-                      GROUP BY gene, souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), (sql.ref,))
-    mlst = {}
-    for row in cursor.fetchall():
-        x = mlst.setdefault(row[0], {})
-        x[row[1]] = row[2]
-    return mlst
-
-
+# Me against you, Mountains, Landmine, The New Real
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
@@ -109,34 +112,35 @@ def get_mlst(cursor, valid_shema):
               help='Keep only gene that do not ' \
               'meet the filter of mincover or keep options')
 @click.argument('database', type=click.File('r'))
+@benchmark
 def cli(output, export, count, mincover, keep, duplicate, inverse, database):
     """Extract MLST table from a wgMLST database"""
-    print('dupli: ', duplicate)
 
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-
-        # index
-        sql.index_database(cursor)
+        # db = sqlite3.connect(database.name)
+        # cursor = db.cursor()
+        #
+        # # index
+        # sql.index_database(cursor)
+        db = DatabaseCore(os.path.abspath(database.name))
 
         # read samples mlst
-        strains = get_all_strain(cursor)
+        strains = db.get_all_strains(sql.ref)
         # Minimun number of strain
         if mincover < 0 or mincover > len(strains):
             raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
 
         # allgene
-        allgene = get_all_gene(cursor)
+        allgene = db.get_all_genes(sql.ref)
 
         # duplicate gene
-        dupli = sql.get_duplicate_gene(cursor)
+        dupli = db.get_duplicated_genes(sql.ref)
 
         # cover without duplication
-        count = get_count_souche_by_gene(cursor)
+        count_souches = db.count_souches_per_gene(sql.ref)
 
         # Count distinct gene
-        diff = get_count_seqid_by_gene(cursor)
+        diff = db.count_sequences_per_gene(sql.ref)
 
         # filter coregene that is not sufficient mincover or keep only different or return inverse
         valid_shema = []
@@ -151,7 +155,7 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
                     valid.append(False)
             else:
                 valid.append(True)
-            if count.get(g, 0) >= mincover:
+            if count_souches.get(g, 0) >= mincover:
                 valid.append(True)
             else:
                 valid.append(False)
@@ -178,11 +182,12 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
             if count is False:
                 output.write("\n".join(strains) +"\n")
             else:
-                cursor.execute('''SELECT souche, count(distinct gene)
-                                  FROM mlst
-                                  WHERE gene IN ( {} )
-                                  GROUP BY souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])))
-                tmp = {row[0]:row[1] for row in cursor.fetchall()}
+                # cursor.execute('''SELECT souche, count(distinct gene)
+                #                   FROM mlst
+                #                   WHERE gene IN ( {} )
+                #                   GROUP BY souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])))
+                # tmp = {row[0]:row[1] for row in cursor.fetchall()}
+                tmp = db.count_genes_per_souche(valid_shema)
                 for strain in strains:
                     output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
         elif export == "gene":
@@ -192,14 +197,14 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
                 sys.stderr.write("WARNINGS : Calculate distance between strains " +
                                  "using duplicate genes could reported bad result\n")
             output.write(str(len(strains)) + "\n")
-            distance = get_distance_between_strain(cursor, valid_shema)
+            distance = db.get_strains_distances(sql.ref, valid_shema)
             for s1 in strains:
                 output.write(s1 + "\t")
                 c = [str(distance.get(s1, {}).get(s2, 0)) for s2 in strains]
                 output.write("\t".join(c) + "\n")
         elif export == "mlst":
             output.write("GeneId\t" + "\t".join(strains)+"\n")
-            mlst = get_mlst(cursor, valid_shema)
+            mlst = db.get_mlst(sql.ref, valid_shema)
             for g in valid_shema:
                 towrite = [g]
                 mlstg= mlst.get(g, {})
@@ -207,7 +212,7 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
                     towrite.append(mlstg.get(s, ""))
                 output.write("\t".join(towrite) + "\n")
         elif export == "grapetree":
-            mlst = get_mlst(cursor, valid_shema)
+            mlst = db.get_mlst(sql.ref, valid_shema)
             df = pd.DataFrame(columns=["#GeneId"] + strains)
             for g in valid_shema:
                 row = {"#GeneId": g}
@@ -222,7 +227,7 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
         elif export == "stat":
             output.write("Strains\t"+str(len(strains))+"\n")
             output.write("Coregenes\t"+str(len(allgene))+"\n")
-            output.write("Sequences\t"+str(get_number_sequences(cursor))+"\n")
+            output.write("Sequences\t"+str(db.get_sequences_number(sql.ref))+"\n")
         else:
             raise Exception("This export format is not supported: " + export)
     except Exception:
