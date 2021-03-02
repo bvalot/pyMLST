@@ -21,13 +21,13 @@ command = argparse.ArgumentParser(prog='find_subgraph.py', \
     description=desc, usage='%(prog)s [options] distance')
 command.add_argument('-o', '--output', nargs='?', \
     type=argparse.FileType("w"), default=sys.stdout, \
-    help='Output group files (default:stdout)')
+    help='Output result files (default:stdout)')
 command.add_argument('-t', '--threshold', nargs='?', \
     type=int, default=50, \
     help='Minimum distance to conserve for extraction of group (default:50)')
-command.add_argument('-c', '--count', nargs='?', \
-    type=argparse.FileType("w"), \
-    help='Output count file')
+command.add_argument('-e', '--export', nargs='?', \
+    choices=['group', 'list', 'count'], default="group", \
+    help='Defined the type of export (default:group)')
 command.add_argument('distance', \
     type=argparse.FileType("r"), \
     help='Distance matrix from mlst_export_table with -e distance')
@@ -35,15 +35,11 @@ command.add_argument('-v', '--version',
     action='version', version="pyMLST: "+__version__)
     
 
-def write_count(count, texte):
-    if count:
-        count.write(texte)
-
 if __name__=='__main__':
     """Performed job on execution script""" 
     args = command.parse_args()    
-    group = args.output
-    count = args.count
+    output = args.output
+    export = args.export
     threshold = args.threshold
     distance = args.distance
 
@@ -93,16 +89,32 @@ if __name__=='__main__':
     grps.sort(key=len,reverse=True)
 
     ##write result
-    write_count(count, "Group\t" + "\t".join(samps) + "\n")
-    for i,g in enumerate(grps):
-        a = len(samps)*[0]
-        group.write("Group" + str(i))
-        for n in g:
-            a[n] = 1
-            group.write(" " + samps[n])
-        write_count(count, str(i) + "\t" + "\t".join(map(str,a))+ "\n")
-        group.write("\n")
-
-    if count:
-        count.close()
-    group.close()
+    if export == "group":
+        for i,g in enumerate(grps):
+            #a = len(samps)*[0]
+            output.write("Group" + str(i))
+            for n in g:
+                #a[n] = 1
+                output.write(" " + samps[n])
+            output.write("\n")
+            
+    elif export == "count":
+        output.write("Group\t" + "\t".join(samps) + "\n")
+        for i,g in enumerate(grps):
+            a = len(samps)*[0]
+            #group.write("Group" + str(i))
+            for n in g:
+                a[n] = 1
+                #group.write(" " + samps[n])
+            output.write(str(i) + "\t" + "\t".join(map(str,a))+ "\n")
+            #group.write("\n")
+    else:
+       for i,g in enumerate(grps):
+            #a = len(samps)*[0]
+            #group.write("Group" + str(i))
+            for n in g:
+                #a[n] = 1
+                output.write("Group" + str(i) + "\t" + samps[n] + "\n")
+                #group.write(" " + samps[n])
+            #write_count(count, str(i) + "\t" + "\t".join(map(str,a))+ "\n")
+            #group.write("\n")
