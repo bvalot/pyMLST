@@ -17,8 +17,11 @@ The entry is a draft genome produced by an assembler, but also other genomes sto
 
 ## Installation
 
-pyMLST needs an additionnal python library to run:
+pyMLST needs an additionnal python libraries to run:
 - Biopython (>=1.68)
+- pandas
+- numpy
+- networkx (>=2.1)
 ```
 sudo apt install python-biopython 
 ```
