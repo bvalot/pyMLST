@@ -44,14 +44,17 @@ def cli(list, genes, database):
     try:
         db = DatabaseCore(os.path.abspath(database.name))
 
-        removed = db.remove_genes(all_genes)
-
         for gene in all_genes:
             sys.stderr.write(gene + " : ")
-            if gene in removed:
-                sys.stderr.write("OK\n")
-            else:
+
+            seqids = db.get_gene_sequences_ids(gene)
+            if len(seqids) == 0:
                 sys.stderr.write("Not found\n")
+            else:
+                sys.stderr.write("OK\n")
+
+            db.remove_gene(gene)
+            db.remove_orphan_sequences(seqids)
 
         db.commit()
     except Exception:

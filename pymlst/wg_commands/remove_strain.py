@@ -7,11 +7,13 @@
 # Licence GPL
 
 """Remove strains to an wgMLST database"""
-
+import os
 import sys
-import sqlite3
+
 import click
 from pymlst.lib import sql
+from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.lib.benchmark import benchmark
 
 desc = "Remove strain to a wgMLST database and sequences specificaly associated"
 
@@ -24,6 +26,7 @@ desc = "Remove strain to a wgMLST database and sequences specificaly associated"
                 type=click.File('r'), nargs=1)
 @click.argument('strains',
                 type=str, nargs=-1)
+@benchmark
 def cli(list, database, strains):
     """Remove strain to a wgMLST database and sequences specificaly associated"""
 
@@ -44,31 +47,19 @@ def cli(list, database, strains):
     all_strains = set(all_strains)
 
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-
-        # index old database
-        sql.index_database(cursor)
+        db = DatabaseCore(os.path.abspath(database.name))
 
         for strain in all_strains:
-            sys.stderr.write(strain + "     ")
+            sys.stderr.write(strain + " : ")
 
-            # Search seq ids
-            cursor.execute('''SELECT seqid FROM mlst WHERE souche=?''', (strain,))
-            seqids = cursor.fetchall()
+            seqids = db.get_strain_sequences_ids(strain)
             if len(seqids) == 0:
-                raise Exception("Strain name not found in database\n" + strain)
+                sys.stderr.write("Not found\n")
+            else:
+                sys.stderr.write("OK\n")
 
-            # remove sample
-            cursor.execute('''DELETE FROM mlst WHERE souche=? ''', (strain,))
-
-            # remove seqs if no other strain have this seq
-            for seqid in seqids:
-                cursor.execute('''DELETE from sequences as s
-                                  where not exists (
-                                  select 1 from mlst where seqid=s.id)
-                                  and id=? ''', (seqid[0],))
-            sys.stderr.write("OK\n")
+            db.remove_strain(strain)
+            db.remove_orphan_sequences(seqids)
 
         db.commit()
     except Exception:

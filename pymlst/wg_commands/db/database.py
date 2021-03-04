@@ -156,7 +156,7 @@ class DatabaseCore:
                 .where(self.mlst.c.seqid == seq_id))
 
     def remove_sequences(self, ids):
-        """Removes sequences and their associated genes"""
+        """Removes sequences and the genes that reference them"""
         self.connection.execute(
             self.sequences.delete()
             .where(in_(self.sequences.c.id, ids)))
@@ -164,28 +164,41 @@ class DatabaseCore:
             self.mlst.delete()
             .where(in_(self.mlst.c.seqid, ids)))
 
-    def remove_genes(self, genes):
-        deleted = []
-        for gene in genes:
-            seqids = self.connection.execute(
-                select([self.mlst.c.seqid])
-                .where(self.mlst.c.gene == gene)
-            ).fetchall()
-            if len(seqids) == 0:
-                continue
+    def remove_orphan_sequences(self, ids):
+        """Removes sequences if they aren't referenced by any gene"""
+        query = self.sequences.delete() \
+            .where(and_(
+                not_(exists(
+                    select([self.mlst.c.id])
+                    .where(self.mlst.c.seqid == self.sequences.c.id))),
+                self.sequences.c.id == bindparam('seqid')))
+
+        for seqid in ids:
             self.connection.execute(
-                self.mlst.delete()
-                .where(self.mlst.c.gene == gene))
-            for seqid in seqids:
-                self.connection.execute(
-                    self.sequences.delete()
-                        .where(and_(
-                            not_(exists(
-                                select([self.mlst.c.id])
-                                .where(self.mlst.c.seqid == self.sequences.c.id))),
-                            self.sequences.c.id == seqid[0])))
-            deleted.append(gene)
-        return deleted
+                query,
+                seqid=seqid[0])
+
+    def remove_gene(self, gene):
+        self.connection.execute(
+            self.mlst.delete()
+            .where(self.mlst.c.gene == gene))
+
+    def remove_strain(self, strain):
+        self.connection.execute(
+            self.mlst.delete()
+                .where(self.mlst.c.souche == strain))
+
+    def get_gene_sequences_ids(self, gene):
+        return self.connection.execute(
+            select([self.mlst.c.seqid])
+            .where(self.mlst.c.gene == gene)
+        ).fetchall()
+
+    def get_strain_sequences_ids(self, strain):
+        return self.connection.execute(
+            select([self.mlst.c.seqid])
+            .where(self.mlst.c.souche == strain)
+        ).fetchall()
 
     def get_gene_by_souche(self, souche):
         return self.connection.execute(
