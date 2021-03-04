@@ -12,7 +12,7 @@ import sys
 
 import click
 
-from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.wg_commands.db.database import DatabaseWG
 
 desc = "Remove gene to a wgMLST database and sequences specificaly associated"
 
@@ -42,7 +42,7 @@ def cli(list, genes, database):
     all_genes = set(all_genes)
 
     try:
-        db = DatabaseCore(os.path.abspath(database.name))
+        db = DatabaseWG(os.path.abspath(database.name))
 
         for gene in all_genes:
             sys.stderr.write(gene + " : ")

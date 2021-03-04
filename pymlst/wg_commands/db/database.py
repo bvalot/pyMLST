@@ -89,7 +89,7 @@ class Database:
         self.session.rollback()
 
 
-class DatabaseCore:
+class DatabaseWG:
 
     def __init__(self, path):
         self.engine = create_engine('sqlite:///' + path)

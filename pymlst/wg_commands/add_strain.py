@@ -17,7 +17,7 @@ import time
 from pymlst.lib import psl
 from pymlst.lib import blat
 from pymlst.lib import sql
-from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.wg_commands.db.database import DatabaseWG
 
 blat_path = '/usr/bin/'
 
@@ -71,7 +71,7 @@ def cli(strain, identity, coverage, genome, database):
     tmpfile, tmpout = blat.blat_tmp()
 
     try:
-        db = DatabaseCore(os.path.abspath(database.name))
+        db = DatabaseWG(os.path.abspath(database.name))
 
         # verify that the strain is not already in the database
         if db.contains_souche(name):

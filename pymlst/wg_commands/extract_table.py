@@ -18,7 +18,7 @@ import pandas as pd
 import numpy as np
 from pymlst.lib.benchmark import benchmark
 
-from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.wg_commands.db.database import DatabaseWG
 
 desc = "Extract MLST table from a wgMLST database"
 
@@ -122,7 +122,7 @@ def cli(output, export, count, mincover, keep, duplicate, inverse, database):
         #
         # # index
         # sql.index_database(cursor)
-        db = DatabaseCore(os.path.abspath(database.name))
+        db = DatabaseWG(os.path.abspath(database.name))
 
         # read samples mlst
         strains = db.get_all_strains(sql.ref)

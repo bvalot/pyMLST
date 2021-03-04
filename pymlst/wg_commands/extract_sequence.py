@@ -18,7 +18,7 @@ import subprocess
 
 from pymlst.lib import sql
 from pymlst.lib.benchmark import benchmark
-from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.wg_commands.db.database import DatabaseWG
 
 mafft_exe = '/usr/bin/mafft'
 
@@ -98,7 +98,7 @@ def cli(output, list, align, realign, mincover, database):
     tmpfile.close()
 
     try:
-        db = DatabaseCore(os.path.abspath(database.name))
+        db = DatabaseWG(os.path.abspath(database.name))
 
         # Minimun number of strain
         strains = [i[0] for i in db.get_different_souches(sql.ref)]

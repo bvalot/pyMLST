@@ -7,11 +7,14 @@
 # Licence GPL
 
 """Create a classical MLST database"""
-
+import os
 import sys
 import click
-import sqlite3
+
 from Bio import SeqIO
+
+from pymlst.cla_commands.db.database import DatabaseCLA
+from pymlst.lib.benchmark import benchmark
 
 desc = "Create a classical MLST database from a sheme"
 
@@ -23,6 +26,7 @@ desc = "Create a classical MLST database from a sheme"
                 type=click.File('r'))
 @click.argument('alleles',
                 type=click.File('r'), nargs=-1, required=True)
+@benchmark
 def cli(database, scheme, alleles):
     """Create a classical MLST database from a sheme"""
     name = "ref"
@@ -42,13 +46,8 @@ def cli(database, scheme, alleles):
         fastas[name] = f
         
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-        cursor2 = db.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS
-                      sequences(id INTEGER PRIMARY KEY, sequence TEXT unique, gene TEXT, allele INTEGER)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS
-                          mlst(id INTEGER PRIMARY KEY, st INTEGER, gene TEXT, allele INTEGER)''')
+        db2 = DatabaseCLA(os.path.abspath(database.name))
+
         # load sequence allele
         alleles = {}
         for g, f in fastas.items():
@@ -65,8 +64,7 @@ def cli(database, scheme, alleles):
                         allele = int(seq.id)
                 except Exception:
                     raise Exception("Unable to obtain allele number for the sequence: " + seq.id)
-                cursor.execute('''INSERT INTO sequences(sequence,gene,allele)
-                              VALUES(?,?,?)''', (str(seq.seq).upper(),g,allele))
+                db2.add_sequence(str(seq.seq).upper(), g, allele)
                 alleles.get(g).add(allele)
         
         # load MLST sheme
@@ -77,14 +75,12 @@ def cli(database, scheme, alleles):
                 if int(a) not in alleles.get(g):
                     sys.stderr.write("Unable to find the allele number "+a+" for gene "+g + "; replace by 0\n")
                     # raise Exception("Unable to find the allele number "+a+" for gene "+g+ "\n" )
-                    cursor2.execute('''INSERT INTO mlst(st, gene, allele)
-                              VALUES(?,?,?)''', (st, g, 0))
+                    db2.add_mlst(st, g, 0)
                 else:
-                    cursor2.execute('''INSERT INTO mlst(st, gene, allele)
-                              VALUES(?,?,?)''', (st, g, int(a)))
-        db.commit()
+                    db2.add_mlst(st, g, int(a))
+        db2.commit()
     except Exception:
-        db.rollback()
+        db2.rollback()
         raise
     finally:
-        db.close()
+        db2.close()

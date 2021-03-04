@@ -12,7 +12,7 @@ import sys
 
 import click
 from pymlst.lib import sql
-from pymlst.wg_commands.db.database import DatabaseCore
+from pymlst.wg_commands.db.database import DatabaseWG
 from pymlst.lib.benchmark import benchmark
 
 desc = "Remove strain to a wgMLST database and sequences specificaly associated"
@@ -47,7 +47,7 @@ def cli(list, database, strains):
     all_strains = set(all_strains)
 
     try:
-        db = DatabaseCore(os.path.abspath(database.name))
+        db = DatabaseWG(os.path.abspath(database.name))
 
         for strain in all_strains:
             sys.stderr.write(strain + " : ")
