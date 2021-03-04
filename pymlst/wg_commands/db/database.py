@@ -1,7 +1,7 @@
 from sqlalchemy.sql.functions import count
 
 from pymlst.wg_commands.db.model import Base, Mlst, Sequence
-from sqlalchemy import create_engine, text, bindparam
+from sqlalchemy import create_engine, text, bindparam, not_
 from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
@@ -159,20 +159,40 @@ class DatabaseCore:
         """Removes sequences and their associated genes"""
         self.connection.execute(
             self.sequences.delete()
-                .where(in_(self.sequences.c.id, ids))
-        )
+            .where(in_(self.sequences.c.id, ids)))
         self.connection.execute(
             self.mlst.delete()
-                .where(in_(self.mlst.c.seqid, ids))
-        )
+            .where(in_(self.mlst.c.seqid, ids)))
+
+    def remove_genes(self, genes):
+        deleted = []
+        for gene in genes:
+            seqids = self.connection.execute(
+                select([self.mlst.c.seqid])
+                .where(self.mlst.c.gene == gene)
+            ).fetchall()
+            if len(seqids) == 0:
+                continue
+            self.connection.execute(
+                self.mlst.delete()
+                .where(self.mlst.c.gene == gene))
+            for seqid in seqids:
+                self.connection.execute(
+                    self.sequences.delete()
+                        .where(and_(
+                            not_(exists(
+                                select([self.mlst.c.id])
+                                .where(self.mlst.c.seqid == self.sequences.c.id))),
+                            self.sequences.c.id == seqid[0])))
+            deleted.append(gene)
+        return deleted
 
     def get_gene_by_souche(self, souche):
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
                 .where(and_(
                 self.mlst.c.souche == souche,
-                self.mlst.c.seqid == self.sequences.c.id
-            ))
+                self.mlst.c.seqid == self.sequences.c.id))
         ).fetchall()
 
     def contains_souche(self, souche):

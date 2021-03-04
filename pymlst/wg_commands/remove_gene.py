@@ -7,11 +7,12 @@
 # Licence GPL
 
 """Remove gene to a wgMLST database"""
-
+import os
 import sys
-import sqlite3
+
 import click
-from pymlst.lib import sql
+
+from pymlst.wg_commands.db.database import DatabaseCore
 
 desc = "Remove gene to a wgMLST database and sequences specificaly associated"
 
@@ -37,35 +38,20 @@ def cli(list, genes, database):
         for gene in genes:
             all_genes.append(gene)
     if len(all_genes) == 0:
-        raise Exception("No gene to removed found.\n")
+        raise Exception("No gene to remove found.\n")
     all_genes = set(all_genes)
 
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
+        db = DatabaseCore(os.path.abspath(database.name))
 
-        # index for old database
-        sql.index_database(cursor)
+        removed = db.remove_genes(all_genes)
 
         for gene in all_genes:
-            sys.stderr.write(gene + "     ")
-
-            # Search seq ids
-            cursor.execute('''SELECT seqid FROM mlst WHERE gene=?''', (gene,))
-            seqids = cursor.fetchall()
-            if len(seqids) == 0:
-                raise Exception("Gene name not found in database\n" + gene)
-
-            # remove sample
-            cursor.execute('''DELETE FROM mlst WHERE gene=? ''', (gene,))
-
-            # remove seqs if no other gene have this seq
-            for seqid in seqids:
-                cursor.execute('''DELETE from sequences as s
-                                  where not exists (
-                                  select 1 from mlst where seqid=s.id)
-                                  and id=?''', (seqid[0],))
-            sys.stderr.write("OK\n")
+            sys.stderr.write(gene + " : ")
+            if gene in removed:
+                sys.stderr.write("OK\n")
+            else:
+                sys.stderr.write("Not found\n")
 
         db.commit()
     except Exception:
