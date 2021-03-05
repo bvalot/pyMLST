@@ -11,11 +11,11 @@
 import sys
 import os
 
-import sqlite3
-
 import click
 from Bio import SeqIO
 
+from pymlst.cla_commands.db.database import DatabaseCLA
+from pymlst.lib.benchmark import benchmark
 from pymlst.lib import blat
 
 desc = "Search ST number for a strain"
@@ -23,25 +23,14 @@ desc = "Search ST number for a strain"
 blat_path = '/usr/bin/'
 
 
-def create_coregene(cursor, tmpfile):
+def create_coregene(db, tmpfile):
     ref = int(1)
-    cursor.execute('''SELECT DISTINCT gene FROM mlst''')
-    all_rows = cursor.fetchall()
+    all_rows = db.get_genes_by_allele(ref)
     coregenes = []
     for row in all_rows:
-        cursor.execute('''SELECT sequence,gene FROM sequences WHERE allele=? and gene=?''', (1, row[0]))
-        tmpfile.write('>' + row[0] + "\n" + cursor.fetchone()[0] + "\n")
+        tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
         coregenes.append(row[0])
     return coregenes
-
-
-def insert_sequence(cursor, sequence):
-    try:
-        cursor.execute('''INSERT INTO sequences(sequence) VALUES(?)''', (sequence,))
-        return cursor.lastrowid
-    except sqlite3.IntegrityError:
-        cursor.execute('''SELECT id FROM sequences WHERE sequence=?''', (sequence,))
-        return cursor.fetchone()[0]
 
 
 def read_genome(genome):
@@ -60,7 +49,6 @@ def read_genome(genome):
               help='Minimum coverage to search gene (default=0.9)')
 @click.option('--fasta', '-f',
               type=click.File('w'),
-              default=sys.stdout,
               help='Write fasta file with gene allele')
 @click.option('--output', '-o',
               type=click.File('w'),
@@ -70,6 +58,7 @@ def read_genome(genome):
                 type=click.File('r'))
 @click.argument('database',
                 type=click.File('r'))
+@benchmark
 def cli(identity, coverage, fasta, output, genome, database):
     """Search ST number for an assembly"""
 
@@ -79,12 +68,14 @@ def cli(identity, coverage, fasta, output, genome, database):
     tmpfile, tmpout = blat.blat_tmp()
 
     try:
-        db = sqlite3.connect(database.name)
-        cursor = db.cursor()
-        cursor2 = db.cursor()
+        # db = sqlite3.connect(database.name)
+        # cursor = db.cursor()
+        # cursor2 = db.cursor()
+
+        db = DatabaseCLA(os.path.abspath(database.name))
 
         # read coregene
-        coregenes = create_coregene(cursor, tmpfile)
+        coregenes = create_coregene(db, tmpfile)
         tmpfile.close()
 
         # BLAT analysis
@@ -126,15 +117,17 @@ def cli(identity, coverage, fasta, output, genome, database):
                     fasta.write(sequence + "\n")
 
                 # search allele
-                cursor.execute('''SELECT allele FROM sequences WHERE sequence=? and gene=?''',
-                               (sequence, coregene))
-                row = cursor.fetchone()
-                if row is not None:
-                    allele.get(coregene).append(str(row[0]))
-                    cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
-                                   (coregene, row[0]))
-                    for row2 in cursor.fetchall():
-                        st.get(coregene).add(row2[0])
+                # cursor.execute('''SELECT allele FROM sequences WHERE sequence=? and gene=?''',
+                #                (sequence, coregene))
+                # row = cursor.fetchone()
+                res = db.get_allele_by_sequence_and_gene(sequence, coregene)
+                if res is not None:
+                    allele.get(coregene).append(str(res[0]))
+                    # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
+                    #                (coregene, row[0]))
+                    strains = db.get_strains_by_gene_and_allele(coregene, res[0])
+                    for strain in strains:
+                        st.get(coregene).add(strain[0])
                 else:
                     allele.get(gene.geneId()).append("new")
 
