@@ -14,6 +14,7 @@ def index_database(cursor):
     cursor.execute('''CREATE INDEX IF NOT EXISTS ID_souche ON mlst (souche)''')
     cursor.execute('''CREATE INDEX IF NOT EXISTS ID_gene ON mlst (gene)''')
     cursor.execute('''CREATE INDEX IF NOT EXISTS ID_seqid ON mlst (seqid)''')
+    cursor.execute('''CREATE INDEX IF NOT EXISTS ID_index ON mlst (souche, gene)''')
 
 def add_sequence(cursor, seq):
     """Add sequence to database and return seqid""" 
