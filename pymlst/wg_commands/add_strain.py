@@ -35,6 +35,7 @@ desc = "Add a strain to the wgMLST database"
                 type=click.File("r"))
 def cli(strain, identity, coverage, genome, database):
     """Add a strain to the wgMLST database"""
+    
     database.close()
 
     with open_wg(os.path.abspath(database.name)) as mlst:

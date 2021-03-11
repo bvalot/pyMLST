@@ -11,6 +11,8 @@ import os
 import sys
 
 import click
+
+from pymlst.api.wgmlst import open_wg
 from pymlst.lib import sql
 from pymlst.wg_commands.db.database import DatabaseWG
 from pymlst.lib.benchmark import benchmark
@@ -30,40 +32,7 @@ desc = "Remove strain to a wgMLST database and sequences specificaly associated"
 def cli(list, database, strains):
     """Remove strain to a wgMLST database and sequences specificaly associated"""
 
-    if sql.ref in strains:
-        raise Exception("Ref schema could not be remove from this database")
+    database.close()
 
-    # list strains to be removed
-
-    all_strains = []
-    if list is not None:
-        for line in list.readlines():
-            all_strains.append(line.rstrip("\n"))
-    if strains is not None:
-        for strain in strains:
-            all_strains.append(strain)
-    if len(all_strains) == 0:
-        raise Exception("No strain to remove found.\n")
-    all_strains = set(all_strains)
-
-    try:
-        db = DatabaseWG(os.path.abspath(database.name))
-
-        for strain in all_strains:
-            sys.stderr.write(strain + " : ")
-
-            seqids = db.get_strain_sequences_ids(strain)
-            if len(seqids) == 0:
-                sys.stderr.write("Not found\n")
-            else:
-                sys.stderr.write("OK\n")
-
-            db.remove_strain(strain)
-            db.remove_orphan_sequences(seqids)
-
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+    with open_wg(os.path.abspath(database.name)) as mlst:
+        mlst.remove_strain(list, strains)

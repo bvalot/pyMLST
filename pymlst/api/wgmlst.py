@@ -30,6 +30,14 @@ def read_genome(genome):
     return seqs
 
 
+def strip_file(file):
+    found = []
+    if file is not None:
+        for line in file.readLines():
+            found.append(line.rstrip('\n'))
+    return []
+
+
 class WholeGenomeMLST:
 
     def __init__(self, file=None, ref='ref'):
@@ -136,6 +144,51 @@ class WholeGenomeMLST:
                 os.remove(tmpfile.name)
             if os.path.exists(tmpout.name):
                 os.remove(tmpout.name)
+
+    def remove_gene(self, list, genes):
+        # list genes to remove
+        all_genes = strip_file(list)
+        if genes is not None:
+            all_genes.extend(genes)
+        if len(all_genes) == 0:
+            raise Exception("No gene to remove found.\n")
+        all_genes = set(all_genes)
+
+        for gene in all_genes:
+            sys.stderr.write(gene + " : ")
+
+            seqids = self.database.get_gene_sequences_ids(gene)
+            if len(seqids) == 0:
+                sys.stderr.write("Not found\n")
+            else:
+                sys.stderr.write("OK\n")
+
+            self.database.remove_gene(gene)
+            self.database.remove_orphan_sequences(seqids)
+
+    def remove_strain(self, list, strains):
+        if self.ref in strains:
+            raise Exception("Ref schema could not be remove from this database")
+
+        # list strains to remove
+        all_strains = strip_file(list)
+        if strains is not None:
+            all_strains.extend(strains)
+        if len(all_strains) == 0:
+            raise Exception("No strain to remove found.\n")
+        all_strains = set(all_strains)
+
+        for strain in all_strains:
+            sys.stderr.write(strain + " : ")
+
+            seqids = self.database.get_strain_sequences_ids(strain)
+            if len(seqids) == 0:
+                sys.stderr.write("Not found\n")
+            else:
+                sys.stderr.write("OK\n")
+
+            self.database.remove_strain(strain)
+            self.database.remove_orphan_sequences(seqids)
 
     def __create_coregene(self, tmpfile):
         ref_genes = self.database.get_gene_by_souche(self.ref)
