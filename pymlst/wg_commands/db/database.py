@@ -91,8 +91,12 @@ class Database:
 
 class DatabaseWG:
 
-    def __init__(self, path):
-        self.engine = create_engine('sqlite:///' + path)
+    def __init__(self, path=None):
+
+        if path is None:
+            self.engine = create_engine('sqlite://')  # creates a :memory: database
+        else:
+            self.engine = create_engine('sqlite:///' + path)  # must be an absolute path
 
         metadata = MetaData()
 

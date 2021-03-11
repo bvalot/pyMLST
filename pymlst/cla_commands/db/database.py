@@ -30,27 +30,6 @@ class DatabaseCLA:
             self.sequences.insert(),
             sequence=sequence, gene=gene, allele=allele)
 
-    def add_sequence_safe(self, sequence):
-        """Inserts a sequence if it doesn't already exist yet"""
-        existing = self.connection.execute(
-            select([self.sequences.c.id])
-            .where(self.sequences.c.sequence == sequence)
-        ).fetchone()
-
-        if existing is not None:
-            return False, existing.id
-
-        res = self.connection.execute(
-            self.sequences.insert(),
-            sequence=sequence)
-
-        return True, res.inserted_primary_key[0]
-
-    def add_mlst(self, st, gene, allele):
-        self.connection.execute(
-            self.mlst.insert(),
-            st=st, gene=gene, allele=allele)
-
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele"""
         return self.connection.execute(

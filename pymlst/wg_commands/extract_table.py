@@ -10,7 +10,6 @@
 import os
 import sys
 
-import sqlite3
 import click
 
 from pymlst.lib import sql
@@ -22,70 +21,6 @@ from pymlst.wg_commands.db.database import DatabaseWG
 
 desc = "Extract MLST table from a wgMLST database"
 
-
-# def get_all_strain(cursor):
-#     cursor.execute('''SELECT DISTINCT souche FROM mlst WHERE souche!=?''', (sql.ref,))
-#     return [a[0] for a in cursor.fetchall()]
-#
-#
-# def get_all_gene(cursor):
-#     cursor.execute('''SELECT distinct(gene) FROM mlst WHERE souche = ?''', (sql.ref,))
-#     return [row[0] for row in cursor.fetchall()]
-#
-#
-# def get_count_seqid_by_gene(cursor):
-#     cursor.execute('''SELECT gene, count(distinct seqid)
-#                       from mlst
-#                       WHERE souche != ?
-#                       GROUP BY gene''', (sql.ref,))
-#     return {row[0]:row[1] for row in cursor.fetchall()}
-#
-#
-# def get_count_souche_by_gene(cursor):
-#     cursor.execute('''SELECT gene, count(distinct souche)
-#                       from mlst
-#                       WHERE souche != ?
-#                       GROUP by gene''', (sql.ref,))
-#     return {row[0]: row[1] for row in cursor.fetchall()}
-#
-#
-# def get_number_sequences(cursor):
-#     cursor.execute('''SELECT DISTINCT seqid FROM mlst WHERE souche!=?''', (sql.ref,))
-#     return len(cursor.fetchall())
-#
-#
-# def get_distance_between_strain(cursor, valid_shema):
-#     cursor.execute('''SELECT m1.souche, m2.souche, count( distinct m1.gene)
-#                       FROM mlst as m1
-#                       JOIN mlst as m2
-#                       ON m1.gene = m2.gene
-#                       AND m1.souche != m2.souche
-#                       AND m1.seqid != m2.seqid
-#                       WHERE m1.gene IN ( {} )
-#                       AND m1.souche != ?
-#                       AND m2.souche != ?
-#                       GROUP BY m1.souche, m2.souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), \
-#                    (sql.ref, sql.ref))
-#     distance = {}
-#     for row in cursor.fetchall():
-#         x = distance.setdefault(row[0], {})
-#         x[row[1]] = row[2]
-#     return distance
-#
-#
-# def get_mlst(cursor, valid_shema):
-#     cursor.execute('''SELECT gene, souche, group_concat(seqid, ";") as seqid
-#                       FROM mlst
-#                       WHERE souche != ?
-#                       AND gene IN ( {} )
-#                       GROUP BY gene, souche'''.format(", ".join(["'" + g + "'" for g in valid_shema])), (sql.ref,))
-#     mlst = {}
-#     for row in cursor.fetchall():
-#         x = mlst.setdefault(row[0], {})
-#         x[row[1]] = row[2]
-#     return mlst
-
-# Me against you, Mountains, Landmine, The New Real
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),

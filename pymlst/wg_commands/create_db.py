@@ -8,14 +8,10 @@
 
 """Create a wgMLST database"""
 
-import time
 import os
 import click
-import sys
-from Bio import SeqIO
 
-from pymlst.lib import sql
-from pymlst.wg_commands.db.database import DatabaseWG
+from pymlst.api.wgmlst import open_wg
 
 
 @click.command(name="create_db")
@@ -31,45 +27,6 @@ def cli(coregene, database, concatenate, remove):
     """Create a wgMLST database from a template"""
 
     database.close()
-    verybegin = time.time()
-    db = DatabaseWG(os.path.abspath(database.name))
-    genes = set()
-    to_remove = set()
 
-    try:
-        for gene in SeqIO.parse(coregene, 'fasta'):
-            if gene.id in genes:
-                raise Exception("Two sequences have the same gene ID: " + gene.id)
-            else:
-                genes.add(gene.id)
-
-            added, seq_id = db.add_sequence(str(gene.seq))
-
-            if not added:
-                if concatenate:
-                    db.concatenate_gene(seq_id, gene.id)
-                    sys.stderr.write("Concatenate gene " + gene.id + "\n")
-                elif remove:
-                    to_remove.add(seq_id)
-                else:
-                    raise Exception("Two genes have the same sequence " + gene.id +
-                                    "\nUse -c or -r options to manage it")
-            else:
-                db.add_mlst(sql.ref, gene.id, seq_id)
-
-        if to_remove:
-            db.remove_sequences(to_remove)
-            sys.stderr.write("Remove duplicate sequence: " + str(len(to_remove)) + "\n")
-
-        db.commit()
-
-        veryend = time.time()
-
-        print("Global time: ", str(veryend - verybegin))
-
-    except Exception:
-        db.rollback()
-        raise
-
-    finally:
-        db.close()
+    with open_wg(os.path.abspath(database.name)) as mlst:
+        mlst.create(coregene, concatenate, remove)
