@@ -1,6 +1,8 @@
+import logging
 import os
 import sys
 import tempfile
+from abc import ABC
 from contextlib import contextmanager
 
 from Bio import SeqIO
@@ -44,6 +46,10 @@ class WholeGenomeMLST:
         self.database = DatabaseWG(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
+        self.logger = logging.getLogger('wgMlst')
+        logging.basicConfig(
+            level=logging.INFO,
+            format='[%(levelname)s: %(asctime)s] %(message)s')
 
     def create(self, coregene, concatenate=True, remove=True):
         genes = set()
@@ -190,6 +196,12 @@ class WholeGenomeMLST:
             self.database.remove_strain(strain)
             self.database.remove_orphan_sequences(seqids)
 
+    def extract(self, extractor, output):
+        extractor.extract(self.database, self.ref, output, self.logger)
+
+    def find(self, finder):
+        finder.find(self.database)
+
     def __create_coregene(self, tmpfile):
         ref_genes = self.database.get_gene_by_souche(self.ref)
         coregenes = []
@@ -206,3 +218,14 @@ class WholeGenomeMLST:
 
     def rollback(self):
         self.database.rollback()
+
+
+class Extractor(ABC):
+    def extract(self, base, ref, output, logger):
+        pass
+
+
+class Finder(ABC):
+    def find(self, base):
+        pass
+
