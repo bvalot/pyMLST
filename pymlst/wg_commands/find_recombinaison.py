@@ -11,7 +11,7 @@
 import sys
 import click
 
-from pymlst.api.wgmlst import find_recombination
+from pymlst.api.core import find_recombination
 
 desc = "Search potential gene recombinaison from wgMLST database export"
 

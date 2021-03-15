@@ -1,92 +1,83 @@
 from sqlalchemy.sql.functions import count
 
-from pymlst.wg_commands.db.model import Base, Mlst, Sequence
 from sqlalchemy import create_engine, text, bindparam, not_
 from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
-from sqlalchemy.orm import sessionmaker
+
 from sqlalchemy.sql import select, exists
 from sqlalchemy.sql import distinct
 from sqlalchemy.sql.operators import in_op as in_
-from pymlst.lib.benchmark import benchmark
 
 
-class Database:
+class DatabaseCLA:
 
-    def __init__(self, path, create=False):
+    def __init__(self, path):
         self.engine = create_engine('sqlite:///' + path)
-        self.session_factory = sessionmaker(bind=self.engine)
-        self.session = self.session_factory()  # Retrieves a session from a pool maintained by the Engine
 
-        if create:
-            Base.metadata.create_all(self.engine)
+        metadata = MetaData()
 
-    def add_mlst(self, souche, gene, seqid):
-        """Adds an MLST gene bound to an existing sequence"""
-        self.session.add(Mlst(souche=souche, gene=gene, seqid=seqid))
+        self.sequences = Table('sequences', metadata,
+                               Column('id', Integer, primary_key=True),
+                               Column('sequence', Text, unique=True),
+                               Column('gene', Text),
+                               Column('allele', Integer))
 
-    def add_sequence(self, sequence):
-        """Adds a sequence if it doesn't already exist"""
-        existing = self.session.query(Sequence.id) \
-            .filter(Sequence.sequence == sequence) \
-            .first()
+        self.mlst = Table('mlst', metadata,
+                          Column('id', Integer, primary_key=True),
+                          Column('st', Integer),
+                          Column('gene', Text),
+                          Column('allele', Integer))
 
-        if existing is not None:
-            return False, existing.id
+        metadata.create_all(self.engine)
 
-        new_seq = Sequence(sequence=sequence)
-        self.session.add(new_seq)
-        self.session.flush()
+        self.connection = self.engine.connect()
+        self.transaction = self.connection.begin()
 
-        return True, new_seq.id
+    def add_sequence(self, sequence, gene, allele):
+        self.connection.execute(
+            self.sequences.insert(),
+            sequence=sequence, gene=gene, allele=allele)
 
-    def concatenate_gene(self, seq_id, gene_name):
-        """Associates a new gene to an existing sequence using concatenation"""
-        existing_gene = self.session.query(Mlst) \
-            .filter_by(seqid=seq_id) \
-            .first()
-        existing_gene.gene += ';' + gene_name
+    def add_mlst(self, st, gene, allele):
+        self.connection.execute(
+            self.mlst.insert(),
+            st=st, gene=gene, allele=allele)
 
-    def remove_sequences(self, ids):
-        """Removes sequences and their associated genes"""
-        self.session.query(Sequence) \
-            .filter(Sequence.id.in_(ids)) \
-            .delete(synchronize_session=False)
-        self.session.query(Mlst) \
-            .filter(Mlst.seqid.in_(ids)) \
-            .delete(synchronize_session=False)
+    def get_genes_by_allele(self, allele):
+        """Returns all the distinct genes in the database and their sequences for a given allele"""
+        return self.connection.execute(
+            select([distinct(self.mlst.c.gene), self.sequences.c.sequence])
+            .select_from(self.mlst.join(
+                self.sequences,
+                self.mlst.c.gene == self.sequences.c.gene))
+            .where(self.sequences.c.allele == allele)
+        ).fetchall()
 
-    def get_gene_by_souche(self, souche):
-        return self.session.query(Mlst.gene, Sequence.sequence) \
-            .filter(and_(Mlst.souche == souche, Mlst.seqid == Sequence.id)) \
-            .all()
+    def get_allele_by_sequence_and_gene(self, sequence, gene):
+        return self.connection.execute(
+            select([self.sequences.c.allele])
+            .where(and_(
+                self.sequences.c.sequence == sequence,
+                self.sequences.c.gene == gene))
+        ).fetchone()
 
-    def contains_souche(self, souche):
-        return self.session.query(Mlst) \
-                   .filter(Mlst.souche == souche) \
-                   .first() is not None
-
-    def get_gene_sequences(self, gene, souche):
-        return self.session.query(
-            Mlst.seqid,
-            func.group_concat(Mlst.souche, ';'),
-            Sequence.sequence
-        ).filter(and_(
-            Mlst.seqid == Sequence.id,
-            Mlst.souche != souche,
-            Mlst.gene == gene
-        )).group_by(Mlst.seqid).all()
+    def get_strains_by_gene_and_allele(self, gene, allele):
+        return self.connection.execute(
+            select([self.mlst.c.st])
+            .where(and_(
+                self.mlst.c.gene == gene,
+                self.mlst.c.allele == allele))
+        ).fetchall()
 
     def commit(self):
-        self.session.commit()
-
-    def close(self):
-        self.session.close()
-        self.engine.dispose()
+        self.transaction.commit()
 
     def rollback(self):
-        self.session.rollback()
+        self.transaction.rollback()
+
+    def close(self):
+        self.engine.dispose()
 
 
 class DatabaseWG:

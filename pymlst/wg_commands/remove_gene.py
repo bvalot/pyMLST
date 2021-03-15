@@ -11,7 +11,7 @@ import os
 
 import click
 
-from pymlst.api.wgmlst import open_wg
+from pymlst.api.core import open_wg
 
 desc = "Remove gene to a wgMLST database and sequences specificaly associated"
 

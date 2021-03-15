@@ -12,7 +12,7 @@ import sys
 
 import click
 
-from pymlst.api.wgmlst import open_wg
+from pymlst.api.core import open_wg
 from pymlst.lib import sql
 from pymlst.wg_commands.db.database import DatabaseWG
 from pymlst.lib.benchmark import benchmark

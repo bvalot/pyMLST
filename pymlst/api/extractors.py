@@ -4,7 +4,7 @@ import tempfile
 import pandas as pd
 import numpy as np
 
-from pymlst.api.wgmlst import Extractor
+from pymlst.api.core import Extractor
 
 
 def run_mafft(path, tmpfile):

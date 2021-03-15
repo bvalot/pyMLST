@@ -11,7 +11,7 @@
 import sys
 import click
 
-from pymlst.api.wgmlst import find_subgraph
+from pymlst.api.core import find_subgraph
 
 desc = "Search group os strain at a distance treshold"
 

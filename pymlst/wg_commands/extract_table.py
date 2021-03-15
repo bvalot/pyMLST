@@ -13,7 +13,7 @@ import sys
 import click
 
 from pymlst.api.extractors import TableExtractor
-from pymlst.api.wgmlst import open_wg
+from pymlst.api.core import open_wg
 
 from pymlst.lib.benchmark import benchmark
 

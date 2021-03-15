@@ -13,7 +13,7 @@ import os
 
 import click
 
-from pymlst.api.wgmlst import open_wg
+from pymlst.api.core import open_wg
 from pymlst.lib.benchmark import benchmark
 from pymlst.api.extractors import SequenceExtractor
 
