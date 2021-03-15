@@ -87,7 +87,7 @@ class WholeGenomeMLST:
             if not added:
                 if concatenate:
                     self.database.concatenate_gene(seq_id, gene.id)
-                    self.logger.info("Concatenate gene " + gene.id + "\n")
+                    self.logger.info("Concatenate gene " + gene.id)
                 elif remove:
                     to_remove.add(seq_id)
                 else:
@@ -98,7 +98,7 @@ class WholeGenomeMLST:
 
         if to_remove:
             self.database.remove_sequences(to_remove)
-            self.logger.info("Remove duplicate sequence: " + str(len(to_remove)) + "\n")
+            self.logger.info("Remove duplicate sequence: " + str(len(to_remove)))
 
     def add_strain(self, strain, identity, coverage, genome):
         if identity < 0 or identity > 1:
@@ -123,9 +123,9 @@ class WholeGenomeMLST:
             tmpfile.close()
 
             # BLAT analysis
-            self.logger.info("Search coregene with BLAT\n")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
-            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes\n")
+            self.logger.info("Search coregene with BLAT")
+            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage, self.logger)
+            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes")
 
             # add MLST sequence
             seqs = read_genome(genome)
@@ -141,20 +141,20 @@ class WholeGenomeMLST:
                     # Correct coverage
                     if gene.coverage != 1:
                         if gene.searchPartialCDS(seq, coverage) is False:
-                            self.logger.info("Gene " + gene.geneId() + " partial: removed\n")
+                            self.logger.info("Gene " + gene.geneId() + " partial: removed")
                             bad += 1
                             continue
                         else:
-                            self.logger.info("Gene " + gene.geneId() + " fill: added\n")
+                            self.logger.info("Gene " + gene.geneId() + " fill: added")
 
                     # Verify CDS
                     if psl.testCDS(gene.getSequence(seq), False) is False:
                         if gene.searchCorrectCDS(seq, coverage) is False:
-                            self.logger.info("Gene " + gene.geneId() + " not correct: removed\n")
+                            self.logger.info("Gene " + gene.geneId() + " not correct: removed")
                             bad += 1
                             continue
                         else:
-                            self.logger.info("Gene " + gene.geneId() + " correct: added\n")
+                            self.logger.info("Gene " + gene.geneId() + " correct: added")
 
                     # add sequence and MLST
                     sequence = gene.getSequence(seq)
@@ -163,8 +163,8 @@ class WholeGenomeMLST:
                     seqid = self.database.add_sequence(str(sequence))[1]
                     self.database.add_mlst(name, gene.geneId(), seqid)
 
-            self.logger.info("Add " + str(len(genes) - bad) + " new MLST gene to database\n")
-            self.logger.info("FINISH\n")
+            self.logger.info("Add " + str(len(genes) - bad) + " new MLST gene to databas")
+            self.logger.info("FINISH")
 
         finally:
             if os.path.exists(tmpfile.name):
@@ -186,9 +186,9 @@ class WholeGenomeMLST:
 
             seqids = self.database.get_gene_sequences_ids(gene)
             if len(seqids) == 0:
-                self.logger.info("Not found\n")
+                self.logger.info("Not found")
             else:
-                self.logger.info("OK\n")
+                self.logger.info("OK")
 
             self.database.remove_gene(gene)
             self.database.remove_orphan_sequences(seqids)
@@ -210,9 +210,9 @@ class WholeGenomeMLST:
 
             seqids = self.database.get_strain_sequences_ids(strain)
             if len(seqids) == 0:
-                self.logger.info("Not found\n")
+                self.logger.info("Not found")
             else:
-                self.logger.info("OK\n")
+                self.logger.info("OK")
 
             self.database.remove_strain(strain)
             self.database.remove_orphan_sequences(seqids)
@@ -250,7 +250,7 @@ def find_recombination(genes, alignment, output):
     logger = create_logger()
 
     genes = [line.rstrip("\n") for line in genes]
-    logger.info("Number of genes to look at : " + str(len(genes)) + "\n")
+    logger.info("Number of genes to look at : " + str(len(genes)))
 
     sequences = [[] for _ in genes]
     samples = []

@@ -6,8 +6,6 @@
 ##UMR 6249 Chrono-Environnement, Besançon, France
 ##Licence GPL
 
-import sys
-
 def testCDS(seq, reverse):
     try:
         if reverse:
@@ -20,7 +18,7 @@ def testCDS(seq, reverse):
 
 class Psl:
     """A simple Psl class"""
-    def __init__(self, pslline):
+    def __init__(self, pslline, logger):
         pslelement = pslline.rstrip("\n").split("\t")
         if len(pslelement) != 21:
             raise Exception("Psl line have not 21 elements:\n"+pslline)
@@ -33,6 +31,7 @@ class Psl:
         self.rend = int(pslelement[12])
         self.rtotal = int(pslelement[10])
         self.coverage = (float(self.rend) - self.rstart)/self.rtotal
+        self.logger = logger
         # if self.coverage !=1 and self.coverage>=0.95:
         #     self.correct()
         
@@ -110,8 +109,8 @@ class Psl:
                     return True
                 elif len(val) >1:
                     best = self.__getBest(val)
-                    sys.stderr.write("Choice best start for gene " + self.geneId() + " " \
-                                     + str(best) + " " + str(val) + "\n")
+                    self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+                                     + str(best) + " " + str(val))
                     self.start = best
                     return True
                 else:
@@ -125,8 +124,8 @@ class Psl:
                     return True
                 elif len(val) >1:
                     best = self.__getBest(val)
-                    sys.stderr.write("Choice best start for gene " + self.geneId() + " " \
-                                     + str(best) + " " + str(val) + "\n")
+                    self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+                                     + str(best) + " " + str(val))
                     self.end = best
                     return True
                 else:
