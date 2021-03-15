@@ -1,8 +1,11 @@
 import os
 import subprocess
 import tempfile
+import pandas as pd
+import numpy as np
 
 from pymlst.api.wgmlst import Extractor
+
 
 def run_mafft(path, tmpfile):
     command = [path, '--quiet', tmpfile.name]
@@ -120,3 +123,117 @@ class SequenceExtractor(Extractor):
         finally:
             if os.path.exists(tmpfile.name):
                 os.remove(tmpfile.name)
+
+
+class TableExtractor(Extractor):
+
+    def __init__(self, export, count, mincover, keep, duplicate, inverse):
+        self.export = export
+        self.count = count
+        self.mincover = mincover
+        self.keep = keep
+        self.duplicate = duplicate
+        self.inverse = inverse
+
+    def extract(self, base, ref, output, logger):
+        # read samples mlst
+        strains = base.get_all_strains(ref)
+        # Minimun number of strain
+        if self.mincover < 0 or self.mincover > len(strains):
+            raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
+
+        # allgene
+        allgene = base.get_all_genes(ref)
+
+        # duplicate gene
+        dupli = base.get_duplicated_genes(ref)
+
+        # cover without duplication
+        count_souches = base.count_souches_per_gene(ref)
+
+        # Count distinct gene
+        diff = base.count_sequences_per_gene(ref)
+
+        # filter coregene that is not sufficient mincover or keep only different or return inverse
+        valid_shema = []
+
+        # Test different case for validation
+        for g in allgene:
+            valid = []
+            if self.keep is True:
+                if diff.get(g, 0) > 1:
+                    valid.append(True)
+                else:
+                    valid.append(False)
+            else:
+                valid.append(True)
+            if count_souches.get(g, 0) >= self.mincover:
+                valid.append(True)
+            else:
+                valid.append(False)
+            if self.duplicate:
+                if g in dupli:
+                    valid.append(False)
+                else:
+                    valid.append(True)
+            else:
+                valid.append(True)
+            if self.inverse is False:
+                if sum(valid) == 3:
+                    valid_shema.append(g)
+            else:
+                if sum(valid) < 3:
+                    valid_shema.append(g)
+
+        # report
+        logger.info("Number of coregene used : " + str(len(valid_shema)) + \
+                         "/" + str(len(allgene)) + "\n")
+
+        # export different case with choices
+        if self.export == "strain":
+            if self.count is False:
+                output.write("\n".join(strains) + "\n")
+            else:
+                tmp = base.count_genes_per_souche(valid_shema)
+                for strain in strains:
+                    output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
+        elif self.export == "gene":
+            output.write("\n".join(sorted(valid_shema)) + "\n")
+        elif self.export == "distance":
+            if self.duplicate is False:
+                logger.info("WARNINGS : Calculate distance between strains " +
+                            "using duplicate genes could reported bad result\n")
+            output.write(str(len(strains)) + "\n")
+            distance = base.get_strains_distances(ref, valid_shema)
+            for s1 in strains:
+                output.write(s1 + "\t")
+                c = [str(distance.get(s1, {}).get(s2, 0)) for s2 in strains]
+                output.write("\t".join(c) + "\n")
+        elif self.export == "mlst":
+            output.write("GeneId\t" + "\t".join(strains) + "\n")
+            mlst = base.get_mlst(ref, valid_shema)
+            for g in valid_shema:
+                towrite = [g]
+                mlstg = mlst.get(g, {})
+                for s in strains:
+                    towrite.append(mlstg.get(s, ""))
+                output.write("\t".join(towrite) + "\n")
+        elif self.export == "grapetree":
+            mlst = base.get_mlst(ref, valid_shema)
+            df = pd.DataFrame(columns=["#GeneId"] + strains)
+            for g in valid_shema:
+                row = {"#GeneId": g}
+                mlstg = mlst.get(g, {})
+                for s in strains:
+                    row[s] = mlstg.get(s, np.NaN)
+                df = df.append(row, ignore_index=True)
+            df = df.set_index('#GeneId')
+            df = df.transpose()
+            df = df.fillna(-1).astype(int)
+            df.to_csv(output, sep='\t')
+        elif self.export == "stat":
+            output.write("Strains\t" + str(len(strains)) + "\n")
+            output.write("Coregenes\t" + str(len(allgene)) + "\n")
+            output.write("Sequences\t" + str(base.get_sequences_number(ref)) + "\n")
+        else:
+            raise Exception("This export format is not supported: " + self.export)
