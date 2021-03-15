@@ -1,7 +1,6 @@
 import logging
 import os
-import sys
-import tempfile
+
 from abc import ABC
 from contextlib import contextmanager
 
@@ -88,7 +87,7 @@ class WholeGenomeMLST:
             if not added:
                 if concatenate:
                     self.database.concatenate_gene(seq_id, gene.id)
-                    sys.stderr.write("Concatenate gene " + gene.id + "\n")
+                    self.logger.info("Concatenate gene " + gene.id + "\n")
                 elif remove:
                     to_remove.add(seq_id)
                 else:
@@ -99,7 +98,7 @@ class WholeGenomeMLST:
 
         if to_remove:
             self.database.remove_sequences(to_remove)
-            sys.stderr.write("Remove duplicate sequence: " + str(len(to_remove)) + "\n")
+            self.logger.info("Remove duplicate sequence: " + str(len(to_remove)) + "\n")
 
     def add_strain(self, strain, identity, coverage, genome):
         if identity < 0 or identity > 1:
@@ -124,9 +123,9 @@ class WholeGenomeMLST:
             tmpfile.close()
 
             # BLAT analysis
-            sys.stderr.write("Search coregene with BLAT\n")
+            self.logger.info("Search coregene with BLAT\n")
             genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
-            sys.stderr.write("Finish run BLAT, found " + str(len(genes)) + " genes\n")
+            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes\n")
 
             # add MLST sequence
             seqs = read_genome(genome)
@@ -142,20 +141,20 @@ class WholeGenomeMLST:
                     # Correct coverage
                     if gene.coverage != 1:
                         if gene.searchPartialCDS(seq, coverage) is False:
-                            sys.stderr.write("Gene " + gene.geneId() + " partial: removed\n")
+                            self.logger.info("Gene " + gene.geneId() + " partial: removed\n")
                             bad += 1
                             continue
                         else:
-                            sys.stderr.write("Gene " + gene.geneId() + " fill: added\n")
+                            self.logger.info("Gene " + gene.geneId() + " fill: added\n")
 
                     # Verify CDS
                     if psl.testCDS(gene.getSequence(seq), False) is False:
                         if gene.searchCorrectCDS(seq, coverage) is False:
-                            sys.stderr.write("Gene " + gene.geneId() + " not correct: removed\n")
+                            self.logger.info("Gene " + gene.geneId() + " not correct: removed\n")
                             bad += 1
                             continue
                         else:
-                            sys.stderr.write("Gene " + gene.geneId() + " correct: added\n")
+                            self.logger.info("Gene " + gene.geneId() + " correct: added\n")
 
                     # add sequence and MLST
                     sequence = gene.getSequence(seq)
@@ -164,8 +163,8 @@ class WholeGenomeMLST:
                     seqid = self.database.add_sequence(str(sequence))[1]
                     self.database.add_mlst(name, gene.geneId(), seqid)
 
-            sys.stderr.write("Add " + str(len(genes) - bad) + " new MLST gene to database\n")
-            sys.stderr.write("FINISH\n")
+            self.logger.info("Add " + str(len(genes) - bad) + " new MLST gene to database\n")
+            self.logger.info("FINISH\n")
 
         finally:
             if os.path.exists(tmpfile.name):
@@ -183,13 +182,13 @@ class WholeGenomeMLST:
         all_genes = set(all_genes)
 
         for gene in all_genes:
-            sys.stderr.write(gene + " : ")
+            self.logger.info(gene + " : ")
 
             seqids = self.database.get_gene_sequences_ids(gene)
             if len(seqids) == 0:
-                sys.stderr.write("Not found\n")
+                self.logger.info("Not found\n")
             else:
-                sys.stderr.write("OK\n")
+                self.logger.info("OK\n")
 
             self.database.remove_gene(gene)
             self.database.remove_orphan_sequences(seqids)
@@ -207,13 +206,13 @@ class WholeGenomeMLST:
         all_strains = set(all_strains)
 
         for strain in all_strains:
-            sys.stderr.write(strain + " : ")
+            self.logger.info(strain + " : ")
 
             seqids = self.database.get_strain_sequences_ids(strain)
             if len(seqids) == 0:
-                sys.stderr.write("Not found\n")
+                self.logger.info("Not found\n")
             else:
-                sys.stderr.write("OK\n")
+                self.logger.info("OK\n")
 
             self.database.remove_strain(strain)
             self.database.remove_orphan_sequences(seqids)
