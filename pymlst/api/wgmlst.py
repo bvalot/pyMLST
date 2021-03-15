@@ -5,6 +5,7 @@ import tempfile
 from abc import ABC
 from contextlib import contextmanager
 
+import networkx as nx
 from Bio import SeqIO
 
 from pymlst.lib import blat, psl
@@ -40,16 +41,37 @@ def strip_file(file):
     return []
 
 
+def compar_seqs(seqs):
+    count = 0
+    dim = len(seqs[0])
+    for j in range(0, len(seqs[0])):
+        d = set([s[j] for s in seqs])
+        if '-' in d:
+            d.remove('-')
+        if len(d) > 1:
+            count += 1
+    return count
+
+
+def write_count(count, texte):
+    if count:
+        count.write(texte)
+
+
+def create_logger():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(levelname)s: %(asctime)s] %(message)s')
+    return logging.getLogger('wgMlst')
+
+
 class WholeGenomeMLST:
 
     def __init__(self, file=None, ref='ref'):
         self.database = DatabaseWG(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
-        self.logger = logging.getLogger('wgMlst')
-        logging.basicConfig(
-            level=logging.INFO,
-            format='[%(levelname)s: %(asctime)s] %(message)s')
+        self.logger = create_logger()
 
     def create(self, coregene, concatenate=True, remove=True):
         genes = set()
@@ -225,7 +247,98 @@ class Extractor(ABC):
         pass
 
 
-class Finder(ABC):
-    def find(self, base):
-        pass
+def find_recombination(genes, alignment, output):
+    logger = create_logger()
 
+    genes = [line.rstrip("\n") for line in genes]
+    logger.info("Number of genes to look at : " + str(len(genes)) + "\n")
+
+    sequences = [[] for _ in genes]
+    samples = []
+
+    # load sequences by gene
+    indice = 0
+    for line in alignment:
+        line = line.rstrip("\n")
+
+        # header
+        if line.startswith(">"):
+            indice = 0
+            samples.append(line.lstrip(">"))
+            continue
+
+        # check genes number correct
+        if indice >= len(genes):
+            raise Exception("The genes list seems not correspond to the alignment\n" + str(indice))
+
+        # genes
+        sequences[indice].append(line)
+        indice += 1
+
+    # check sequences are correctly align
+    for i, seqs in enumerate(sequences):
+        if len(set([len(s) for s in seqs])) > 1:
+            print(set([len(s) for s in seqs]))
+            raise Exception("Following genes seems to be not align: " + genes[i])
+
+    for i, seqs in enumerate(sequences):
+        c = compar_seqs(seqs)
+        output.write(genes[i] + "\t" + str(c) + "\t" + str(len(seqs[0])) + "\n")
+
+
+def find_subgraph(threshold, count, distance, output):
+    samps = []
+    dists = []
+    try:
+        strains = int(distance.readline().rstrip("\n"))
+    except:
+        raise Exception("The distance file seems not correctly formatted\n Not integer on first line")
+
+    for line in distance.readlines():
+        h = line.rstrip("\n").split("\t")
+        samps.append(h[0])
+        dists.append(h[1:])
+
+    if len(samps) != strains:
+        raise Exception("The distance file seems not correctly formatted\n Number of strains " + str(
+            len(samps)) + " doesn't correspond to " + str(strains))
+
+    # create graph
+    G = nx.Graph()
+    G.add_nodes_from(samps)
+
+    for i, s in enumerate(samps):
+        for j, d in enumerate(dists[i]):
+            d = int(d)
+            if i == j or d > threshold:
+                continue
+            G.add_edge(samps[i], samps[j], weight=d)
+
+    # extract interconnected subgraph
+    # count sample not found
+    samps2 = set(samps)
+    grps = []
+    for subG in [G.subgraph(c) for c in nx.connected_components(G)]:
+
+        inds = []
+        for n in subG.nodes():
+            samps2.remove(n)
+            inds.append(samps.index(n))
+        grps.append(inds)
+
+    grps.sort(key=len, reverse=True)
+
+    # write result
+    write_count(count, "Group\t" + "\t".join(samps) + "\n")
+    for i, g in enumerate(grps):
+        a = len(samps) * [0]
+        output.write("Group" + str(i))
+        for n in g:
+            a[n] = 1
+            output.write(" " + samps[n])
+        write_count(count, str(i) + "\t" + "\t".join(map(str, a)) + "\n")
+        output.write("\n")
+
+    if count:
+        count.close()
+    output.close()

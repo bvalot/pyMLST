@@ -14,14 +14,11 @@ import click
 
 from pymlst.api.extractors import TableExtractor
 from pymlst.api.wgmlst import open_wg
-from pymlst.lib import sql
-import pandas as pd
-import numpy as np
+
 from pymlst.lib.benchmark import benchmark
 
-from pymlst.wg_commands.db.database import DatabaseWG
-
 desc = "Extract MLST table from a wgMLST database"
+
 
 @click.command()
 @click.option('--output', '-o',
