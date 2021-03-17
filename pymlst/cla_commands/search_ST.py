@@ -45,4 +45,4 @@ def cli(identity, coverage, fasta, output, genome, database):
     database.close()
 
     with open_cla(os.path.abspath(database.name)) as mlst:
-        mlst.search_st(identity, coverage, fasta, output, genome)
+        mlst.search_st(genome, identity, coverage, fasta, output)

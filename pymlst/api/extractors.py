@@ -1,8 +1,12 @@
+import abc
+import importlib
+
 import os
+
 import subprocess
+
 import tempfile
-import pandas as pd
-import numpy as np
+from abc import ABC
 
 from pymlst.api.core import Extractor
 
@@ -54,7 +58,7 @@ def add_sequence_strain(seqs, strains, sequences):
 
 class SequenceExtractor(Extractor):
 
-    def __init__(self, list, align, realign, mincover):
+    def __init__(self, list=None, align=False, realign=False, mincover=1):
         self.list = list
         self.align = align
         self.realign = realign
@@ -127,7 +131,7 @@ class SequenceExtractor(Extractor):
 
 class TableExtractor(Extractor):
 
-    def __init__(self, export, count, mincover, keep, duplicate, inverse):
+    def __init__(self, export='mlst', count=False, mincover=0, keep=False, duplicate=True, inverse=False):
         self.export = export
         self.count = count
         self.mincover = mincover
@@ -186,54 +190,47 @@ class TableExtractor(Extractor):
                     valid_shema.append(g)
 
         # report
-        logger.info("Number of coregene used : " + str(len(valid_shema)) + \
-                         "/" + str(len(allgene)) + "\n")
+        logger.info("Number of coregene used : " + str(len(valid_shema)) +
+                    "/" + str(len(allgene)) + "\n")
 
-        # export different case with choices
-        if self.export == "strain":
-            if self.count is False:
-                output.write("\n".join(strains) + "\n")
-            else:
-                tmp = base.count_genes_per_souche(valid_shema)
-                for strain in strains:
-                    output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
-        elif self.export == "gene":
-            output.write("\n".join(sorted(valid_shema)) + "\n")
-        elif self.export == "distance":
-            if self.duplicate is False:
-                logger.info("WARNINGS : Calculate distance between strains " +
-                            "using duplicate genes could reported bad result\n")
-            output.write(str(len(strains)) + "\n")
-            distance = base.get_strains_distances(ref, valid_shema)
-            for s1 in strains:
-                output.write(s1 + "\t")
-                c = [str(distance.get(s1, {}).get(s2, 0)) for s2 in strains]
-                output.write("\t".join(c) + "\n")
-        elif self.export == "mlst":
-            output.write("GeneId\t" + "\t".join(strains) + "\n")
-            mlst = base.get_mlst(ref, valid_shema)
-            for g in valid_shema:
-                towrite = [g]
-                mlstg = mlst.get(g, {})
-                for s in strains:
-                    towrite.append(mlstg.get(s, ""))
-                output.write("\t".join(towrite) + "\n")
-        elif self.export == "grapetree":
-            mlst = base.get_mlst(ref, valid_shema)
-            df = pd.DataFrame(columns=["#GeneId"] + strains)
-            for g in valid_shema:
-                row = {"#GeneId": g}
-                mlstg = mlst.get(g, {})
-                for s in strains:
-                    row[s] = mlstg.get(s, np.NaN)
-                df = df.append(row, ignore_index=True)
-            df = df.set_index('#GeneId')
-            df = df.transpose()
-            df = df.fillna(-1).astype(int)
-            df.to_csv(output, sep='\t')
-        elif self.export == "stat":
-            output.write("Strains\t" + str(len(strains)) + "\n")
-            output.write("Coregenes\t" + str(len(allgene)) + "\n")
-            output.write("Sequences\t" + str(base.get_sequences_number(ref)) + "\n")
-        else:
-            raise Exception("This export format is not supported: " + self.export)
+        exporter = ExportType.get_type(self.export)
+
+        if exporter is None:
+            raise Exception('Unknown export type: ', self.export)
+
+        data = ExportData(valid_shema, strains, allgene, ref, self.count, self.duplicate)
+        exporter.export(data, base, output, logger)
+
+
+class ExportType(ABC):
+    @classmethod
+    def list_types(cls):
+        importlib.import_module('pymlst.api.export_types')
+        return [exp.name() for exp in cls.__subclasses__()]
+
+    @classmethod
+    def get_type(cls, type_name):
+        importlib.import_module('pymlst.api.export_types')
+        for type_cls in cls.__subclasses__():
+            if type_cls.name() is type_name:
+                return type_cls()
+        return None
+
+    @abc.abstractmethod
+    def export(self, data, base, output, logger):
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def name():
+        return 'undefined'
+
+
+class ExportData:
+    def __init__(self, valid_schema, strains, all_genes, ref, count, duplicate):
+        self.valid_schema = valid_schema
+        self.strains = strains
+        self.all_genes = all_genes
+        self.ref = ref
+        self.count = count
+        self.duplicate = duplicate

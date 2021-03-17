@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 from abc import ABC
 from contextlib import contextmanager
@@ -131,7 +132,7 @@ class ClassicalMLST:
                 else:
                     self.database.add_mlst(st, g, int(a))
 
-    def search_st(self, identity, coverage, fasta, output, genome):
+    def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
         path = blat.test_blat_exe(self.blat_path)
@@ -246,7 +247,7 @@ class WholeGenomeMLST:
         self.blat_path = '/usr/bin/'  # TODO: change this
         self.logger = create_logger()
 
-    def create(self, coregene, concatenate=True, remove=True):
+    def create(self, coregene, concatenate=False, remove=False):
         genes = set()
         to_remove = set()
 
@@ -274,7 +275,7 @@ class WholeGenomeMLST:
             self.database.remove_sequences(to_remove)
             self.logger.info("Remove duplicate sequence: " + str(len(to_remove)))
 
-    def add_strain(self, strain, identity, coverage, genome):
+    def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 and 1")
         path = blat.test_blat_exe(self.blat_path)
@@ -346,7 +347,7 @@ class WholeGenomeMLST:
             if os.path.exists(tmpout.name):
                 os.remove(tmpout.name)
 
-    def remove_gene(self, list, genes):
+    def remove_gene(self, genes, list=None):
         # list genes to remove
         all_genes = strip_file(list)
         if genes is not None:
@@ -367,7 +368,7 @@ class WholeGenomeMLST:
             self.database.remove_gene(gene)
             self.database.remove_orphan_sequences(seqids)
 
-    def remove_strain(self, list, strains):
+    def remove_strain(self, strains, list=None):
         if self.ref in strains:
             raise Exception("Ref schema could not be remove from this database")
 
@@ -391,11 +392,8 @@ class WholeGenomeMLST:
             self.database.remove_strain(strain)
             self.database.remove_orphan_sequences(seqids)
 
-    def extract(self, extractor, output):
+    def extract(self, extractor, output=sys.stdout):
         extractor.extract(self.database, self.ref, output, self.logger)
-
-    def find(self, finder):
-        finder.find(self.database)
 
     def __create_coregene(self, tmpfile):
         ref_genes = self.database.get_gene_by_souche(self.ref)

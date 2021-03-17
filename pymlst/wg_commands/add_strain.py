@@ -13,6 +13,7 @@ import os
 import click
 
 from pymlst.api.core import open_wg
+from pymlst.lib.benchmark import benchmark
 
 blat_path = '/usr/bin/'
 
@@ -33,10 +34,11 @@ desc = "Add a strain to the wgMLST database"
                 type=click.File("r"))
 @click.argument('database',
                 type=click.File("r"))
+@benchmark
 def cli(strain, identity, coverage, genome, database):
     """Add a strain to the wgMLST database"""
 
     database.close()
 
     with open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.add_strain(strain, identity, coverage, genome)
+        mlst.add_strain(genome, strain, identity, coverage)

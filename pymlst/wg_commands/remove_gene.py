@@ -30,4 +30,4 @@ def cli(list, genes, database):
     database.close()
 
     with open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.remove_gene(list, genes)
+        mlst.remove_gene(genes, list)

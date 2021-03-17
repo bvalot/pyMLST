@@ -8,13 +8,11 @@
 
 """Remove strains to an wgMLST database"""
 import os
-import sys
 
 import click
 
 from pymlst.api.core import open_wg
-from pymlst.lib import sql
-from pymlst.wg_commands.db.database import DatabaseWG
+
 from pymlst.lib.benchmark import benchmark
 
 desc = "Remove strain to a wgMLST database and sequences specificaly associated"
@@ -35,4 +33,4 @@ def cli(list, database, strains):
     database.close()
 
     with open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.remove_strain(list, strains)
+        mlst.remove_strain(strains, list)

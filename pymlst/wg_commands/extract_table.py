@@ -12,7 +12,7 @@ import sys
 
 import click
 
-from pymlst.api.extractors import TableExtractor
+from pymlst.api.extractors import TableExtractor, ExportType
 from pymlst.api.core import open_wg
 
 from pymlst.lib.benchmark import benchmark
@@ -26,7 +26,7 @@ desc = "Extract MLST table from a wgMLST database"
               default=sys.stdout,
               help='Export MLST table to (default=stdout)')
 @click.option('--export', '-e',
-              type=click.Choice(['mlst', 'grapetree', 'distance', 'strain', 'gene', 'stat']),
+              type=click.Choice(ExportType.list_types()),
               default='mlst',
               help='Defined the export format')
 @click.option('--count', '-c',
