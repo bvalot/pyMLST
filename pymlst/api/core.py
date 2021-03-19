@@ -275,6 +275,8 @@ class WholeGenomeMLST:
             self.database.remove_sequences(to_remove)
             self.logger.info("Remove duplicate sequence: " + str(len(to_remove)))
 
+        self.logger.info('Database initialized')
+
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 and 1")

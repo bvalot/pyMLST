@@ -244,13 +244,6 @@ class DatabaseWG:
             seqs.append([seq[0], tmp, seq[2]])
         return seqs
 
-    def get_different_souches(self, souche):
-        return self.connection.execute(
-            select([self.mlst.c.souche])
-                .where(self.mlst.c.souche != souche)
-                .distinct()
-        ).fetchall()
-
     def get_genes_coverages(self, ref):
         return self.connection.execute(
             select([self.mlst.c.gene,

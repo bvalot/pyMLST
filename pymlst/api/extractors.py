@@ -70,7 +70,7 @@ class SequenceExtractor(Extractor):
         tmpfile.close()
         try:
             # Minimun number of strain
-            strains = [i[0] for i in base.get_different_souches(ref)]
+            strains = base.get_all_strains(ref)
             if self.mincover < 1 or self.mincover > len(strains):
                 raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
 
@@ -142,6 +142,7 @@ class TableExtractor(Extractor):
     def extract(self, base, ref, output, logger):
         # read samples mlst
         strains = base.get_all_strains(ref)
+
         # Minimun number of strain
         if self.mincover < 0 or self.mincover > len(strains):
             raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
