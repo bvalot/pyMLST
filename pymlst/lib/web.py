@@ -2,6 +2,7 @@ import requests
 import zipfile
 import tempfile
 import os
+
 from bs4 import BeautifulSoup
 from Bio import SeqIO
 
@@ -48,12 +49,17 @@ def prompt_cgmlst():
 
     answer = prompt(questions, style=style)
 
-    return addresses.get(answer['coregenome']) + 'alleles'
+    try:
+        dll_url = addresses.get(answer['coregenome']) + 'alleles'
+    except KeyError:
+        return ''
+
+    return dll_url
 
 
 def build_coregene(url, handle):
     with tempfile.TemporaryDirectory() as tmp_dir:
-        zip_req = requests.get(url, allow_redirects=True)
+        zip_req = requests.get(url)
         zip_tmp = tmp_dir + '/tmp.zip'
         open(zip_tmp, 'wb').write(zip_req.content)
 
@@ -63,6 +69,28 @@ def build_coregene(url, handle):
             z.extractall(fas_tmp)
 
         for fasta in os.listdir(fas_tmp):
-            it = next(SeqIO.parse(fas_tmp + '/' + fasta, 'fasta'))
+            try:
+                it = next(SeqIO.parse(fas_tmp + '/' + fasta, 'fasta'))
+            except StopIteration:
+                continue
             handle.write('> ' + fasta.replace('.fasta', '') + '\n')
             handle.write(str(it.seq) + '\n')
+
+
+def get_mlst_files(species, directory):
+    base_url = 'https://rest.pubmlst.org/db/'
+    url = base_url + '/pubmlst_' + species + '_seqdef/schemes/1'
+    scheme = requests.get(url).json()
+    locus_dir = directory + '/locus'
+    os.mkdir(locus_dir)
+    for loci in scheme['loci']:
+        name = loci.split('/')[-1]
+        loci_fasta = requests.get(loci + '/alleles_fasta')
+        loci_file_name = locus_dir + '/' + name + '.fasta'
+        open(loci_file_name, 'wb').write(loci_fasta.content)
+    profiles_url = url + '/profiles_csv'
+    profiles = requests.get(profiles_url)
+    lines = profiles.text.split('\n')
+    lines[0] = '\t'.join(lines[0].split('\t')[0:-1])
+    with open(directory + '/profiles.csv', 'wt') as p:
+        p.write('\n'.join(lines))

@@ -132,6 +132,8 @@ class ClassicalMLST:
                 else:
                     self.database.add_mlst(st, g, int(a))
 
+        self.logger.info('Database initialized')
+
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")

@@ -12,6 +12,8 @@ import os
 import click
 import tempfile
 
+from requests.exceptions import ConnectionError
+
 from pymlst.api.core import open_wg, create_logger
 from pymlst.lib.web import prompt_cgmlst, build_coregene
 
@@ -21,12 +23,20 @@ from pymlst.lib.web import prompt_cgmlst, build_coregene
 def cli(database):
     """Create a wgMLST database from an online resource"""
 
-    url = prompt_cgmlst()
-    create_logger().info('Downloading the core genome...')
+    logger = create_logger()
 
-    with tempfile.NamedTemporaryFile('w+') as tmp:
+    try:
+        url = prompt_cgmlst()
+        if url == '':
+            logger.info('No choice selected')
+            return
+        logger.info('Downloading the core genome...')
 
-        build_coregene(url, tmp)
+        with tempfile.NamedTemporaryFile('w+') as tmp:
 
-        with open_wg(os.path.abspath(database.name)) as mlst:
-            mlst.create(tmp.name)
+            build_coregene(url, tmp)
+
+            with open_wg(os.path.abspath(database.name)) as mlst:
+                mlst.create(tmp.name)
+    except ConnectionError:
+        logger.error('Unable to retrieve online databases')
