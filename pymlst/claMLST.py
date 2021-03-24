@@ -14,6 +14,7 @@ plugin_folder = os.path.join(os.path.dirname(__file__), 'cla_commands')
 class CommandCLA(click.MultiCommand):
 
     def list_commands(self, ctx):
+        print('yo')
         rv = []
         for filename in os.listdir(plugin_folder):
             if filename.endswith('.py'):
