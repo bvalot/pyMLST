@@ -186,14 +186,14 @@ def build_coregene(url, handle):
         with zipfile.ZipFile(zip_tmp) as z:
             z.extractall(fas_tmp)
         skipped = []
-        for fasta in os.listdir(fas_tmp):
+        for fasta in os.listdir(fas_tmp): # Here there is 2513 files, normal...
             try:
                 it = next(SeqIO.parse(fas_tmp + '/' + fasta, 'fasta'))
             except (StopIteration, ValueError, TypeError):
                 skipped.append(fasta)
                 continue
             handle.write('> ' + fasta.replace('.fasta', '') + '\n')
-            handle.write(str(it.seq) + '\n')
+            handle.write(str(it.seq) + '\n') # written 2513 times too
         return skipped
 
 

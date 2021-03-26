@@ -8,6 +8,7 @@ from contextlib import contextmanager
 
 import networkx as nx
 from Bio import SeqIO
+from Bio.Data.CodonTable import TranslationError
 
 from pymlst.lib.database import DatabaseCLA, DatabaseWG
 from pymlst.lib import blat, psl
@@ -71,6 +72,15 @@ def compar_seqs(seqs):
 def write_count(count, texte):
     if count:
         count.write(texte)
+
+
+def validate_sequence(sequence):
+    try:
+        sequence.translate(cds=True, table=11)
+    except TranslationError:
+        return False
+    else:
+        return True
 
 
 def create_logger():
@@ -256,12 +266,24 @@ class WholeGenomeMLST:
     def create(self, coregene, concatenate=False, remove=False):
         genes = set()
         to_remove = set()
+        rc_genes = 0
+        invalid_genes = 0
 
-        for gene in SeqIO.parse(coregene, 'fasta'):
+        uh = 0
+        for gene in SeqIO.parse(coregene, 'fasta'): # only 2503 elements in it
+            uh += 1
             if gene.id in genes:
                 raise Exception("Two sequences have the same gene ID: " + gene.id)
             else:
                 genes.add(gene.id)
+
+            if not validate_sequence(gene.seq):
+                gene.seq = gene.seq.reverse_complement()
+                if validate_sequence(gene.seq):
+                    rc_genes += 1
+                else:
+                    invalid_genes += 1
+                    continue
 
             added, seq_id = self.database.add_sequence(str(gene.seq))
 
@@ -277,9 +299,17 @@ class WholeGenomeMLST:
             else:
                 self.database.add_mlst(self.ref, gene.id, seq_id)
 
+        print('Count: ' + str(uh))
+
         if to_remove:
             self.database.remove_sequences(to_remove)
             self.logger.info("Remove duplicate sequence: " + str(len(to_remove)))
+
+        if rc_genes:
+            self.logger.info('Reverse-complemented genes: ' + str(rc_genes))
+
+        if invalid_genes:
+            self.logger.info('Skipped invalid genes: ' + str(invalid_genes))
 
         self.logger.info('Database initialized')
 

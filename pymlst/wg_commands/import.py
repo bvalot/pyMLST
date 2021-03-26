@@ -39,7 +39,7 @@ def cli(prompt, database, species):
             return
         logger.info('Downloading the core genome...')
 
-        with tempfile.NamedTemporaryFile('w+') as tmp:
+        with open('tmp_aaa', 'w+') as tmp:
 
             skipped = build_coregene(url, tmp)
             if len(skipped) > 0:
