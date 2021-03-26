@@ -12,21 +12,28 @@ import os
 import click
 import tempfile
 
-from requests.exceptions import ConnectionError
+import requests
 
 from pymlst.api.core import open_wg, create_logger
 from pymlst.lib.web import prompt_cgmlst, build_coregene
 
 
 @click.command()
-@click.argument('database', type=click.File('w'))
-def cli(database):
+@click.option('--prompt/--no-prompt',
+              default=True)
+@click.argument('database',
+                type=click.File('w'))
+@click.argument('species',
+                type=click.STRING,
+                nargs=-1)
+def cli(prompt, database, species):
     """Create a wgMLST database from an online resource"""
 
     logger = create_logger()
 
     try:
-        url = prompt_cgmlst()
+
+        url = prompt_cgmlst(' '.join(species), prompt)
         if url == '':
             logger.info('No choice selected')
             return
@@ -34,9 +41,19 @@ def cli(database):
 
         with tempfile.NamedTemporaryFile('w+') as tmp:
 
-            build_coregene(url, tmp)
+            skipped = build_coregene(url, tmp)
+            if len(skipped) > 0:
+                logger.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
 
             with open_wg(os.path.abspath(database.name)) as mlst:
                 mlst.create(tmp.name)
-    except ConnectionError:
-        logger.error('Unable to retrieve online databases')
+
+    except requests.exceptions.HTTPError:
+        logger.error('An error occurred while retrieving online data')
+        exit(1)
+    except requests.exceptions.ConnectionError:
+        logger.error('Couldn\'t access to the server, please verify your internet connection')
+        exit(2)
+    except requests.exceptions.Timeout:
+        logger.error('The server took too long to respond')
+        exit(3)

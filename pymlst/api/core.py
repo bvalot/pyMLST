@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import re
 
 from abc import ABC
 from contextlib import contextmanager
@@ -107,14 +108,17 @@ class ClassicalMLST:
             alleles[g] = set()
             for seq in SeqIO.parse(f, 'fasta'):
                 try:
-                    if len(seq.id.split("_")) == 2:
-                        allele = int(seq.id.split("_")[1])
-                    elif len(seq.id.split("-")) == 2:
-                        allele = int(seq.id.split("-")[1])
-                    elif f.name.split(".")[0] in seq.id:
-                        allele = int(seq.id.replace(f.name.split(".")[0], ""))
-                    else:
-                        allele = int(seq.id)
+                    # if len(seq.id.split("_")) == 2:
+                    #     allele = int(seq.id.split("_")[1])
+                    # elif len(seq.id.split("-")) == 2:
+                    #     allele = int(seq.id.split("-")[1])
+                    # elif g in seq.id:
+                    #     allele = int(seq.id.replace(g, ""))
+                    # else:
+                    #     allele = int(seq.id)
+                    match = re.search('[0-9]+$', seq.id)
+                    allele = int(match.group(0))
+
                 except Exception:
                     raise Exception("Unable to obtain allele number for the sequence: " + seq.id)
                 self.database.add_sequence(str(seq.seq).upper(), g, allele)

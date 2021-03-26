@@ -11,6 +11,8 @@ import os
 import click
 import tempfile
 
+import requests
+
 from pymlst.api.core import open_cla
 
 from pymlst.lib.web import get_mlst_files, prompt_mlst
@@ -35,17 +37,30 @@ def cli(prompt, mlst, database, species):
     database.close()
     logger = create_logger()
 
-    url = prompt_mlst(' '.join(species), prompt, mlst)
-    if url is None:
-        logger.info('No choice selected')
-        return
-    else:
-        logger.info('Downloading mlst...')
+    try:
 
-    with tempfile.TemporaryDirectory() as tmp_dir, \
-            open_cla(os.path.abspath(database.name)) as mlst:
+        url = prompt_mlst(' '.join(species), prompt, mlst)
 
-        get_mlst_files(tmp_dir, url=url)
+        if url is None:
+            logger.info('No choice selected')
+            return
+        else:
+            logger.info('Downloading mlst...')
 
-        mlst.create(open(tmp_dir + '/profiles.csv', 'rt'),
-                    [open(tmp_dir + '/locus/' + locus, 'r') for locus in os.listdir(tmp_dir + '/locus')])
+        with tempfile.TemporaryDirectory() as tmp_dir, \
+                open_cla(os.path.abspath(database.name)) as mlst:
+
+            get_mlst_files(tmp_dir, url=url)
+
+            mlst.create(open(tmp_dir + '/profiles.csv', 'rt'),
+                        [open(tmp_dir + '/locus/' + locus, 'r') for locus in os.listdir(tmp_dir + '/locus')])
+
+    except requests.exceptions.HTTPError:
+        logger.error('An error occurred while retrieving online data')
+        exit(1)
+    except requests.exceptions.ConnectionError:
+        logger.error('Couldn\'t access to the server, please verify your internet connection')
+        exit(2)
+    except requests.exceptions.Timeout:
+        logger.error('The server took too long to respond')
+        exit(3)
