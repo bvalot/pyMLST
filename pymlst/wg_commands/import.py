@@ -39,9 +39,10 @@ def cli(prompt, database, species):
             return
         logger.info('Downloading the core genome...')
 
-        with open('tmp_aaa', 'w+') as tmp:
+        with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
 
             skipped = build_coregene(url, tmp)
+            tmp.close()
             if len(skipped) > 0:
                 logger.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
 

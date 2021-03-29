@@ -269,9 +269,7 @@ class WholeGenomeMLST:
         rc_genes = 0
         invalid_genes = 0
 
-        uh = 0
-        for gene in SeqIO.parse(coregene, 'fasta'): # only 2503 elements in it
-            uh += 1
+        for gene in SeqIO.parse(coregene, 'fasta'):
             if gene.id in genes:
                 raise Exception("Two sequences have the same gene ID: " + gene.id)
             else:
@@ -298,8 +296,6 @@ class WholeGenomeMLST:
                                     "\nUse -c or -r options to manage it")
             else:
                 self.database.add_mlst(self.ref, gene.id, seq_id)
-
-        print('Count: ' + str(uh))
 
         if to_remove:
             self.database.remove_sequences(to_remove)
