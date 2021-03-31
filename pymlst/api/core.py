@@ -10,6 +10,7 @@ import networkx as nx
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
 
+from pymlst import get_binary_path
 from pymlst.lib.database import DatabaseCLA, DatabaseWG
 from pymlst.lib import blat, psl
 
@@ -151,7 +152,11 @@ class ClassicalMLST:
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
-        path = blat.test_blat_exe(self.blat_path)
+
+        path = get_binary_path('blat')
+        if path is None:
+            raise Exception('Unable to locate the Blat executable\n')
+
         tmpfile, tmpout = blat.blat_tmp()
 
         try:
@@ -257,7 +262,7 @@ class ClassicalMLST:
 
 class WholeGenomeMLST:
 
-    def __init__(self, file=None, ref='ref'):
+    def __init__(self, file, ref):
         self.database = DatabaseWG(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
@@ -312,7 +317,10 @@ class WholeGenomeMLST:
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 and 1")
-        path = blat.test_blat_exe(self.blat_path)
+
+        path = get_binary_path('blat')
+        if path is None:
+            raise Exception('Unable to locate the Blat executable\n')
 
         name = strain
         if name is None:

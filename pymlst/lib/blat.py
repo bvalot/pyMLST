@@ -10,13 +10,11 @@ import sys
 import subprocess
 import tempfile
 from .psl import Psl
-import os
 
-blat_exe = "blat"
 
 def run_blat(path, genome, tmpfile, tmpout, identity, coverage, logger):
     """Run Blat and return Psl Object"""
-    command = [path+blat_exe, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
+    command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
                genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stderr)
     error = ""
@@ -45,11 +43,3 @@ def blat_tmp():
     tmpout = tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=False)
     tmpout.close()
     return tmpfile,tmpout
-
-
-def test_blat_exe(path):
-    if path:
-        path = path.rstrip("/")+"/"
-        if os.path.exists(path+blat_exe) is False:
-            raise Exception("BLAT executable not found in folder: \n"+path)
-    return path

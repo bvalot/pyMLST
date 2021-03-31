@@ -9,6 +9,7 @@ import tempfile
 from abc import ABC
 
 from pymlst.api.core import Extractor
+from pymlst import get_binary_path
 
 
 def run_mafft(path, tmpfile):
@@ -63,7 +64,6 @@ class SequenceExtractor(Extractor):
         self.align = align
         self.realign = realign
         self.mincover = mincover
-        self.mafft_path = '/usr/bin/mafft'
 
     def extract(self, base, ref, output, logger):
         tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
@@ -114,7 +114,10 @@ class SequenceExtractor(Extractor):
                     else:
                         logger.info("Align")
                         write_tmp_seqs(tmpfile, seqs)
-                        corrseqs = run_mafft(self.mafft_path, tmpfile)
+                        mafft_path = get_binary_path('mafft')
+                        if mafft_path is None:
+                            raise Exception('Unable to locate the Mafft executable\n')
+                        corrseqs = run_mafft(mafft_path, tmpfile)
                         for seq in seqs:
                             seq[2] = corrseqs.get(seq[0])
                         add_sequence_strain(seqs, strains, sequences)
