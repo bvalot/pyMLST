@@ -6,16 +6,11 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Remove strains to an wgMLST database"""
 import os
 
 import click
 
-from pymlst.api.core import open_wg
-
-from pymlst.lib.benchmark import benchmark
-
-desc = "Remove strain to a wgMLST database and sequences specificaly associated"
+from pymlst import open_wg
 
 
 @click.command()
@@ -26,7 +21,6 @@ desc = "Remove strain to a wgMLST database and sequences specificaly associated"
                 type=click.File('r'), nargs=1)
 @click.argument('strains',
                 type=str, nargs=-1)
-@benchmark
 def cli(list, database, strains):
     """Remove strain to a wgMLST database and sequences specificaly associated"""
 

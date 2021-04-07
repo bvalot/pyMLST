@@ -6,18 +6,13 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Search ST number for an assembly"""
 
 import sys
 import os
 
 import click
 
-from pymlst.api.core import open_cla
-
-from pymlst.lib.benchmark import benchmark
-
-desc = "Search ST number for a strain"
+from pymlst import open_cla
 
 
 @click.command()
@@ -38,7 +33,6 @@ desc = "Search ST number for a strain"
                 type=click.File('r'))
 @click.argument('database',
                 type=click.File('r'))
-@benchmark
 def cli(identity, coverage, fasta, output, genome, database):
     """Search ST number for an assembly"""
 

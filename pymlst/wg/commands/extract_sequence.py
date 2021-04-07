@@ -6,20 +6,14 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Get a sequence from a wgMLST database"""
-
 import sys
 import os
 
 import click
 
-from pymlst.api.core import open_wg
-from pymlst.lib.benchmark import benchmark
-from pymlst.api.extractors import SequenceExtractor
+from pymlst import open_wg
+from pymlst.wg.extractors import SequenceExtractor
 
-mafft_exe = '/usr/bin/mafft'
-
-desc = "Get a sequence from a wgMLST database"
 
 @click.command()
 @click.option('--output', '-o',
@@ -42,7 +36,6 @@ desc = "Get a sequence from a wgMLST database"
               'to keep a coregene (default:1)')
 @click.argument('database',
                 type=click.File('r'))
-@benchmark  # TEST
 def cli(output, list, align, realign, mincover, database):
     """Get sequences from a wgMLST database"""
 

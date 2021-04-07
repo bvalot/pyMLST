@@ -6,14 +6,11 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Search potential recombinaison from wgMLST database export"""
 
 import sys
 import click
 
-from pymlst.api.core import find_recombination
-
-desc = "Search potential gene recombinaison from wgMLST database export"
+from pymlst.wg.core import find_recombination
 
 
 @click.command()

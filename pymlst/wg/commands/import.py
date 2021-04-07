@@ -6,54 +6,47 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Initialize a database from an online base"""
 import os
 import click
 import tempfile
 
 import requests
 
-from pymlst.api.core import open_cla
-
-from pymlst.lib.web import get_mlst_files, prompt_mlst
-from pymlst.api.core import create_logger
-
-desc = "Initialize a database from an online base"
+from pymlst import open_wg
+from pymlst.common.utils import create_logger
+from pymlst.common.web import prompt_cgmlst, build_coregene
 
 
 @click.command()
 @click.option('--prompt/--no-prompt',
               default=True)
-@click.option('--mlst', '-m',
-              type=click.STRING)
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
-def cli(prompt, mlst, database, species):
-    """Initialize a database from an online base"""
+def cli(prompt, database, species):
+    """Create a wgMLST database from an online resource"""
 
-    database.close()
     logger = create_logger()
 
     try:
 
-        url = prompt_mlst(' '.join(species), prompt, mlst)
-
-        if url is None:
+        url = prompt_cgmlst(' '.join(species), prompt)
+        if url == '':
             logger.info('No choice selected')
             return
-        else:
-            logger.info('Downloading mlst...')
+        logger.info('Downloading the core genome...')
 
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-                open_cla(os.path.abspath(database.name)) as mlst:
+        with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
 
-            get_mlst_files(tmp_dir, url=url)
+            skipped = build_coregene(url, tmp)
+            tmp.close()
+            if len(skipped) > 0:
+                logger.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
 
-            mlst.create(open(tmp_dir + '/profiles.csv', 'rt'),
-                        [open(tmp_dir + '/locus/' + locus, 'r') for locus in os.listdir(tmp_dir + '/locus')])
+            with open_wg(os.path.abspath(database.name)) as mlst:
+                mlst.create(tmp.name)
 
     except requests.exceptions.HTTPError:
         logger.error('An error occurred while retrieving online data')

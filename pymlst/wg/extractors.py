@@ -8,8 +8,8 @@ import subprocess
 import tempfile
 from abc import ABC
 
-from pymlst.api.core import Extractor
-from pymlst import get_binary_path
+from pymlst.common.binaries import get_binary_path
+from pymlst.wg.core import Extractor
 
 
 def run_mafft(path, tmpfile):
@@ -209,12 +209,12 @@ class TableExtractor(Extractor):
 class ExportType(ABC):
     @classmethod
     def list_types(cls):
-        importlib.import_module('pymlst.api.export_types')
+        importlib.import_module('pymlst.wg.export_types')
         return [exp.name() for exp in cls.__subclasses__()]
 
     @classmethod
     def get_type(cls, type_name):
-        importlib.import_module('pymlst.api.export_types')
+        importlib.import_module('pymlst.wg.export_types')
         for type_cls in cls.__subclasses__():
             if type_cls.name() is type_name:
                 return type_cls()

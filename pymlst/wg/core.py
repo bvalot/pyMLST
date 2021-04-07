@@ -1,18 +1,24 @@
-import logging
 import os
 import sys
-import re
-
 from abc import ABC
-from contextlib import contextmanager
 
 import networkx as nx
 from Bio import SeqIO
-from Bio.Data.CodonTable import TranslationError
+from decorator import contextmanager
+from sqlalchemy.sql.functions import count
 
-from pymlst import get_binary_path
-from pymlst.lib.database import DatabaseCLA, DatabaseWG
-from pymlst.lib import blat, psl
+from sqlalchemy import create_engine, bindparam, not_
+from sqlalchemy import and_
+from sqlalchemy import func
+from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
+
+from sqlalchemy.sql import select, exists
+from sqlalchemy.sql import distinct
+from sqlalchemy.sql.operators import in_op as in_
+
+from pymlst.common import blat, psl
+from pymlst.common.binaries import get_binary_path
+from pymlst.common.utils import create_logger, validate_sequence, read_genome, strip_file, write_count, compar_seqs
 
 
 @contextmanager
@@ -29,235 +35,292 @@ def open_wg(file=None, ref='ref'):
         mlst.close()
 
 
-@contextmanager
-def open_cla(file=None, ref='ref'):
-    mlst = ClassicalMLST(file, ref)
-    try:
-        yield mlst
-    except Exception:
-        mlst.rollback()
-        raise
-    else:
-        mlst.commit()
-    finally:
-        mlst.close()
+class DatabaseWG:
 
+    def __init__(self, path=None):
 
-def read_genome(genome):
-    seqs = {}
-    for seq in SeqIO.parse(genome, 'fasta'):
-        seqs[seq.id] = seq
-    return seqs
-
-
-def strip_file(file):
-    found = []
-    if file is not None:
-        for line in file.readLines():
-            found.append(line.rstrip('\n'))
-    return []
-
-
-def compar_seqs(seqs):
-    count = 0
-    dim = len(seqs[0])
-    for j in range(0, len(seqs[0])):
-        d = set([s[j] for s in seqs])
-        if '-' in d:
-            d.remove('-')
-        if len(d) > 1:
-            count += 1
-    return count
-
-
-def write_count(count, texte):
-    if count:
-        count.write(texte)
-
-
-def validate_sequence(sequence):
-    try:
-        sequence.translate(cds=True, table=11)
-    except TranslationError:
-        return False
-    else:
-        return True
-
-
-def create_logger():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(levelname)s: %(asctime)s] %(message)s')
-    return logging.getLogger('mlst')
-
-
-class ClassicalMLST:
-
-    def __init__(self, file=None, ref='ref'):
-        self.database = DatabaseCLA(file)
-        self.ref = ref
-        self.blat_path = '/usr/bin/'
-        self.logger = create_logger()
-
-    def create(self, scheme, alleles):
-        # Verify sheme list with fasta files
-        header = scheme.readline().rstrip("\n").split("\t")
-        if len(header) != len(alleles) + 1:
-            raise Exception("The number of genes in sheme don't correspond to the number of fasta file\n"
-                            + " ".join(header) + "\n")
-        fastas = {}
-        for f in alleles:
-            name = f.name.split("/")[-1]
-            name = name[:name.rfind(".")]
-            if name not in header:
-                raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
-            fastas[name] = f
-
-        # load sequence allele
-        alleles = {}
-        for g, f in fastas.items():
-            alleles[g] = set()
-            for seq in SeqIO.parse(f, 'fasta'):
-                try:
-                    # if len(seq.id.split("_")) == 2:
-                    #     allele = int(seq.id.split("_")[1])
-                    # elif len(seq.id.split("-")) == 2:
-                    #     allele = int(seq.id.split("-")[1])
-                    # elif g in seq.id:
-                    #     allele = int(seq.id.replace(g, ""))
-                    # else:
-                    #     allele = int(seq.id)
-                    match = re.search('[0-9]+$', seq.id)
-                    allele = int(match.group(0))
-
-                except Exception:
-                    raise Exception("Unable to obtain allele number for the sequence: " + seq.id)
-                self.database.add_sequence(str(seq.seq).upper(), g, allele)
-                alleles.get(g).add(allele)
-
-        # load MLST sheme
-        for line in scheme:
-            h = line.rstrip("\n").split("\t")
-            st = int(h[0])
-            for g, a in zip(header[1:], h[1:]):
-                if int(a) not in alleles.get(g):
-                    self.logger.info(
-                        "Unable to find the allele number " + a + " for gene " + g + "; replace by 0")
-                    self.database.add_mlst(st, g, 0)
-                else:
-                    self.database.add_mlst(st, g, int(a))
-
-        self.logger.info('Database initialized')
-
-    def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
-        if identity < 0 or identity > 1:
-            raise Exception("Identity must be between 0 to 1")
-
-        path = get_binary_path('blat')
         if path is None:
-            raise Exception('Unable to locate the Blat executable\n')
+            self.engine = create_engine('sqlite://')  # creates a :memory: database
+        else:
+            self.engine = create_engine('sqlite:///' + path)  # must be an absolute path
 
-        tmpfile, tmpout = blat.blat_tmp()
+        metadata = MetaData()
 
-        try:
-            # read coregene
-            coregenes = self.__create_coregene(tmpfile)
-            tmpfile.close()
+        self.sequences = Table('sequences', metadata,
+                               Column('id', Integer, primary_key=True),
+                               Column('sequence', Text, unique=True))
 
-            # BLAT analysis
-            self.logger.info("Search coregene with BLAT")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage, self.logger)
-            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes")
+        self.mlst = Table('mlst', metadata,
+                          Column('id', Integer, primary_key=True),
+                          Column('souche', Text, index=True),
+                          Column('gene', Text, index=True),
+                          Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
 
-            # Search sequence MLST
-            seqs = read_genome(genome)
-            self.logger.info("Search allele gene to database")
-            # print(genes)
-            allele = {i: [] for i in coregenes}
-            st = {i: set() for i in coregenes}
-            for coregene in coregenes:
-                if coregene not in genes:
-                    allele.get(coregene).append("")
-                    continue
-                for gene in genes.get(coregene):
-                    seq = seqs.get(gene.chro, None)
-                    if seq is None:
-                        raise Exception("Chromosome ID not found " + gene.chro)
+        metadata.create_all(self.engine)
 
-                    # verify coverage and correct
-                    if gene.coverage != 1:
-                        gene.searchCorrect()
-                        self.logger.info("Gene " + gene.geneId() + " fill: added")
+        self.connection = self.engine.connect()
+        self.transaction = self.connection.begin()
 
-                    # get sequence
-                    sequence = str(gene.getSequence(seq)).upper()
+        self.cached_queries = {}
 
-                    # verify complet sequence
-                    if len(sequence) != (gene.end - gene.start):
-                        self.logger.info("Gene " + gene.geneId() + " removed")
-                        continue
+    def get_cached_query(self, name, query_supplier):
+        if name in self.cached_queries:
+            return self.cached_queries[name]
+        query = query_supplier()
+        self.cached_queries[name] = query
+        return query
 
-                    # write fasta file with coregene
-                    if fasta is not None:
-                        fasta.write(">" + coregene + "\n")
-                        fasta.write(sequence + "\n")
+    def add_mlst(self, souche, gene, seqid):
+        """Adds an MLST gene bound to an existing sequence"""
+        self.connection.execute(
+            self.mlst.insert(),
+            souche=souche, gene=gene, seqid=seqid)
 
-                    # search allele
-                    res = self.database.get_allele_by_sequence_and_gene(sequence, coregene)
-                    if res is not None:
-                        allele.get(coregene).append(str(res[0]))
-                        # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
-                        #                (coregene, row[0]))
-                        strains = self.database.get_strains_by_gene_and_allele(coregene, res[0])
-                        for strain in strains:
-                            st.get(coregene).add(strain[0])
-                    else:
-                        allele.get(gene.geneId()).append("new")
+    def add_sequence(self, sequence):
+        """Adds a sequence if it doesn't already exist"""
+        query = self.get_cached_query(
+            'add_sequence',
+            lambda:
+            select([self.sequences.c.id])
+                .where(self.sequences.c.sequence == bindparam('sequence')))
 
-            # if only know allele or not found
-            # Seach st
-            st_val = []
-            if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
-                tmp = None
-                for s in st.values():
-                    if s:
-                        if tmp is None:
-                            tmp = s
-                        else:
-                            tmp = tmp.intersection(s)
-                st_val = list(tmp)
+        existing = self.connection.execute(
+            query,
+            sequence=sequence
+        ).fetchone()
 
-            # print result
-            coregenes.sort()
-            output.write("Sample\tST\t" + "\t".join(coregenes) + "\n")
-            output.write(genome.name + "\t" + ";".join(map(str, st_val)))
-            for coregene in coregenes:
-                output.write("\t" + ";".join(map(str, allele.get(coregene))))
-            output.write("\n")
-            self.logger.info("FINISH")
-        finally:
-            if os.path.exists(tmpfile.name):
-                os.remove(tmpfile.name)
-            if os.path.exists(tmpout.name):
-                os.remove(tmpout.name)
+        if existing is not None:
+            return False, existing.id
 
-    def __create_coregene(self, tmpfile):
-        ref = int(1)
-        all_rows = self.database.get_genes_by_allele(ref)
-        coregenes = []
-        for row in all_rows:
-            tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
-            coregenes.append(row[0])
-        return coregenes
+        res = self.connection.execute(
+            self.sequences.insert(),
+            sequence=sequence)
 
-    def close(self):
-        self.database.close()
+        return True, res.inserted_primary_key[0]
+
+    def concatenate_gene(self, seq_id, gene_name):
+        """Associates a new gene to an existing sequence using concatenation"""
+        self.connection.execute(
+            self.mlst.update()
+                .values(gene=self.mlst.c.gene + ';' + gene_name)
+                .where(self.mlst.c.seqid == seq_id))
+
+    def remove_sequences(self, ids):
+        """Removes sequences and the genes that reference them"""
+        self.connection.execute(
+            self.sequences.delete()
+            .where(in_(self.sequences.c.id, ids)))
+        self.connection.execute(
+            self.mlst.delete()
+            .where(in_(self.mlst.c.seqid, ids)))
+
+    def remove_orphan_sequences(self, ids):
+        """Removes sequences if they aren't referenced by any gene"""
+        query = self.sequences.delete() \
+            .where(and_(
+                not_(exists(
+                    select([self.mlst.c.id])
+                    .where(self.mlst.c.seqid == self.sequences.c.id))),
+                self.sequences.c.id == bindparam('seqid')))
+
+        for seqid in ids:
+            self.connection.execute(
+                query,
+                seqid=seqid[0])
+
+    def remove_gene(self, gene):
+        self.connection.execute(
+            self.mlst.delete()
+            .where(self.mlst.c.gene == gene))
+
+    def remove_strain(self, strain):
+        self.connection.execute(
+            self.mlst.delete()
+                .where(self.mlst.c.souche == strain))
+
+    def get_gene_sequences_ids(self, gene):
+        return self.connection.execute(
+            select([self.mlst.c.seqid])
+            .where(self.mlst.c.gene == gene)
+        ).fetchall()
+
+    def get_strain_sequences_ids(self, strain):
+        return self.connection.execute(
+            select([self.mlst.c.seqid])
+            .where(self.mlst.c.souche == strain)
+        ).fetchall()
+
+    def get_gene_by_souche(self, souche):
+        return self.connection.execute(
+            select([self.mlst.c.gene, self.sequences.c.sequence])
+                .where(and_(
+                self.mlst.c.souche == souche,
+                self.mlst.c.seqid == self.sequences.c.id))
+        ).fetchall()
+
+    def contains_souche(self, souche):
+        return self.connection.execute(
+            select([self.mlst.c.id])
+                .where(self.mlst.c.souche == souche)
+                .limit(1)
+        ).fetchone() is not None
+
+    def get_gene_sequences(self, gene, souche):
+        query = self.get_cached_query(
+            'get_gene_sequences',
+            lambda:
+            select([self.mlst.c.seqid,
+                    func.group_concat(self.mlst.c.souche, bindparam('separator')),
+                    self.sequences.c.sequence])
+            .select_from(
+                self.mlst.join(self.sequences))
+            .where(and_(
+                self.mlst.c.souche != bindparam('souche'),
+                self.mlst.c.gene == bindparam('gene')))
+            .group_by(self.mlst.c.seqid))
+
+        res = self.connection.execute(
+            query,
+            separator=';',
+            souche=souche,
+            gene=gene
+        ).fetchall()
+
+        # res = self.connection.execute(
+        #     '''SELECT mlst.seqid, group_concat(mlst.souche, ";") AS group_concat_1, sequences.sequence
+        #     FROM mlst JOIN sequences ON sequences.id = mlst.seqid
+        #     WHERE mlst.souche != ? AND mlst.gene = ? GROUP BY mlst.seqid''', (souche, gene)
+        # )
+
+        seqs = []
+        for seq in res:
+            tmp = seq[1].split(";")
+            tmp.sort()
+            seqs.append([seq[0], tmp, seq[2]])
+        return seqs
+
+    def get_genes_coverages(self, ref):
+        return self.connection.execute(
+            select([self.mlst.c.gene,
+                    func.count(distinct(self.mlst.c.souche))])
+                    .where(self.mlst.c.souche != ref)
+                    .group_by(self.mlst.c.gene)
+        ).fetchall()
+
+    def get_duplicated_genes(self, ref):
+        m_alias = self.mlst.alias()
+
+        exist_sub = select([self.mlst]) \
+            .where(and_(
+            self.mlst.c.souche == m_alias.c.souche,
+            self.mlst.c.gene == m_alias.c.gene,
+            self.mlst.c.id != m_alias.c.id))
+
+        res = self.connection.execute(
+            select([self.mlst.c.gene])
+                .where(and_(
+                exists(exist_sub),
+                self.mlst.c.souche != ref
+            ))
+                .group_by(self.mlst.c.gene)
+        ).fetchall()
+
+        return set([row[0] for row in res])
+
+    def get_all_strains(self, ref):
+        res = self.connection.execute(
+            select([distinct(self.mlst.c.souche)]).
+            where(self.mlst.c.souche != ref)
+        ).fetchall()
+        return [r[0] for r in res]
+
+    def get_all_genes(self, ref):
+        res = self.connection.execute(
+            select([distinct(self.mlst.c.gene)]).
+            where(self.mlst.c.souche == ref)
+        ).fetchall()
+        return [r[0] for r in res]
+
+    def count_sequences_per_gene(self, ref):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, count(distinct(self.mlst.c.seqid))])
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def count_souches_per_gene(self, ref):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, count(distinct(self.mlst.c.souche))])
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def count_genes_per_souche(self, valid_shema):
+        res = self.connection.execute(
+            select([self.mlst.c.souche, count(distinct(self.mlst.c.gene))])
+            .where(in_(self.mlst.c.gene, valid_shema))
+            .group_by(self.mlst.c.souche)
+        ).fetchall()
+        return {r[0]: r[1] for r in res}
+
+    def get_sequences_number(self, ref):
+        return self.connection.execute(
+               select([count(distinct(self.mlst.c.seqid))])
+               .where(self.mlst.c.souche != ref)
+        ).fetchone()[0]
+
+    def get_strains_distances(self, ref, valid_schema):
+        m1 = self.mlst.alias()
+        m2 = self.mlst.alias()
+
+        res = self.connection.execute(
+            select(
+                [m1.c.souche, m2.c.souche, count(distinct(m1.c.gene))])
+            .select_from(
+                m1.join(m2,
+                        and_(
+                            m1.c.gene == m2.c.gene,
+                            m1.c.souche != m2.c.souche,
+                            m1.c.seqid != m2.c.seqid)))
+            .where(and_(
+                in_(m1.c.gene, valid_schema),
+                m1.c.souche != ref,
+                m2.c.souche != ref))
+            .group_by(m1.c.souche, m2.c.souche)
+        ).fetchall()
+
+        distance = {}
+        for r in res:
+            x = distance.setdefault(r[0], {})
+            x[r[1]] = r[2]
+
+        return distance
+
+    def get_mlst(self, ref, valid_schema):
+        res = self.connection.execute(
+            select([self.mlst.c.gene, self.mlst.c.souche, func.group_concat(self.mlst.c.seqid, ';')])
+            .where(and_(self.mlst.c.souche != ref,
+                        in_(self.mlst.c.gene, valid_schema)))
+            .group_by(self.mlst.c.gene, self.mlst.c.souche)
+        ).fetchall()
+
+        mlst = {}
+
+        for r in res:
+            x = mlst.setdefault(r[0], {})
+            x[r[1]] = r[2]
+        return mlst
 
     def commit(self):
-        self.database.commit()
+        self.transaction.commit()
 
     def rollback(self):
-        self.database.rollback()
+        self.transaction.rollback()
+
+    def close(self):
+        self.engine.dispose()
 
 
 class WholeGenomeMLST:

@@ -9,7 +9,7 @@
 import sys
 import subprocess
 import tempfile
-from .psl import Psl
+from pymlst.common.psl import Psl
 
 
 def run_blat(path, genome, tmpfile, tmpout, identity, coverage, logger):

@@ -6,13 +6,10 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Create a wgMLST database"""
-
 import os
 import click
 
-from pymlst.api.core import open_wg
-from pymlst.lib.benchmark import benchmark
+from pymlst import open_wg
 
 
 @click.command(name="create_db")
@@ -24,7 +21,6 @@ from pymlst.lib.benchmark import benchmark
               help='Automatically remove genes with duplicated sequences')
 @click.argument('coregene', type=click.File('r'))
 @click.argument('database', type=click.File('w'))
-@benchmark
 def cli(coregene, database, concatenate, remove):
     """Create a wgMLST database from a template"""
 

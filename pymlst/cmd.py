@@ -8,14 +8,17 @@ from click import Option
 
 from pymlst import version
 
-plugin_folder = os.path.join(os.path.dirname(__file__), 'wg_commands')
 
+class Command(click.MultiCommand):
 
-class CommandWG(click.MultiCommand):
+    def __init__(self, path):
+        super().__init__(help='Subcommands are loaded from a ' 
+                         'plugin folder dynamically')
+        self.path = path
 
     def list_commands(self, ctx):
         rv = []
-        for filename in os.listdir(plugin_folder):
+        for filename in os.listdir(self.path):
             if filename.endswith('.py') and not filename.startswith('__init__'):
                 rv.append(filename[:-3])
         rv.sort()
@@ -23,7 +26,7 @@ class CommandWG(click.MultiCommand):
 
     def get_command(self, ctx, name):
         ns = {}
-        fn = os.path.join(plugin_folder, name + '.py')
+        fn = os.path.join(self.path, name + '.py')
         with open(fn) as f:
             code = compile(f.read(), fn, 'exec')
             eval(code, ns, ns)
@@ -38,14 +41,12 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-cli = CommandWG(help='wgMLST\'s subcommands are loaded from a '
-                     'plugin folder dynamically.')
+wg = Command(os.path.join(os.path.dirname(__file__), 'wg/commands'))
+cla = Command(os.path.join(os.path.dirname(__file__), 'cla/commands'))
 
 opt = Option(['--version', '-v'], is_flag=True, callback=print_version,
              expose_value=False, is_eager=True,
              help='Prints PyMLST version.')
 
-cli.params.append(opt)
-
-if __name__ == '__main__':
-    cli()
+wg.params.append(opt)
+cla.params.append(opt)

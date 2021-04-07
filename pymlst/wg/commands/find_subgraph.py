@@ -6,14 +6,11 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Search group of strains at a distance treshold"""
 
 import sys
 import click
 
-from pymlst.api.core import find_subgraph
-
-desc = "Search group os strain at a distance treshold"
+from pymlst.wg.core import find_subgraph
 
 
 @click.command()

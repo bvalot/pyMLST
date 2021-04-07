@@ -6,18 +6,11 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Add a strain to the wgMLST database"""
-
 import os
 
 import click
 
-from pymlst.api.core import open_wg
-from pymlst.lib.benchmark import benchmark
-
-blat_path = '/usr/bin/'
-
-desc = "Add a strain to the wgMLST database"
+from pymlst import open_wg
 
 
 @click.command()
@@ -34,7 +27,6 @@ desc = "Add a strain to the wgMLST database"
                 type=click.File("r"))
 @click.argument('database',
                 type=click.File("r"))
-@benchmark
 def cli(strain, identity, coverage, genome, database):
     """Add a strain to the wgMLST database"""
 

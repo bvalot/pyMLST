@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from pymlst.api.extractors import ExportType
+from pymlst.wg.extractors import ExportType
 
 
 class StrainExport(ExportType):

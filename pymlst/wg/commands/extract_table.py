@@ -12,12 +12,8 @@ import sys
 
 import click
 
-from pymlst.api.extractors import TableExtractor, ExportType
-from pymlst.api.core import open_wg
-
-from pymlst.lib.benchmark import benchmark
-
-desc = "Extract MLST table from a wgMLST database"
+from pymlst.wg.extractors import TableExtractor, ExportType
+from pymlst import open_wg
 
 
 @click.command()
@@ -46,7 +42,6 @@ desc = "Extract MLST table from a wgMLST database"
               help='Keep only gene that do not ' \
               'meet the filter of mincover or keep options')
 @click.argument('database', type=click.File('r'))
-@benchmark
 def cli(output, export, count, mincover, keep, duplicate, inverse, database):
     """Extract MLST table from a wgMLST database"""
 

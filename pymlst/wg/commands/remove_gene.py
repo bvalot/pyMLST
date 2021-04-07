@@ -6,14 +6,11 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Remove gene to a wgMLST database"""
 import os
 
 import click
 
-from pymlst.api.core import open_wg
-
-desc = "Remove gene to a wgMLST database and sequences specificaly associated"
+from pymlst import open_wg
 
 
 @click.command()

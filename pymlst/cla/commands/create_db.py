@@ -6,15 +6,10 @@
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
 
-"""Create a classical MLST database"""
 import os
 import click
 
-from pymlst.api.core import open_cla
-
-from pymlst.lib.benchmark import benchmark
-
-desc = "Create a classical MLST database from a sheme"
+from pymlst import open_cla
 
 
 @click.command()
@@ -24,7 +19,6 @@ desc = "Create a classical MLST database from a sheme"
                 type=click.File('r'))
 @click.argument('alleles',
                 type=click.File('r'), nargs=-1, required=True)
-@benchmark
 def cli(database, scheme, alleles):
     """Create a classical MLST database from a sheme"""
 
