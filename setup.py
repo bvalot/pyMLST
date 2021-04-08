@@ -49,7 +49,18 @@ setup(
     version=version,
     install_requires=[
         # Include dependencies here
-        'click>=7.0,<8'
+        'biopython~=1.78',
+        'click~=7.1.2',
+        'pytest~=6.2.2',
+        'SQLAlchemy~=1.3.23',
+        'networkx~=2.5',
+        'decorator~=4.4.2',
+        'requests~=2.22.0',
+        'pandas~=1.2.1',
+        'numpy~=1.20.0',
+        'beautifulsoup4~=4.9.3',
+        'PyInquirer~=1.0.3',
+        'setuptools~=44.0.0'
     ],
     entry_points="""
     [console_scripts]

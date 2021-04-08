@@ -5,7 +5,7 @@ import os
 import shutil
 
 
-config_path = resource_filename(Requirement.parse("pymlst"), "config.conf")
+config_path = resource_filename(Requirement.parse("pymlst"), "pymlst.conf")
 
 
 def update_binary_paths(paths):
