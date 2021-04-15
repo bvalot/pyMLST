@@ -5,6 +5,10 @@
 ##benoit.valot@univ-fcomte.fr
 ##UMR 6249 Chrono-Environnement, Besançon, France
 ##Licence GPL
+from Bio import Align
+
+from pymlst.common import mafft
+
 
 def testCDS(seq, reverse):
     try:
@@ -89,6 +93,81 @@ class Psl:
             return self.__searchCDS(seq, False, True, windows, diff)
         else:
             raise Exception("A problem of start/stop for gene " + self.geneId())
+
+    def searchPartialCDSTest(self, seq, coverage, database, coregene, souche):
+        ##modifs start and stop not create
+        # if self.rstart !=0 and self.rend != self.rtotal:
+        #     return False
+        windows = int((1-coverage)*self.rtotal)
+        # if self.rstart !=0:
+        #     diff = self.rstart
+        #     return self.__searchCDS(seq, True, False, windows, diff)
+        # elif self.rend != self.rtotal:
+        #     diff = self.rtotal - self.rend
+        #     return self.__searchCDS(seq, False, True, windows, diff)
+        if self.rstart > 0:
+            start = self.start - 36
+            if start < 0:
+                start = 0
+        else:
+            start = self.start
+
+        if self.rend < self.rtotal:
+            end = self.end + 36
+            if end > len(seq.seq):
+                end = len(seq.seq) - 1
+        else:
+            end = self.end
+
+        reverse = (self.strand != '+')
+
+        from Bio.Align import substitution_matrices
+
+        aligner = Align.PairwiseAligner()
+        aligner.open_gap_score = -10
+        aligner.query_end_gap_score = 0
+
+        target = seq.seq[start:end]
+        if reverse:
+            target = target.reverse_complement()
+
+        query = database.get_sequence_by_gene_and_souche(coregene, souche)[1]
+        #alignments = aligner.align(target, query)
+
+        max = 10
+
+        al_start, al_end = mafft.get_aligned_area(query, str(target))
+        align = target[al_start:al_end]
+        print(type(align))
+        if testCDS(align, reverse):
+            print('FOUND CORRECT : ' + coregene)
+            return True
+        else:
+            print('FAIL : ' + coregene + ' in ' + self.chro)
+            return False
+
+        # for align in alignments:
+        #     a_start = align.aligned[0][0][0]  # target start
+        #     a_end = align.aligned[0][-1][1]  # target end
+        #     q_start = align.aligned[1][0][0]  # query start
+        #     q_end = align.aligned[1][-1][1]  # query end
+        #     if testCDS(seq.seq[start+a_start:start+a_end], reverse):
+        #         print('FOUND CORRECT : ' + coregene)
+        #         print('Attempt: ' + str(100-max))
+        #         print('Before align: ' + str(self.rstart) + '-' + str(self.rend) + ' / ' + str(self.rtotal))
+        #         print('Aligned: ' + str(q_start) + '-' + str(q_end))
+        #         print('Alignment location: ' + str(start+a_start) + '-' + str(start+a_end) + ' (' + str(a_end-a_start) + ')')
+        #         print(align.format())
+        #         return True
+        #     max -= 1
+        #     if max == 0:
+        #         break
+        # print('FAIL : ' + coregene + ' in ' + self.chro)
+        # print(alignments[0].format())
+        #print('Not found... (tried ' + str(100 - max) + ') (' + str(reverse) + ')')
+        #print(alignments[0].format())
+        # return False
+
     
     def __searchCDS(self, seq, start, stop, windows, diff):
         ##correct windows/diff multiple of 3

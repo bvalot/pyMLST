@@ -3,11 +3,24 @@ from Bio.Data.CodonTable import TranslationError
 import logging
 
 
-def read_genome(genome):
-    seqs = {}
-    for seq in SeqIO.parse(genome, 'fasta'):
-        seqs[seq.id] = seq
-    return seqs
+def records_to_dict(records):
+    print('records: ' + str(type(records)))
+    seq_dict = {}
+    for seq in records:
+        print('seq: ' + str(type(seq)))
+        seq_dict[seq.id] = seq
+    return seq_dict
+
+
+def read_genome(handle):
+    records = SeqIO.parse(handle, 'fasta')
+    return records_to_dict(records)
+
+
+def write_genome(genome_dict, handle):
+    for seq_id, seq in genome_dict.items():
+        handle.write('> ' + seq_id + '\n'
+                     + seq + '\n')
 
 
 def strip_file(file):

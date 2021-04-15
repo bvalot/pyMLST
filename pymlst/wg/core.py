@@ -150,6 +150,15 @@ class DatabaseWG:
             .where(self.mlst.c.souche == strain)
         ).fetchall()
 
+    def get_sequence_by_gene_and_souche(self, gene, souche):
+        return self.connection.execute(
+            select([self.mlst.c.gene, self.sequences.c.sequence])
+            .where(and_(
+                self.mlst.c.gene == gene,
+                self.mlst.c.souche == souche,
+                self.mlst.c.seqid == self.sequences.c.id))
+        ).fetchone()
+
     def get_gene_by_souche(self, souche):
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
@@ -410,6 +419,10 @@ class WholeGenomeMLST:
             # add MLST sequence
             seqs = read_genome(genome)
             bad = 0
+            found = 0
+            found_list = []
+            fail = 0
+
             for coregene in coregenes:
                 if coregene not in genes:
                     continue
@@ -420,11 +433,15 @@ class WholeGenomeMLST:
 
                     # Correct coverage
                     if gene.coverage != 1:
-                        if gene.searchPartialCDS(seq, coverage) is False:
+                        if gene.searchPartialCDSTest(seq, coverage, self.database, coregene, self.ref) is False:
+                            # if gene.searchPartialCDS(seq, coverage) is False:
                             self.logger.info("Gene " + gene.geneId() + " partial: removed")
                             bad += 1
+                            fail += 1
                             continue
                         else:
+                            found += 1
+                            found_list.append(coregene)
                             self.logger.info("Gene " + gene.geneId() + " fill: added")
 
                     # Verify CDS
@@ -445,6 +462,10 @@ class WholeGenomeMLST:
 
             self.logger.info("Add " + str(len(genes) - bad) + " new MLST gene to databas")
             self.logger.info("FINISH")
+
+            print('FOUND: ' + str(found))
+            print('-> ' + str(found_list))
+            print('FAILS: ' + str(fail))
 
         finally:
             if os.path.exists(tmpfile.name):
