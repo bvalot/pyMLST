@@ -38,12 +38,12 @@ def _first_aligned_position(sequence):
 def get_aligned_area(query, target):
     alignments = align({'query': query, 'target': target})
     if not alignments:
-        return None
+        return None, None
     q_align = alignments['query']
     q_len = len(q_align)
     start_index = _first_aligned_position(q_align)
     if start_index == -1:
-        return None
+        return None, None
     end_index = q_len - _first_aligned_position(reversed(q_align))
     return start_index, end_index
 

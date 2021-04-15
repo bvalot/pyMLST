@@ -433,16 +433,16 @@ class WholeGenomeMLST:
 
                     # Correct coverage
                     if gene.coverage != 1:
-                        if gene.searchPartialCDSTest(seq, coverage, self.database, coregene, self.ref) is False:
-                            # if gene.searchPartialCDS(seq, coverage) is False:
+                        if gene.searchPartialCDS(seq, self.database, coregene, self.ref):
+                            found += 1
+                            found_list.append(coregene)
+                            self.logger.info("Gene " + gene.geneId() + " fill: added")
+                        else:
                             self.logger.info("Gene " + gene.geneId() + " partial: removed")
                             bad += 1
                             fail += 1
                             continue
-                        else:
-                            found += 1
-                            found_list.append(coregene)
-                            self.logger.info("Gene " + gene.geneId() + " fill: added")
+
 
                     # Verify CDS
                     if psl.testCDS(gene.getSequence(seq), False) is False:

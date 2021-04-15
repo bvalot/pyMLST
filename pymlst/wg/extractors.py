@@ -1,48 +1,11 @@
 import abc
 import importlib
 
-import os
-
-import subprocess
-
-import tempfile
 from abc import ABC
 
 from pymlst.common import mafft
 from pymlst.common.binaries import get_binary_path
-from pymlst.common.utils import write_genome
 from pymlst.wg.core import Extractor
-
-
-# def run_mafft(path, tmpfile):
-#     command = [path, '--quiet', tmpfile.name]
-#     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-#     genes = {}
-#     ids = None
-#     seq = ""
-#     for line in iter(proc.stdout.readline, ''):
-#         if ids is None and line[0] == '>':
-#             ids = line.lstrip('>').rstrip("\n")
-#         elif ids is not None and line[0] == '>':
-#             genes[int(ids)] = seq.upper()
-#             ids = line.lstrip('>').rstrip("\n")
-#             seq = ""
-#         elif ids is not None:
-#             seq += line.rstrip("\n")
-#         else:
-#             raise Exception("A problem occurred while running mafft" + str(line))
-#     if seq != "":
-#         genes[int(ids)] = seq.upper()
-#
-#     return genes
-
-
-# def write_tmp_seqs(tmpfile, seqs):
-#     tmp = open(tmpfile.name, 'w+t')
-#     for s in seqs:
-#         tmp.write(">"+str(s[0])+"\n"+s[2]+"\n")
-#     write_genome({s[0]: s[2] for s in seqs}, tmp)
-#     tmp.close()
 
 
 def add_sequence_strain(seqs, strains, sequences):
@@ -69,11 +32,6 @@ class SequenceExtractor(Extractor):
         self.mincover = mincover
 
     def extract(self, base, ref, output, logger):
-        # tmpfile = tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False)
-        # tmpfile.close()
-        sequences = {}
-
-        #try:
         # Minimun number of strain
         strains = base.get_all_strains(ref)
         if self.mincover < 1 or self.mincover > len(strains):
@@ -122,7 +80,7 @@ class SequenceExtractor(Extractor):
                     mafft_path = get_binary_path('mafft')
                     if mafft_path is None:
                         raise Exception('Unable to locate the Mafft executable\n')
-                    #corrseqs = run_mafft(mafft_path, tmpfile)
+
                     genes = {str(s[0]): s[2] for s in seqs}
                     corrseqs = mafft.align(genes)
                     for seq in seqs:
@@ -134,9 +92,6 @@ class SequenceExtractor(Extractor):
             for s in strains:
                 output.write('>' + s + "\n")
                 output.write("\n".join(sequences.get(s)) + "\n")
-        # finally:
-        #     if os.path.exists(tmpfile.name):
-        #         os.remove(tmpfile.name)
 
 
 class TableExtractor(Extractor):

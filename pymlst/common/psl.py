@@ -52,59 +52,49 @@ class Psl:
         #     raise Exception("Gene " + self.geneId() + " incomplete\n")
         return sequence
 
-    def searchCorrect(self):
-        if int(self.pslelement[11]) != 0:
-            diff = int(self.pslelement[11])
-            if self.strand == "+":
-                self.start = self.start - diff
-            else:
-                self.end = self.end + diff
-        elif int(self.pslelement[10]) != int(self.pslelement[12]):
-            diff = int(self.pslelement[10]) - int(self.pslelement[12])
-            if self.strand == "+":
-                self.end = self.end + diff
-            else:
-                self.start = self.start - diff   
-        self.coverage = 1
-    
-    def searchCorrectCDS(self, seq, coverage):
-        prot = self.getSequence(seq)
-        ##modifs start and stop not create
-        if prot.startswith("M") is False and prot.endswith("*") is False:
-            return False
-        windows = int((1-coverage)*self.rtotal)
-        if prot.startswith("M") is False:
-            return self.__searchCDS(seq, True, False, windows, 0)
-        elif prot.endswith("*") is False:
-            return self.__searchCDS(seq, False, True, windows, 0)
-        else:
-            raise Exception("A problem of start/stop  for gene " + self.geneId())
+    # def searchCorrect(self):
+    #     if int(self.pslelement[11]) != 0:
+    #         diff = int(self.pslelement[11])
+    #         if self.strand == "+":
+    #             self.start = self.start - diff
+    #         else:
+    #             self.end = self.end + diff
+    #     elif int(self.pslelement[10]) != int(self.pslelement[12]):
+    #         diff = int(self.pslelement[10]) - int(self.pslelement[12])
+    #         if self.strand == "+":
+    #             self.end = self.end + diff
+    #         else:
+    #             self.start = self.start - diff
+    #     self.coverage = 1
+    #
+    # def searchCorrectCDS(self, seq, coverage):
+    #     prot = self.getSequence(seq)
+    #     ##modifs start and stop not create
+    #     if prot.startswith("M") is False and prot.endswith("*") is False:
+    #         return False
+    #     windows = int((1-coverage)*self.rtotal)
+    #     if prot.startswith("M") is False:
+    #         return self.__searchCDS(seq, True, False, windows, 0)
+    #     elif prot.endswith("*") is False:
+    #         return self.__searchCDS(seq, False, True, windows, 0)
+    #     else:
+    #         raise Exception("A problem of start/stop  for gene " + self.geneId())
 
-    def searchPartialCDS(self, seq, coverage):
-        ##modifs start and stop not create
-        if self.rstart !=0 and self.rend != self.rtotal:
-            return False
-        windows = int((1-coverage)*self.rtotal)
-        if self.rstart !=0:
-            diff = self.rstart
-            return self.__searchCDS(seq, True, False, windows, diff)
-        elif self.rend != self.rtotal:
-            diff = self.rtotal - self.rend
-            return self.__searchCDS(seq, False, True, windows, diff)
-        else:
-            raise Exception("A problem of start/stop for gene " + self.geneId())
+    # def searchPartialCDS(self, seq, coverage):
+    #     ##modifs start and stop not create
+    #     if self.rstart !=0 and self.rend != self.rtotal:
+    #         return False
+    #     windows = int((1-coverage)*self.rtotal)
+    #     if self.rstart !=0:
+    #         diff = self.rstart
+    #         return self.__searchCDS(seq, True, False, windows, diff)
+    #     elif self.rend != self.rtotal:
+    #         diff = self.rtotal - self.rend
+    #         return self.__searchCDS(seq, False, True, windows, diff)
+    #     else:
+    #         raise Exception("A problem of start/stop for gene " + self.geneId())
 
-    def searchPartialCDSTest(self, seq, coverage, database, coregene, souche):
-        ##modifs start and stop not create
-        # if self.rstart !=0 and self.rend != self.rtotal:
-        #     return False
-        windows = int((1-coverage)*self.rtotal)
-        # if self.rstart !=0:
-        #     diff = self.rstart
-        #     return self.__searchCDS(seq, True, False, windows, diff)
-        # elif self.rend != self.rtotal:
-        #     diff = self.rtotal - self.rend
-        #     return self.__searchCDS(seq, False, True, windows, diff)
+    def searchPartialCDS(self, seq, database, coregene, souche):
         if self.rstart > 0:
             start = self.start - 36
             if start < 0:
@@ -121,132 +111,93 @@ class Psl:
 
         reverse = (self.strand != '+')
 
-        from Bio.Align import substitution_matrices
-
-        aligner = Align.PairwiseAligner()
-        aligner.open_gap_score = -10
-        aligner.query_end_gap_score = 0
-
         target = seq.seq[start:end]
         if reverse:
             target = target.reverse_complement()
 
         query = database.get_sequence_by_gene_and_souche(coregene, souche)[1]
-        #alignments = aligner.align(target, query)
-
-        max = 10
 
         al_start, al_end = mafft.get_aligned_area(query, str(target))
-        align = target[al_start:al_end]
-        print(type(align))
-        if testCDS(align, reverse):
-            print('FOUND CORRECT : ' + coregene)
-            return True
-        else:
-            print('FAIL : ' + coregene + ' in ' + self.chro)
-            return False
+        # finis here
 
-        # for align in alignments:
-        #     a_start = align.aligned[0][0][0]  # target start
-        #     a_end = align.aligned[0][-1][1]  # target end
-        #     q_start = align.aligned[1][0][0]  # query start
-        #     q_end = align.aligned[1][-1][1]  # query end
-        #     if testCDS(seq.seq[start+a_start:start+a_end], reverse):
-        #         print('FOUND CORRECT : ' + coregene)
-        #         print('Attempt: ' + str(100-max))
-        #         print('Before align: ' + str(self.rstart) + '-' + str(self.rend) + ' / ' + str(self.rtotal))
-        #         print('Aligned: ' + str(q_start) + '-' + str(q_end))
-        #         print('Alignment location: ' + str(start+a_start) + '-' + str(start+a_end) + ' (' + str(a_end-a_start) + ')')
-        #         print(align.format())
-        #         return True
-        #     max -= 1
-        #     if max == 0:
-        #         break
-        # print('FAIL : ' + coregene + ' in ' + self.chro)
-        # print(alignments[0].format())
-        #print('Not found... (tried ' + str(100 - max) + ') (' + str(reverse) + ')')
-        #print(alignments[0].format())
-        # return False
-
-    
-    def __searchCDS(self, seq, start, stop, windows, diff):
-        ##correct windows/diff multiple of 3
-        windows = windows - windows%3
-        diff = diff - diff%3
-        ##modifs start and stop not create
-        if start and stop:
-            return False
-        ##modifs start
-        if start:
-            ##modulo = (self.end-self.start)%3
-            if self.strand == "+":
-                theoStart = self.__getTheoricStart(diff)
-                val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
-                       if testCDS(seq.seq[i:self.end], False)]
-                if len(val)==1:
-                    self.start=val[0]
-                    return True
-                elif len(val) >1:
-                    best = self.__getBest(val)
-                    self.logger.info("Choosing best start for gene " + self.geneId() + " " \
-                                     + str(best) + " " + str(val))
-                    self.start = best
-                    return True
-                else:
-                    return False
-            else:
-                theoEnd = self.__getTheoricEnd(diff)
-                val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
-                       if testCDS(seq.seq[self.start:i], True)]
-                if len(val) == 1:
-                    self.end = val[0]
-                    return True
-                elif len(val) >1:
-                    best = self.__getBest(val)
-                    self.logger.info("Choosing best start for gene " + self.geneId() + " " \
-                                     + str(best) + " " + str(val))
-                    self.end = best
-                    return True
-                else:
-                    return False
-        ##modifs end
-        elif stop:
-            ##modulo = (self.end-self.start)%3
-            if self.strand == "+":
-                theoEnd = self.__getTheoricEnd(diff)
-                val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
-                       if testCDS(seq.seq[self.start:i], False)]
-                if len(val) == 1:
-                    self.end = val[0]
-                    return True
-                else:
-                    return False
-            else:
-                theoStart = self.__getTheoricStart(diff)
-                val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
-                       if testCDS(seq.seq[i:self.end], True)]
-                if len(val) == 1:
-                    self.start = val[0]
-                    return True
-                else:
-                    return False
-
-    def __getTheoricStart(self, diff):
-        modulo = (self.end-self.start)%3
-        return self.start + modulo - diff
-
-    def __getTheoricEnd(self, diff):
-        modulo = (self.end-self.start)%3
-        return self.end - modulo + diff
-        
-    def __getBest(self, val):
-        best = val[0]
-        for v in val[1:]:
-            if self.strand == "+":
-                if abs(abs(self.end - v) - self.rtotal) < abs(abs(self.end - best) - self.rtotal):
-                    best = v
-            else:
-                if abs(abs(v - self.start) - self.rtotal) < abs(abs(best - self.start) - self.rtotal):
-                    best = v
-        return best
+    # def __searchCDS(self, seq, start, stop, windows, diff):
+    #     ##correct windows/diff multiple of 3
+    #     windows = windows - windows%3
+    #     diff = diff - diff%3
+    #     ##modifs start and stop not create
+    #     if start and stop:
+    #         return False
+    #     ##modifs start
+    #     if start:
+    #         ##modulo = (self.end-self.start)%3
+    #         if self.strand == "+":
+    #             theoStart = self.__getTheoricStart(diff)
+    #             val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
+    #                    if testCDS(seq.seq[i:self.end], False)]
+    #             if len(val)==1:
+    #                 self.start=val[0]
+    #                 return True
+    #             elif len(val) >1:
+    #                 best = self.__getBest(val)
+    #                 self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+    #                                  + str(best) + " " + str(val))
+    #                 self.start = best
+    #                 return True
+    #             else:
+    #                 return False
+    #         else:
+    #             theoEnd = self.__getTheoricEnd(diff)
+    #             val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
+    #                    if testCDS(seq.seq[self.start:i], True)]
+    #             if len(val) == 1:
+    #                 self.end = val[0]
+    #                 return True
+    #             elif len(val) >1:
+    #                 best = self.__getBest(val)
+    #                 self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+    #                                  + str(best) + " " + str(val))
+    #                 self.end = best
+    #                 return True
+    #             else:
+    #                 return False
+    #     ##modifs end
+    #     elif stop:
+    #         ##modulo = (self.end-self.start)%3
+    #         if self.strand == "+":
+    #             theoEnd = self.__getTheoricEnd(diff)
+    #             val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
+    #                    if testCDS(seq.seq[self.start:i], False)]
+    #             if len(val) == 1:
+    #                 self.end = val[0]
+    #                 return True
+    #             else:
+    #                 return False
+    #         else:
+    #             theoStart = self.__getTheoricStart(diff)
+    #             val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
+    #                    if testCDS(seq.seq[i:self.end], True)]
+    #             if len(val) == 1:
+    #                 self.start = val[0]
+    #                 return True
+    #             else:
+    #                 return False
+    #
+    # def __getTheoricStart(self, diff):
+    #     modulo = (self.end-self.start)%3
+    #     return self.start + modulo - diff
+    #
+    # def __getTheoricEnd(self, diff):
+    #     modulo = (self.end-self.start)%3
+    #     return self.end - modulo + diff
+    #
+    # def __getBest(self, val):
+    #     best = val[0]
+    #     for v in val[1:]:
+    #         if self.strand == "+":
+    #             if abs(abs(self.end - v) - self.rtotal) < abs(abs(self.end - best) - self.rtotal):
+    #                 best = v
+    #         else:
+    #             if abs(abs(v - self.start) - self.rtotal) < abs(abs(best - self.start) - self.rtotal):
+    #                 best = v
+    #     return best
 
