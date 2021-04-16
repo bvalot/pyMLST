@@ -418,54 +418,53 @@ class WholeGenomeMLST:
 
             # add MLST sequence
             seqs = read_genome(genome)
+
             bad = 0
-            found = 0
-            found_list = []
-            fail = 0
+            partial = 0
+            partial_filled = 0
 
             for coregene in coregenes:
+
                 if coregene not in genes:
                     continue
+
                 for gene in genes.get(coregene):
+
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
                         raise Exception("Chromosome ID not found " + gene.chro)
 
                     # Correct coverage
-                    if gene.coverage != 1:
-                        if gene.searchPartialCDS(seq, self.database, coregene, self.ref):
-                            found += 1
-                            found_list.append(coregene)
-                            self.logger.info("Gene " + gene.geneId() + " fill: added")
+                    if gene.coverage == 1:
+                        sequence = gene.get_sequence(seq)
+                    else:
+                        coregene_seq = self.database.get_sequence_by_gene_and_souche(coregene, self.ref)[1]
+                        sequence = gene.get_aligned_sequence(seq, coregene_seq)
+
+                    if sequence and psl.test_cds(sequence):
+                        if gene.coverage == 1:
+                            self.logger.debug("Gene " + gene.geneId() + " correct: added")
                         else:
-                            self.logger.info("Gene " + gene.geneId() + " partial: removed")
-                            bad += 1
-                            fail += 1
-                            continue
-
-
-                    # Verify CDS
-                    if psl.testCDS(gene.getSequence(seq), False) is False:
-                        if gene.searchCorrectCDS(seq, coverage) is False:
-                            self.logger.info("Gene " + gene.geneId() + " not correct: removed")
-                            bad += 1
-                            continue
+                            self.logger.debug("Gene " + gene.geneId() + " fill: added")
+                            partial_filled += 1
+                            partial += 1
+                    else:
+                        if gene.coverage == 1:
+                            self.logger.debug("Gene " + gene.geneId() + " not correct: removed")
                         else:
-                            self.logger.info("Gene " + gene.geneId() + " correct: added")
-
-                    # add sequence and MLST
-                    sequence = gene.getSequence(seq)
+                            self.logger.debug("Gene " + gene.geneId() + " partial: removed")
+                            partial += 1
+                        bad += 1
+                        continue
 
                     # Insert data in database
                     seqid = self.database.add_sequence(str(sequence))[1]
                     self.database.add_mlst(name, gene.geneId(), seqid)
 
-            self.logger.info("Add " + str(len(genes) - bad) + " new MLST gene to databas")
-            self.logger.info("FINISH")
-
-            print('FOUND: ' + str(found))
-            print('-> ' + str(found_list))
-            print('FAILS: ' + str(fail))
+            self.logger.info("Added " + str(len(genes) - bad) + " new MLST genes to the database")
+            self.logger.info('Found ' + str(partial)
+                                      + ' partial genes, filled ' + str(partial_filled))
+            self.logger.info("DONE")
 
         finally:
             if os.path.exists(tmpfile.name):

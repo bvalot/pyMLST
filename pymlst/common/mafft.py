@@ -37,7 +37,7 @@ def _first_aligned_position(sequence):
 
 def get_aligned_area(query, target):
     alignments = align({'query': query, 'target': target})
-    if not alignments:
+    if len(alignments) != 2:
         return None, None
     q_align = alignments['query']
     q_len = len(q_align)

@@ -201,7 +201,7 @@ class ClassicalMLST:
                         self.logger.info("Gene " + gene.geneId() + " fill: added")
 
                     # get sequence
-                    sequence = str(gene.getSequence(seq)).upper()
+                    sequence = str(gene.get_sequence(seq)).upper()
 
                     # verify complet sequence
                     if len(sequence) != (gene.end - gene.start):

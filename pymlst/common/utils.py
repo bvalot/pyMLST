@@ -4,10 +4,8 @@ import logging
 
 
 def records_to_dict(records):
-    print('records: ' + str(type(records)))
     seq_dict = {}
     for seq in records:
-        print('seq: ' + str(type(seq)))
         seq_dict[seq.id] = seq
     return seq_dict
 

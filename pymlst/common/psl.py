@@ -6,19 +6,18 @@
 ##UMR 6249 Chrono-Environnement, Besançon, France
 ##Licence GPL
 from Bio import Align
+from Bio.Data.CodonTable import TranslationError
 
 from pymlst.common import mafft
 
 
-def testCDS(seq, reverse):
+def test_cds(seq):
     try:
-        if reverse:
-            seq.reverse_complement().translate(table="Bacterial", cds=True)
-        else:
-            seq.translate(table="Bacterial", cds=True)
-    except:
+        seq.translate(table="Bacterial", cds=True)
+    except TranslationError:
         return False
-    return True
+    else:
+        return True
 
 class Psl:
     """A simple Psl class"""
@@ -42,15 +41,11 @@ class Psl:
     def geneId(self):
         return self.pslelement[9]
 
-    def getSequence(self, seq):
-        if self.strand =="+":
-            sequence = seq.seq[self.start:self.end]
+    def get_sequence(self, seq):
+        if self.strand == '+':
+            return seq.seq[self.start:self.end]
         else:
-            sequence = seq.seq[self.start:self.end].reverse_complement()
-        # ##Verify sequence correct
-        # if len(sequence) != (self.end-self.start):
-        #     raise Exception("Gene " + self.geneId() + " incomplete\n")
-        return sequence
+            return seq.seq[self.start:self.end].reverse_complement()
 
     # def searchCorrect(self):
     #     if int(self.pslelement[11]) != 0:
@@ -68,7 +63,7 @@ class Psl:
     #     self.coverage = 1
     #
     # def searchCorrectCDS(self, seq, coverage):
-    #     prot = self.getSequence(seq)
+    #     prot = self.get_sequence(seq)
     #     ##modifs start and stop not create
     #     if prot.startswith("M") is False and prot.endswith("*") is False:
     #         return False
@@ -94,7 +89,7 @@ class Psl:
     #     else:
     #         raise Exception("A problem of start/stop for gene " + self.geneId())
 
-    def searchPartialCDS(self, seq, database, coregene, souche):
+    def get_aligned_sequence(self, seq, coregene):
         if self.rstart > 0:
             start = self.start - 36
             if start < 0:
@@ -109,16 +104,15 @@ class Psl:
         else:
             end = self.end
 
-        reverse = (self.strand != '+')
-
         target = seq.seq[start:end]
-        if reverse:
+        if self.strand != '+':
             target = target.reverse_complement()
 
-        query = database.get_sequence_by_gene_and_souche(coregene, souche)[1]
+        al_start, al_end = mafft.get_aligned_area(coregene, str(target))
+        if al_start:
+            return target[al_start:al_end]
 
-        al_start, al_end = mafft.get_aligned_area(query, str(target))
-        # finis here
+        return None
 
     # def __searchCDS(self, seq, start, stop, windows, diff):
     #     ##correct windows/diff multiple of 3
@@ -133,7 +127,7 @@ class Psl:
     #         if self.strand == "+":
     #             theoStart = self.__getTheoricStart(diff)
     #             val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
-    #                    if testCDS(seq.seq[i:self.end], False)]
+    #                    if test_cds(seq.seq[i:self.end], False)]
     #             if len(val)==1:
     #                 self.start=val[0]
     #                 return True
@@ -148,7 +142,7 @@ class Psl:
     #         else:
     #             theoEnd = self.__getTheoricEnd(diff)
     #             val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
-    #                    if testCDS(seq.seq[self.start:i], True)]
+    #                    if test_cds(seq.seq[self.start:i], True)]
     #             if len(val) == 1:
     #                 self.end = val[0]
     #                 return True
@@ -166,7 +160,7 @@ class Psl:
     #         if self.strand == "+":
     #             theoEnd = self.__getTheoricEnd(diff)
     #             val = [i for i in range(theoEnd-windows, theoEnd+windows, 3) \
-    #                    if testCDS(seq.seq[self.start:i], False)]
+    #                    if test_cds(seq.seq[self.start:i], False)]
     #             if len(val) == 1:
     #                 self.end = val[0]
     #                 return True
@@ -175,7 +169,7 @@ class Psl:
     #         else:
     #             theoStart = self.__getTheoricStart(diff)
     #             val = [i for i in range(theoStart+windows, theoStart-windows, -3) \
-    #                    if testCDS(seq.seq[i:self.end], True)]
+    #                    if test_cds(seq.seq[i:self.end], True)]
     #             if len(val) == 1:
     #                 self.start = val[0]
     #                 return True
