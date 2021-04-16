@@ -109,7 +109,7 @@ class Psl:
             target = target.reverse_complement()
 
         al_start, al_end = mafft.get_aligned_area(coregene, str(target))
-        if al_start:
+        if al_start is not None:
             return target[al_start:al_end]
 
         return None
