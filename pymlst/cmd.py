@@ -9,11 +9,15 @@ from click import Option
 from pymlst import version
 
 
-class Command(click.MultiCommand):
+class PyMlstCommand(click.MultiCommand):
 
     def __init__(self, path):
         super().__init__(help='Subcommands are loaded from a ' 
                          'plugin folder dynamically')
+        opt = Option(['--version', '-v'], is_flag=True, callback=print_version,
+                     expose_value=False, is_eager=True,
+                     help='Prints PyMLST version.')
+        self.params.append(opt)
         self.path = path
 
     def list_commands(self, ctx):
@@ -41,12 +45,6 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-wg = Command(os.path.join(os.path.dirname(__file__), 'wg/commands'))
-cla = Command(os.path.join(os.path.dirname(__file__), 'cla/commands'))
-
-opt = Option(['--version', '-v'], is_flag=True, callback=print_version,
-             expose_value=False, is_eager=True,
-             help='Prints PyMLST version.')
-
-wg.params.append(opt)
-cla.params.append(opt)
+py = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'common/commands'))
+wg = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'wg/commands'))
+cla = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'cla/commands'))

@@ -64,6 +64,7 @@ setup(
     ],
     entry_points="""
     [console_scripts]
+    pyMLST=pymlst.cmd:py
     wgMLST=pymlst.cmd:wg
     claMLST=pymlst.cmd:cla
     """,
