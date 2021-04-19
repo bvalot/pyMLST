@@ -59,7 +59,7 @@ setup(
         'pandas~=1.2.1',
         'numpy~=1.20.0',
         'beautifulsoup4~=4.9.3',
-        'PyInquirer~=1.0.3',
+        'questionary~=1.9.0',
         'setuptools~=44.0.0'
     ],
     entry_points="""

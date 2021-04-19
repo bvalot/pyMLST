@@ -1,12 +1,11 @@
 import requests
 import zipfile
 import tempfile
+import questionary
 import os
 
 from bs4 import BeautifulSoup
 from Bio import SeqIO
-
-from PyInquirer import style_from_dict, Token, prompt
 
 
 class StructureException(Exception):
@@ -19,32 +18,23 @@ def request(query):
     return result
 
 
-def display_prompt(name, message, choices):
-    style = style_from_dict({
-        Token.Separator: '#cc5454',
-        Token.QuestionMark: '#673ab7 bold',
-        Token.Selected: '#cc5454',  # default
-        Token.Pointer: '#673ab7 bold',
-        Token.Instruction: '',  # default
-        Token.Answer: '#f44336 bold',
-        Token.Question: '',
-    })
+def display_prompt(message, choices):
+    style = questionary.Style([
+        ('qmark', 'fg:#673ab7 bold'),
+        ('question', 'bold'),
+        ('answer', 'fg:#f44336 bold'),
+        ('pointer', 'fg:#673ab7 bold'),
+        ('highlighted', 'fg:#673ab7 bold'),
+        ('selected', 'fg:#cc5454'),
+        ('separator', 'fg:#cc5454'),
+        ('instruction', ''),
+        ('text', ''),
+    ])
 
-    questions = [
-        {
-            'type': 'list',
-            'message': message,
-            'name': name,
-            'choices': choices,
-            'validate': lambda answer: 'You must choose an option' \
-                if len(answer) == 0 else True
-        }
-    ]
-
-    try:
-        return prompt(questions, style=style)[name]
-    except KeyError:
-        return None
+    return questionary.select(message,
+                              choices,
+                              style=style) \
+                      .ask()
 
 
 def is_mlst_scheme(url, description):
@@ -85,9 +75,7 @@ def prompt_mlst(query, prompt_enabled, mlst=None):
     elif not prompt_enabled:
         raise Exception('More than 1 match found for \'' + query + '\'\n')
     else:
-        species_choice = display_prompt('species',
-                                        '(' + str(species_length) + ') Matching species found',
-                                        species_choices)
+        species_choice = display_prompt('(' + str(species_length) + ') Matching species found', species_choices)
         if species_choice is None:
             return None
 
@@ -124,7 +112,7 @@ def prompt_mlst(query, prompt_enabled, mlst=None):
     elif not prompt_enabled:
         raise Exception('More than 1 MLST scheme found')
 
-    scheme_choice = display_prompt('scheme', 'Choose an MLST scheme', schemes_choices)
+    scheme_choice = display_prompt('Choose an MLST scheme', schemes_choices)
     if scheme_choice is None:
         return None
 
@@ -167,7 +155,7 @@ def prompt_cgmlst(query, prompt_enabled):
     elif not prompt_enabled:
         raise Exception('More than 1 coregenome found')
     else:
-        choice = display_prompt('coregenome', 'Select a coregenome', choices)
+        choice = display_prompt('Select a coregenome', choices)
         if choice is None:
             return ''
         genome_url = addresses[choice]
