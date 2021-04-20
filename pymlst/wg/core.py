@@ -1,3 +1,7 @@
+"""Core classes and functions to work with Whole Genome data.
+
+"""
+
 import os
 import sys
 from abc import ABC
@@ -23,6 +27,20 @@ from pymlst.common.utils import create_logger, validate_sequence, read_genome, s
 
 @contextmanager
 def open_wg(file=None, ref='ref'):
+    """A context manager function to wrap the creation a :class:`~pymlst.wg.core.WholeGenomeMLST` object.
+
+    Context managers allow you to instantiate objects using the ``with`` keyword,
+    this way you don't have to manage exceptions and the committing/closing processes yourself.
+
+    Arguments:
+        file:
+            The path to the database file to work with.
+        ref:
+            The name that will be given to the reference strain in the database.
+
+    Yields:
+        A :class:`~pymlst.wg.core.WholeGenomeMLST` object.
+    """
     mlst = WholeGenomeMLST(file, ref)
     try:
         yield mlst
@@ -36,9 +54,17 @@ def open_wg(file=None, ref='ref'):
 
 
 class DatabaseWG:
+    """A core level class to manipulate the genomic database.
+
+        .. warning:: Shouldn't be instantiated directly, see :class:`~pymlst.wg.core.WholeGenomeMLST` instead.
+    """
 
     def __init__(self, path=None):
-
+        """
+        Arguments:
+            path:
+                The path to the database file to work with.
+        """
         if path is None:
             self.engine = create_engine('sqlite://')  # creates a :memory: database
         else:
@@ -63,7 +89,7 @@ class DatabaseWG:
 
         self.cached_queries = {}
 
-    def get_cached_query(self, name, query_supplier):
+    def _get_cached_query(self, name, query_supplier):
         if name in self.cached_queries:
             return self.cached_queries[name]
         query = query_supplier()
@@ -71,14 +97,14 @@ class DatabaseWG:
         return query
 
     def add_mlst(self, souche, gene, seqid):
-        """Adds an MLST gene bound to an existing sequence"""
+        """Adds an MLST gene bound to an existing sequence."""
         self.connection.execute(
             self.mlst.insert(),
             souche=souche, gene=gene, seqid=seqid)
 
     def add_sequence(self, sequence):
-        """Adds a sequence if it doesn't already exist"""
-        query = self.get_cached_query(
+        """Adds a sequence if it doesn't already exist."""
+        query = self._get_cached_query(
             'add_sequence',
             lambda:
             select([self.sequences.c.id])
@@ -99,14 +125,14 @@ class DatabaseWG:
         return True, res.inserted_primary_key[0]
 
     def concatenate_gene(self, seq_id, gene_name):
-        """Associates a new gene to an existing sequence using concatenation"""
+        """Associates a new gene to an existing sequence using concatenation."""
         self.connection.execute(
             self.mlst.update()
                 .values(gene=self.mlst.c.gene + ';' + gene_name)
                 .where(self.mlst.c.seqid == seq_id))
 
     def remove_sequences(self, ids):
-        """Removes sequences and the genes that reference them"""
+        """Removes sequences and the genes that reference them."""
         self.connection.execute(
             self.sequences.delete()
             .where(in_(self.sequences.c.id, ids)))
@@ -115,7 +141,7 @@ class DatabaseWG:
             .where(in_(self.mlst.c.seqid, ids)))
 
     def remove_orphan_sequences(self, ids):
-        """Removes sequences if they aren't referenced by any gene"""
+        """Removes sequences if they aren't referenced by any gene."""
         query = self.sequences.delete() \
             .where(and_(
                 not_(exists(
@@ -129,28 +155,33 @@ class DatabaseWG:
                 seqid=seqid[0])
 
     def remove_gene(self, gene):
+        """Removes a specific gene."""
         self.connection.execute(
             self.mlst.delete()
             .where(self.mlst.c.gene == gene))
 
     def remove_strain(self, strain):
+        """Removes a specific strain."""
         self.connection.execute(
             self.mlst.delete()
                 .where(self.mlst.c.souche == strain))
 
     def get_gene_sequences_ids(self, gene):
+        """Gets the IDs of the sequences associated with a specific gene."""
         return self.connection.execute(
             select([self.mlst.c.seqid])
             .where(self.mlst.c.gene == gene)
         ).fetchall()
 
     def get_strain_sequences_ids(self, strain):
+        """Gets the IDs of the sequences associated with a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.seqid])
             .where(self.mlst.c.souche == strain)
         ).fetchall()
 
     def get_sequence_by_gene_and_souche(self, gene, souche):
+        """Gets the sequence associated to a specific gene in a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
             .where(and_(
@@ -159,7 +190,8 @@ class DatabaseWG:
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchone()
 
-    def get_gene_by_souche(self, souche):
+    def get_sequences_by_souche(self, souche):
+        """Gets all the sequences associated to a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
                 .where(and_(
@@ -168,6 +200,7 @@ class DatabaseWG:
         ).fetchall()
 
     def contains_souche(self, souche):
+        """Whether the strain exists in the base or not."""
         return self.connection.execute(
             select([self.mlst.c.id])
                 .where(self.mlst.c.souche == souche)
@@ -175,7 +208,8 @@ class DatabaseWG:
         ).fetchone() is not None
 
     def get_gene_sequences(self, gene, souche):
-        query = self.get_cached_query(
+        """Gets all the sequences for a specific gene and lists the strains that are referencing them."""
+        query = self._get_cached_query(
             'get_gene_sequences',
             lambda:
             select([self.mlst.c.seqid,
@@ -195,12 +229,6 @@ class DatabaseWG:
             gene=gene
         ).fetchall()
 
-        # res = self.connection.execute(
-        #     '''SELECT mlst.seqid, group_concat(mlst.souche, ";") AS group_concat_1, sequences.sequence
-        #     FROM mlst JOIN sequences ON sequences.id = mlst.seqid
-        #     WHERE mlst.souche != ? AND mlst.gene = ? GROUP BY mlst.seqid''', (souche, gene)
-        # )
-
         seqs = []
         for seq in res:
             tmp = seq[1].split(";")
@@ -209,6 +237,7 @@ class DatabaseWG:
         return seqs
 
     def get_genes_coverages(self, ref):
+        """Counts the number of strains referencing each gene."""
         return self.connection.execute(
             select([self.mlst.c.gene,
                     func.count(distinct(self.mlst.c.souche))])
@@ -217,6 +246,7 @@ class DatabaseWG:
         ).fetchall()
 
     def get_duplicated_genes(self, ref):
+        """Gets the genes that are duplicated."""
         m_alias = self.mlst.alias()
 
         exist_sub = select([self.mlst]) \
@@ -237,6 +267,7 @@ class DatabaseWG:
         return set([row[0] for row in res])
 
     def get_all_strains(self, ref):
+        """Gets all distinct strains."""
         res = self.connection.execute(
             select([distinct(self.mlst.c.souche)]).
             where(self.mlst.c.souche != ref)
@@ -244,6 +275,7 @@ class DatabaseWG:
         return [r[0] for r in res]
 
     def get_all_genes(self, ref):
+        """Gets all distinct genes."""
         res = self.connection.execute(
             select([distinct(self.mlst.c.gene)]).
             where(self.mlst.c.souche == ref)
@@ -251,6 +283,7 @@ class DatabaseWG:
         return [r[0] for r in res]
 
     def count_sequences_per_gene(self, ref):
+        """Gets the number of distinct sequences per gene."""
         res = self.connection.execute(
             select([self.mlst.c.gene, count(distinct(self.mlst.c.seqid))])
             .where(self.mlst.c.souche != ref)
@@ -259,6 +292,7 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_souches_per_gene(self, ref):
+        """Gets the number of distinct stains per gene."""
         res = self.connection.execute(
             select([self.mlst.c.gene, count(distinct(self.mlst.c.souche))])
             .where(self.mlst.c.souche != ref)
@@ -267,6 +301,7 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_genes_per_souche(self, valid_shema):
+        """Gets the number of distinct genes per strain."""
         res = self.connection.execute(
             select([self.mlst.c.souche, count(distinct(self.mlst.c.gene))])
             .where(in_(self.mlst.c.gene, valid_shema))
@@ -275,12 +310,14 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def get_sequences_number(self, ref):
+        """Gets the number of distinct."""
         return self.connection.execute(
                select([count(distinct(self.mlst.c.seqid))])
                .where(self.mlst.c.souche != ref)
         ).fetchone()[0]
 
     def get_strains_distances(self, ref, valid_schema):
+        """Gets the strains distances."""
         m1 = self.mlst.alias()
         m2 = self.mlst.alias()
 
@@ -308,6 +345,7 @@ class DatabaseWG:
         return distance
 
     def get_mlst(self, ref, valid_schema):
+        """Gets the MLST sequences and their strains associated to the genes in the given schema."""
         res = self.connection.execute(
             select([self.mlst.c.gene, self.mlst.c.souche, func.group_concat(self.mlst.c.seqid, ';')])
             .where(and_(self.mlst.c.souche != ref,
@@ -323,17 +361,28 @@ class DatabaseWG:
         return mlst
 
     def commit(self):
+        """Commits the current modifications."""
         self.transaction.commit()
 
     def rollback(self):
+        """Rollback the modifications."""
         self.transaction.rollback()
 
     def close(self):
+        """Closes the database engine."""
         self.engine.dispose()
 
 
 class WholeGenomeMLST:
+    """Whole Genome MLST python representation.
 
+    Example of usage::
+
+        open_wg('database.db') as db:
+            db.create(open('genome.fasta'))
+            db.add_strain(open('strain_1.fasta'))
+            db.add_strain(open('strain_2.fasta'))
+    """
     def __init__(self, file, ref):
         self.database = DatabaseWG(file)
         self.ref = ref
@@ -521,7 +570,7 @@ class WholeGenomeMLST:
         extractor.extract(self.database, self.ref, output, self.logger)
 
     def __create_coregene(self, tmpfile):
-        ref_genes = self.database.get_gene_by_souche(self.ref)
+        ref_genes = self.database.get_sequences_by_souche(self.ref)
         coregenes = []
         for row in ref_genes:
             tmpfile.write('>' + row.gene + "\n" + row.sequence + "\n")

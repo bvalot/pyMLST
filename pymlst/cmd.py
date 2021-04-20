@@ -45,6 +45,6 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-py = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'common/commands'))
-wg = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'wg/commands'))
-cla = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'cla/commands'))
+py = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'common', 'commands'))
+wg = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'wg', 'commands'))
+cla = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'cla', 'commands'))
