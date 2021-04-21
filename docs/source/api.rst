@@ -1,3 +1,6 @@
+.. _fasta: https://en.wikipedia.org/wiki/FASTA_format
+.. _BLAT: http://genome.ucsc.edu/cgi-bin/hgBlat
+
 .. _api:
 
 .. toctree::

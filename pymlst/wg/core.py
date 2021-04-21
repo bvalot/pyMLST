@@ -32,14 +32,10 @@ def open_wg(file=None, ref='ref'):
     Context managers allow you to instantiate objects using the ``with`` keyword,
     this way you don't have to manage exceptions and the committing/closing processes yourself.
 
-    Arguments:
-        file:
-            The path to the database file to work with.
-        ref:
-            The name that will be given to the reference strain in the database.
+    :param file: The path to the database file to work with.
+    :param ref: The name that will be given to the reference strain in the database.
 
-    Yields:
-        A :class:`~pymlst.wg.core.WholeGenomeMLST` object.
+    :yields: A :class:`~pymlst.wg.core.WholeGenomeMLST` object.
     """
     mlst = WholeGenomeMLST(file, ref)
     try:
@@ -61,9 +57,7 @@ class DatabaseWG:
 
     def __init__(self, path=None):
         """
-        Arguments:
-            path:
-                The path to the database file to work with.
+        :param path: The path to the database file to work with.
         """
         if path is None:
             self.engine = create_engine('sqlite://')  # creates a :memory: database
@@ -361,7 +355,7 @@ class DatabaseWG:
         return mlst
 
     def commit(self):
-        """Commits the current modifications."""
+        """Commits the modifications."""
         self.transaction.commit()
 
     def rollback(self):
@@ -383,13 +377,27 @@ class WholeGenomeMLST:
             db.add_strain(open('strain_1.fasta'))
             db.add_strain(open('strain_2.fasta'))
     """
+
     def __init__(self, file, ref):
+        """
+        :param file: The path to the database file to work with.
+        :param ref: The name that will be given to the reference strain in the database.
+        """
         self.database = DatabaseWG(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
         self.logger = create_logger()
 
     def create(self, coregene, concatenate=False, remove=False):
+        """Creates an MLST database from a core genome `fasta`_ file.
+
+        :param coregene: The fasta file containing the reference core genome.
+        :param concatenate: Whether we should concatenate genes with identical sequences.
+        :param remove: Whether we should remove genes with identical sequences.
+
+        For instance, if concatenate is set to ``True``, 2 genes **g1** and **g2** having the same sequence
+        will be stored as a single gene named **g1;g2**.
+        """
         genes = set()
         to_remove = set()
         rc_genes = 0
@@ -436,6 +444,21 @@ class WholeGenomeMLST:
         self.logger.info('Database initialized')
 
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
+        """Adds a strain to the database.
+
+        How it works:
+
+        1. A `BLAT`_ research is performed on each given contig of the strain to find
+           sub-sequences matching the core genes.
+        2. The identified sub-sequences are extracted and added to our database where they are associated
+           to a **sequence ID**.
+        3. An MLST entry is created, referencing the sequence, the gene it belongs to, and the strain it was found in.
+
+        :param genome: The strain genome we want to add as a `fasta`_ file.
+        :param strain: The name that will be given to the new strain in the database.
+        :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
+        :param coverage: Sets the minimum accepted coverage for found sequences.
+        """
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 and 1")
 
@@ -521,9 +544,14 @@ class WholeGenomeMLST:
             if os.path.exists(tmpout.name):
                 os.remove(tmpout.name)
 
-    def remove_gene(self, genes, list=None):
+    def remove_gene(self, genes, file=None):
+        """Removes genes from the database.
+
+        :param genes: Names of the genes to remove.
+        :param file: A file containing a gene name per line.
+        """
         # list genes to remove
-        all_genes = strip_file(list)
+        all_genes = strip_file(file)
         if genes is not None:
             all_genes.extend(genes)
         if len(all_genes) == 0:
@@ -542,12 +570,17 @@ class WholeGenomeMLST:
             self.database.remove_gene(gene)
             self.database.remove_orphan_sequences(seqids)
 
-    def remove_strain(self, strains, list=None):
+    def remove_strain(self, strains, file=None):
+        """Removes entire strains from the database.
+
+        :param strains: Names of the strains to remove.
+        :param file: A file containing a strain name per line.
+        """
         if self.ref in strains:
             raise Exception("Ref schema could not be remove from this database")
 
         # list strains to remove
-        all_strains = strip_file(list)
+        all_strains = strip_file(file)
         if strains is not None:
             all_strains.extend(strains)
         if len(all_strains) == 0:
@@ -567,6 +600,11 @@ class WholeGenomeMLST:
             self.database.remove_orphan_sequences(seqids)
 
     def extract(self, extractor, output=sys.stdout):
+        """Takes an extractor object and writes the extraction result on the given output.
+
+        :param extractor: A :class:`~pymlst.wg.core.Extractor` object describing the way data should be extracted.
+        :param output: The output that will receive extracted data.
+        """
         extractor.extract(self.database, self.ref, output, self.logger)
 
     def __create_coregene(self, tmpfile):
@@ -577,22 +615,39 @@ class WholeGenomeMLST:
             coregenes.append(row[0])
         return coregenes
 
-    def close(self):
-        self.database.close()
-
     def commit(self):
+        """Commits the modifications."""
         self.database.commit()
 
     def rollback(self):
+        """Rollback the modifications."""
         self.database.rollback()
+
+    def close(self):
+        """Closes the database engine."""
+        self.database.close()
 
 
 class Extractor(ABC):
+    """A simple interface to ease the process of creating new extractors."""
     def extract(self, base, ref, output, logger):
+        """
+        :param base: The database to extract data from.
+        :param ref: The name of the reference genome.
+        :param output: The output where to write the extraction results.
+        :param logger: A logger to give extra information.
+        """
         pass
 
 
 def find_recombination(genes, alignment, output):
+    """Counts the number of versions of each gene.
+
+    :param genes: List of genes (output of :class:`~pymlst.wg.extractors.TableExtractor` using ``export='gene'``).
+    :param alignment: `fasta`_ file alignment
+                      (output of :class:`~pymlst.wg.extractors.SequenceExtractor` using ``align=True``).
+    :param output: The output where to write the results.
+    """
     logger = create_logger()
 
     genes = [line.rstrip("\n") for line in genes]
@@ -632,6 +687,14 @@ def find_recombination(genes, alignment, output):
 
 
 def find_subgraph(threshold, count, distance, output):
+    """Searches groups of strains separated by a distance threshold.
+
+    :param threshold: Minimum distance to maintain for groups extraction.
+    :param count: Whether to write count or not.
+    :param distance: Distance matrix file
+                     (output of :class:`~pymlst.wg.extractors.TableExtractor` with ``export='distance'``).
+    :param output: The output where to write the results.
+    """
     samps = []
     dists = []
     try:
