@@ -89,14 +89,21 @@ class Psl:
     #         raise Exception("A problem of start/stop for gene " + self.geneId())
 
     def get_aligned_sequence(self, seq, coregene):
-        if self.rstart > 0:
+        if self.strand == '+':
+            expand_start = self.rstart > 0
+            expand_end = self.rend < self.rtotal
+        else:
+            expand_start = self.rend < self.rtotal
+            expand_end = self.rstart > 0
+
+        if expand_start:
             start = self.start - 36
             if start < 0:
                 start = 0
         else:
             start = self.start
 
-        if self.rend < self.rtotal:
+        if expand_end:
             end = self.end + 36
             if end > len(seq.seq):
                 end = len(seq.seq) - 1

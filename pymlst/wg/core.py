@@ -515,9 +515,7 @@ class WholeGenomeMLST:
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
-                        if gene.coverage == 1:
-                            logging.debug("Gene " + gene.geneId() + " correct: added")
-                        else:
+                        if gene.coverage != 1:
                             logging.debug("Gene " + gene.geneId() + " fill: added")
                             partial_filled += 1
                             partial += 1
@@ -526,6 +524,9 @@ class WholeGenomeMLST:
                             logging.debug("Gene " + gene.geneId() + " not correct: removed")
                         else:
                             logging.debug("Gene " + gene.geneId() + " partial: removed")
+                            if len(sequence) % 3 != 0:
+                                logging.debug('Not a multiple of 3')
+                            print('Seq: ' + sequence)
                             partial += 1
                         bad += 1
                         continue
