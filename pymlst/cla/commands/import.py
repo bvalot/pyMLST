@@ -9,8 +9,10 @@
 """Initialize a database from an online base"""
 import logging
 import os
-import click
+import sys
 import tempfile
+
+import click
 
 import requests
 
@@ -43,23 +45,23 @@ def cli(prompt, mlst, database, species):
         if url is None:
             logging.info('No choice selected')
             return
-        else:
-            logging.info('Downloading mlst...')
+        logging.info('Downloading mlst...')
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
-                open_cla(os.path.abspath(database.name)) as mlst:
+                open_cla(os.path.abspath(database.name)) as mlst_db:
 
             get_mlst_files(tmp_dir, url=url)
 
-            mlst.create(open(tmp_dir + '/profiles.csv', 'rt'),
-                        [open(tmp_dir + '/locus/' + locus, 'r') for locus in os.listdir(tmp_dir + '/locus')])
+            mlst_db.create(open(tmp_dir + '/profiles.csv', 'rt'),
+                           [open(tmp_dir + '/locus/' + locus, 'r')
+                           for locus in os.listdir(tmp_dir + '/locus')])
 
     except requests.exceptions.HTTPError:
         logging.error('An error occurred while retrieving online data')
-        exit(1)
+        sys.exit(1)
     except requests.exceptions.ConnectionError:
         logging.error('Couldn\'t access to the server, please verify your internet connection')
-        exit(2)
+        sys.exit(2)
     except requests.exceptions.Timeout:
         logging.error('The server took too long to respond')
-        exit(3)
+        sys.exit(3)

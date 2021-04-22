@@ -31,7 +31,6 @@ def strip_file(file):
 
 def compar_seqs(seqs):
     count = 0
-    dim = len(seqs[0])
     for j in range(0, len(seqs[0])):
         d = set([s[j] for s in seqs])
         if '-' in d:

@@ -30,8 +30,8 @@ def cli(blat, mafft, reset):
     config = binaries.list_binary_paths()
     if len(config) > 0:
         click.echo('--- Configuration ---')
-        for k, v in config:
-            click.echo(k + ': ' + v)
+        for key, value in config:
+            click.echo(key + ': ' + value)
         click.echo('---------------------')
     elif not reset:
         click.echo('The configuration is empty')

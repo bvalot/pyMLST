@@ -37,14 +37,13 @@ class Psl:
         # if self.coverage !=1 and self.coverage>=0.95:
         #     self.correct()
         
-    def geneId(self):
+    def gene_id(self):
         return self.pslelement[9]
 
     def get_sequence(self, seq):
         if self.strand == '+':
             return seq.seq[self.start:self.end]
-        else:
-            return seq.seq[self.start:self.end].reverse_complement()
+        return seq.seq[self.start:self.end].reverse_complement()
 
     # def searchCorrect(self):
     #     if int(self.pslelement[11]) != 0:
@@ -72,7 +71,7 @@ class Psl:
     #     elif prot.endswith("*") is False:
     #         return self.__searchCDS(seq, False, True, windows, 0)
     #     else:
-    #         raise Exception("A problem of start/stop  for gene " + self.geneId())
+    #         raise Exception("A problem of start/stop  for gene " + self.gene_id())
 
     # def searchPartialCDS(self, seq, coverage):
     #     ##modifs start and stop not create
@@ -86,7 +85,7 @@ class Psl:
     #         diff = self.rtotal - self.rend
     #         return self.__searchCDS(seq, False, True, windows, diff)
     #     else:
-    #         raise Exception("A problem of start/stop for gene " + self.geneId())
+    #         raise Exception("A problem of start/stop for gene " + self.gene_id())
 
     def get_aligned_sequence(self, seq, coregene):
         if self.strand == '+':
@@ -139,7 +138,7 @@ class Psl:
     #                 return True
     #             elif len(val) >1:
     #                 best = self.__getBest(val)
-    #                 self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+    #                 self.logger.info("Choosing best start for gene " + self.gene_id() + " " \
     #                                  + str(best) + " " + str(val))
     #                 self.start = best
     #                 return True
@@ -154,7 +153,7 @@ class Psl:
     #                 return True
     #             elif len(val) >1:
     #                 best = self.__getBest(val)
-    #                 self.logger.info("Choosing best start for gene " + self.geneId() + " " \
+    #                 self.logger.info("Choosing best start for gene " + self.gene_id() + " " \
     #                                  + str(best) + " " + str(val))
     #                 self.end = best
     #                 return True
@@ -197,7 +196,7 @@ class Psl:
     #             if abs(abs(self.end - v) - self.rtotal) < abs(abs(self.end - best) - self.rtotal):
     #                 best = v
     #         else:
-    #             if abs(abs(v - self.start) - self.rtotal) < abs(abs(best - self.start) - self.rtotal):
+    #             if abs(abs(v - self.start) - self.rtotal)
+    #             < abs(abs(best - self.start) - self.rtotal):
     #                 best = v
     #     return best
-

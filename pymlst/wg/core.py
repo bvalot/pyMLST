@@ -22,12 +22,13 @@ from sqlalchemy.sql.operators import in_op as in_
 
 from pymlst.common import blat, psl
 from pymlst.common.binaries import get_binary_path
-from pymlst.common.utils import create_logger, validate_sequence, read_genome, strip_file, write_count, compar_seqs
+from pymlst.common import utils
 
 
 @contextmanager
 def open_wg(file=None, ref='ref'):
-    """A context manager function to wrap the creation a :class:`~pymlst.wg.core.WholeGenomeMLST` object.
+    """A context manager function to wrap the creation a
+       :class:`~pymlst.wg.core.WholeGenomeMLST` object.
 
     Context managers allow you to instantiate objects using the ``with`` keyword,
     this way you don't have to manage exceptions and the committing/closing processes yourself.
@@ -52,7 +53,8 @@ def open_wg(file=None, ref='ref'):
 class DatabaseWG:
     """A core level class to manipulate the genomic database.
 
-        .. warning:: Shouldn't be instantiated directly, see :class:`~pymlst.wg.core.WholeGenomeMLST` instead.
+        .. warning:: Shouldn't be instantiated directly,
+                     see :class:`~pymlst.wg.core.WholeGenomeMLST` instead.
     """
 
     def __init__(self, path=None):
@@ -202,7 +204,8 @@ class DatabaseWG:
         ).fetchone() is not None
 
     def get_gene_sequences(self, gene, souche):
-        """Gets all the sequences for a specific gene and lists the strains that are referencing them."""
+        """Gets all the sequences for a specific gene and
+        lists the strains that are referencing them."""
         query = self._get_cached_query(
             'get_gene_sequences',
             lambda:
@@ -387,7 +390,7 @@ class WholeGenomeMLST:
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
 
-        create_logger()
+        utils.create_logger()
 
     def create(self, coregene, concatenate=False, remove=False):
         """Creates an MLST database from a core genome `fasta`_ file.
@@ -407,12 +410,11 @@ class WholeGenomeMLST:
         for gene in SeqIO.parse(coregene, 'fasta'):
             if gene.id in genes:
                 raise Exception("Two sequences have the same gene ID: " + gene.id)
-            else:
-                genes.add(gene.id)
+            genes.add(gene.id)
 
-            if not validate_sequence(gene.seq):
+            if not utils.validate_sequence(gene.seq):
                 gene.seq = gene.seq.reverse_complement()
-                if validate_sequence(gene.seq):
+                if utils.validate_sequence(gene.seq):
                     rc_genes += 1
                 else:
                     invalid_genes += 1
@@ -453,7 +455,8 @@ class WholeGenomeMLST:
            sub-sequences matching the core genes.
         2. The identified sub-sequences are extracted and added to our database where they are associated
            to a **sequence ID**.
-        3. An MLST entry is created, referencing the sequence, the gene it belongs to, and the strain it was found in.
+        3. An MLST entry is created, referencing the sequence,
+           the gene it belongs to, and the strain it was found in.
 
         :param genome: The strain genome we want to add as a `fasta`_ file.
         :param strain: The name that will be given to the new strain in the database.
@@ -490,7 +493,7 @@ class WholeGenomeMLST:
             logging.info("Finish run BLAT, found " + str(len(genes)) + " genes")
 
             # add MLST sequence
-            seqs = read_genome(genome)
+            seqs = utils.read_genome(genome)
 
             bad = 0
             partial = 0
@@ -511,29 +514,27 @@ class WholeGenomeMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_sequence_by_gene_and_souche(coregene, self.ref)[1]
+                        coregene_seq = self.database.get_sequence_by_gene_and_souche(
+                            coregene, self.ref)[1]
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
                         if gene.coverage != 1:
-                            logging.debug("Gene " + gene.geneId() + " fill: added")
+                            logging.debug("Gene " + gene.gene_id() + " fill: added")
                             partial_filled += 1
                             partial += 1
                     else:
                         if gene.coverage == 1:
-                            logging.debug("Gene " + gene.geneId() + " not correct: removed")
+                            logging.debug("Gene " + gene.gene_id() + " not correct: removed")
                         else:
-                            logging.debug("Gene " + gene.geneId() + " partial: removed")
-                            if len(sequence) % 3 != 0:
-                                logging.debug('Not a multiple of 3')
-                            print('Seq: ' + sequence)
+                            logging.debug("Gene " + gene.gene_id() + " partial: removed")
                             partial += 1
                         bad += 1
                         continue
 
                     # Insert data in database
                     seqid = self.database.add_sequence(str(sequence))[1]
-                    self.database.add_mlst(name, gene.geneId(), seqid)
+                    self.database.add_mlst(name, gene.gene_id(), seqid)
 
             logging.info("Added " + str(len(genes) - bad) + " new MLST genes to the database")
             logging.info('Found ' + str(partial)
@@ -553,7 +554,7 @@ class WholeGenomeMLST:
         :param file: A file containing a gene name per line.
         """
         # list genes to remove
-        all_genes = strip_file(file)
+        all_genes = utils.strip_file(file)
         if genes is not None:
             all_genes.extend(genes)
         if len(all_genes) == 0:
@@ -582,7 +583,7 @@ class WholeGenomeMLST:
             raise Exception("Ref schema could not be remove from this database")
 
         # list strains to remove
-        all_strains = strip_file(file)
+        all_strains = utils.strip_file(file)
         if strains is not None:
             all_strains.extend(strains)
         if len(all_strains) == 0:
@@ -681,7 +682,7 @@ def find_recombination(genes, alignment, output):
             raise Exception("Following genes seems to be not align: " + genes[i])
 
     for i, seqs in enumerate(sequences):
-        c = compar_seqs(seqs)
+        c = utils.compar_seqs(seqs)
         output.write(genes[i] + "\t" + str(c) + "\t" + str(len(seqs[0])) + "\n")
 
 
@@ -691,7 +692,8 @@ def find_subgraph(threshold, count, distance, output):
     :param threshold: Minimum distance to maintain for groups extraction.
     :param count: Whether to write count or not.
     :param distance: Distance matrix file
-                     (output of :class:`~pymlst.wg.extractors.TableExtractor` with ``export='distance'``).
+                     (output of :class:`~pymlst.wg.extractors.TableExtractor`
+                     with ``export='distance'``).
     :param output: The output where to write the results.
     """
     samps = []
@@ -736,14 +738,14 @@ def find_subgraph(threshold, count, distance, output):
     grps.sort(key=len, reverse=True)
 
     # write result
-    write_count(count, "Group\t" + "\t".join(samps) + "\n")
+    utils.write_count(count, "Group\t" + "\t".join(samps) + "\n")
     for i, g in enumerate(grps):
         a = len(samps) * [0]
         output.write("Group" + str(i))
         for n in g:
             a[n] = 1
             output.write(" " + samps[n])
-        write_count(count, str(i) + "\t" + "\t".join(map(str, a)) + "\n")
+        utils.write_count(count, str(i) + "\t" + "\t".join(map(str, a)) + "\n")
         output.write("\n")
 
     if count:

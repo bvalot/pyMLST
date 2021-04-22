@@ -62,10 +62,10 @@ class DatabaseCLA:
             self.sequences.insert(),
             sequence=sequence, gene=gene, allele=allele)
 
-    def add_mlst(self, st, gene, allele):
+    def add_mlst(self, sequence_typing, gene, allele):
         self.connection.execute(
             self.mlst.insert(),
-            st=st, gene=gene, allele=allele)
+            st=sequence_typing, gene=gene, allele=allele)
 
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele"""
@@ -116,49 +116,43 @@ class ClassicalMLST:
         # Verify sheme list with fasta files
         header = scheme.readline().rstrip("\n").split("\t")
         if len(header) != len(alleles) + 1:
-            raise Exception("The number of genes in sheme don't correspond to the number of fasta file\n"
+            raise Exception("The number of genes in sheme don't "
+                            "correspond to the number of fasta file\n"
                             + " ".join(header) + "\n")
         fastas = {}
-        for f in alleles:
-            name = f.name.split("/")[-1]
+        for file in alleles:
+            name = file.name.split("/")[-1]
             name = name[:name.rfind(".")]
             if name not in header:
                 raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
-            fastas[name] = f
+            fastas[name] = file
 
         # load sequence allele
         alleles = {}
-        for g, f in fastas.items():
-            alleles[g] = set()
-            for seq in SeqIO.parse(f, 'fasta'):
+        for gene, file in fastas.items():
+            alleles[gene] = set()
+            for seq in SeqIO.parse(file, 'fasta'):
                 try:
-                    # if len(seq.id.split("_")) == 2:
-                    #     allele = int(seq.id.split("_")[1])
-                    # elif len(seq.id.split("-")) == 2:
-                    #     allele = int(seq.id.split("-")[1])
-                    # elif g in seq.id:
-                    #     allele = int(seq.id.replace(g, ""))
-                    # else:
-                    #     allele = int(seq.id)
                     match = re.search('[0-9]+$', seq.id)
                     allele = int(match.group(0))
 
                 except Exception:
                     raise Exception("Unable to obtain allele number for the sequence: " + seq.id)
-                self.database.add_sequence(str(seq.seq).upper(), g, allele)
-                alleles.get(g).add(allele)
+                self.database.add_sequence(str(seq.seq).upper(), gene, allele)
+                alleles.get(gene).add(allele)
 
         # load MLST sheme
         for line in scheme:
-            h = line.rstrip("\n").split("\t")
-            st = int(h[0])
-            for g, a in zip(header[1:], h[1:]):
-                if int(a) not in alleles.get(g):
+            line_content = line.rstrip("\n").split("\t")
+            sequence_typing = int(line_content[0])
+            for gene, allele in zip(header[1:], line_content[1:]):
+                if int(allele) not in alleles.get(gene):
                     logging.info(
-                        "Unable to find the allele number " + a + " for gene " + g + "; replace by 0")
-                    self.database.add_mlst(st, g, 0)
+                        "Unable to find the allele number %s"
+                        + " for gene %s; replace by 0", str(allele), gene)
+                    self.database.add_mlst(sequence_typing, gene, 0)
                 else:
-                    self.database.add_mlst(st, g, int(a))
+                    self.database.add_mlst(sequence_typing, gene, int(allele))
 
         logging.info('Database initialized')
 
@@ -180,7 +174,7 @@ class ClassicalMLST:
             # BLAT analysis
             logging.info("Search coregene with BLAT")
             genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
-            logging.info("Finish run BLAT, found " + str(len(genes)) + " genes")
+            logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
             # Search sequence MLST
             seqs = read_genome(genome)
@@ -200,14 +194,14 @@ class ClassicalMLST:
                     # verify coverage and correct
                     if gene.coverage != 1:
                         gene.searchCorrect()
-                        logging.info("Gene " + gene.geneId() + " fill: added")
+                        logging.info("Gene %s fill: added", gene.gene_id())
 
                     # get sequence
                     sequence = str(gene.get_sequence(seq)).upper()
 
                     # verify complet sequence
                     if len(sequence) != (gene.end - gene.start):
-                        logging.info("Gene " + gene.geneId() + " removed")
+                        logging.info("Gene %s removed", gene.gene_id())
                         continue
 
                     # write fasta file with coregene
@@ -225,7 +219,7 @@ class ClassicalMLST:
                         for strain in strains:
                             st.get(coregene).add(strain[0])
                     else:
-                        allele.get(gene.geneId()).append("new")
+                        allele.get(gene.gene_id()).append("new")
 
             # if only know allele or not found
             # Seach st

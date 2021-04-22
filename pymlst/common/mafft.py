@@ -2,7 +2,6 @@ import tempfile
 from io import StringIO
 
 from Bio import AlignIO
-from Bio.Align import MultipleSeqAlignment
 from Bio.Align.Applications import MafftCommandline
 
 from pymlst.common import binaries
@@ -17,7 +16,7 @@ def align(genes):
         write_genome(genes, tmp)
         tmp.flush()
         mafft_cmd = MafftCommandline(path, input=tmp.name, quiet=True)
-        stdout, stderr = mafft_cmd()
+        stdout, _ = mafft_cmd()
         records = AlignIO.parse(StringIO(stdout), "fasta")
         try:
             alignments = next(records)
@@ -28,8 +27,8 @@ def align(genes):
 
 def _first_aligned_position(sequence):
     position = 0
-    for c in sequence:
-        if c != '-':
+    for char in sequence:
+        if char != '-':
             return position
         position += 1
     return -1
@@ -46,4 +45,3 @@ def get_aligned_area(query, target):
         return None, None
     end_index = q_len - _first_aligned_position(reversed(q_align))
     return start_index, end_index
-

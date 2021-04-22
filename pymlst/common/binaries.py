@@ -1,8 +1,9 @@
+import os
+
 import configparser
+import shutil
 
 from pkg_resources import Requirement, resource_filename
-import os
-import shutil
 
 
 config_path = resource_filename(Requirement.parse("pymlst"), "pymlst.conf")
@@ -16,11 +17,11 @@ def update_binary_paths(paths):
     if not config.has_section('BINARIES'):
         config.add_section('BINARIES')
 
-    for k, v in paths.items():
-        config['BINARIES'][k] = os.path.abspath(v)
+    for key, value in paths.items():
+        config['BINARIES'][key] = os.path.abspath(value)
 
-    with open(config_path, 'w') as f:
-        config.write(f)
+    with open(config_path, 'w') as file:
+        config.write(file)
 
 
 def reset_config():
@@ -33,8 +34,7 @@ def get_config():
         config = configparser.ConfigParser()
         config.read(config_path)
         return config
-    else:
-        return None
+    return None
 
 
 def get_binary_path(bin_name):

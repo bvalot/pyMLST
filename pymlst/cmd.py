@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import click
 import os
+import click
 
 from click import Option
 
@@ -26,20 +26,20 @@ class PyMlstCommand(click.MultiCommand):
         self.path = path
 
     def list_commands(self, ctx):
-        rv = []
+        cmd_names = []
         for filename in os.listdir(self.path):
             if filename.endswith('.py') and not filename.startswith('__init__'):
-                rv.append(filename[:-3])
-        rv.sort()
-        return rv
+                cmd_names.append(filename[:-3])
+        cmd_names.sort()
+        return cmd_names
 
     def get_command(self, ctx, name):
-        ns = {}
-        fn = os.path.join(self.path, name + '.py')
-        with open(fn) as f:
-            code = compile(f.read(), fn, 'exec')
-            eval(code, ns, ns)
-        return ns['cli']
+        name_scope = {}
+        cmd_file = os.path.join(self.path, name + '.py')
+        with open(cmd_file) as file:
+            code = compile(file.read(), cmd_file, 'exec')
+            eval(code, name_scope, name_scope)
+        return name_scope['cli']
 
 
 def set_debug(ctx, param, value):

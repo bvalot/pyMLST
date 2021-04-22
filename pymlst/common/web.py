@@ -1,8 +1,9 @@
-import requests
-import zipfile
-import tempfile
-import questionary
 import os
+import tempfile
+
+import zipfile
+import requests
+import questionary
 
 from bs4 import BeautifulSoup
 from Bio import SeqIO
@@ -40,8 +41,8 @@ def display_prompt(message, choices):
 def is_mlst_scheme(url, description):
     desc_lower = description.lower()
     blacklist = ['cgmlst', 'wgmlst', 'extended mlst']
-    for w in blacklist:
-        if w in desc_lower:
+    for word in blacklist:
+        if word in desc_lower:
             return False
     scheme_json = request(url).json()
     if 'profiles_csv' not in scheme_json:
@@ -60,22 +61,23 @@ def prompt_mlst(query, prompt_enabled, mlst=None):
     for record in whole_base:
         if record['name'] == 'test':
             continue
-        for db in record['databases']:
-            des = db['description'].replace('sequence/profile definitions', '').strip().lower()
+        for database in record['databases']:
+            des = database['description'].replace('sequence/profile definitions', '').strip().lower()
             if query_low in des:
-                if db['name'].endswith('seqdef'):
+                if database['name'].endswith('seqdef'):
                     species_choices.append({'name': des})
-                    species[des] = db['href']
+                    species[des] = database['href']
 
     species_length = len(species_choices)
     if species_length == 0:
         raise Exception('No match found for \'' + query + '\'\n')
-    elif species_length == 1:
+    if species_length == 1:
         species_choice = species_choices[0]['name']
     elif not prompt_enabled:
         raise Exception('More than 1 match found for \'' + query + '\'\n')
     else:
-        species_choice = display_prompt('(' + str(species_length) + ') Matching species found', species_choices)
+        species_choice = display_prompt('(' + str(species_length) + ') Matching species found',
+                                        species_choices)
         if species_choice is None:
             return None
 
@@ -86,23 +88,22 @@ def prompt_mlst(query, prompt_enabled, mlst=None):
     schemes = {}
     matching_mlst = None
 
-    for s in schemes_json['schemes']:
-        if is_mlst_scheme(s['scheme'], s['description']):
+    for scheme in schemes_json['schemes']:
+        if is_mlst_scheme(scheme['scheme'], scheme['description']):
             if mlst is None:
-                schemes_choices.append({'name': s['description']})
-                schemes[s['description']] = s['scheme']
+                schemes_choices.append({'name': scheme['description']})
+                schemes[scheme['description']] = scheme['scheme']
             else:
-                if mlst.lower() in s['description'].lower():
+                if mlst.lower() in scheme['description'].lower():
                     if matching_mlst is None:
-                        matching_mlst = s['scheme']
+                        matching_mlst = scheme['scheme']
                     else:
                         raise Exception('More than 1 MLST scheme found matching \'' + mlst + '\'\n')
 
     if mlst is not None:
         if matching_mlst is None:
             raise Exception('No MLST scheme found matching \'' + mlst + '\'')
-        else:
-            return matching_mlst
+        return matching_mlst
 
     schemes_length = len(schemes)
     if schemes_length == 1:
@@ -135,14 +136,14 @@ def prompt_cgmlst(query, prompt_enabled):
     addresses = {}
     query_low = query.lower()
 
-    for l in lines:
-        text = l.get_text()
+    for line in lines:
+        text = line.get_text()
         if 'cgMLST' not in text:
             continue
         name = text.replace('cgMLST', '').strip()
         if query_low in name.lower():
             choices.append({'name': name})
-            link = l.get('href')
+            link = line.get('href')
             if link is None:
                 raise StructureException()
             addresses[name] = link
@@ -171,17 +172,17 @@ def build_coregene(url, handle):
 
         fas_tmp = tmp_dir + '/fas'
         os.mkdir(fas_tmp)
-        with zipfile.ZipFile(zip_tmp) as z:
-            z.extractall(fas_tmp)
+        with zipfile.ZipFile(zip_tmp) as z_file:
+            z_file.extractall(fas_tmp)
         skipped = []
         for fasta in os.listdir(fas_tmp):
             try:
-                it = next(SeqIO.parse(fas_tmp + '/' + fasta, 'fasta'))
+                iterator = next(SeqIO.parse(fas_tmp + '/' + fasta, 'fasta'))
             except (StopIteration, ValueError, TypeError):
                 skipped.append(fasta)
                 continue
             handle.write('> ' + fasta.replace('.fasta', '') + '\n')
-            handle.write(str(it.seq) + '\n')
+            handle.write(str(iterator.seq) + '\n')
         return skipped
 
 
@@ -209,5 +210,5 @@ def get_mlst_files(directory, url):
     # Downloading the profiles CSV + removing last header column :
     profiles_url = url + '/profiles_csv'
     profiles = request(profiles_url)
-    with open(directory + '/profiles.csv', 'wt') as p:
-        p.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))
+    with open(directory + '/profiles.csv', 'wt') as profiles_dir:
+        profiles_dir.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))
