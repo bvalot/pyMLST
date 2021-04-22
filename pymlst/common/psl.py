@@ -21,7 +21,7 @@ def test_cds(seq):
 
 class Psl:
     """A simple Psl class"""
-    def __init__(self, pslline, logger):
+    def __init__(self, pslline):
         pslelement = pslline.rstrip("\n").split("\t")
         if len(pslelement) != 21:
             raise Exception("Psl line have not 21 elements:\n"+pslline)
@@ -34,7 +34,6 @@ class Psl:
         self.rend = int(pslelement[12])
         self.rtotal = int(pslelement[10])
         self.coverage = (float(self.rend) - self.rstart)/self.rtotal
-        self.logger = logger
         # if self.coverage !=1 and self.coverage>=0.95:
         #     self.correct()
         

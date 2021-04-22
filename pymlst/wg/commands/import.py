@@ -5,7 +5,7 @@
 # benoit.valot@univ-fcomte.fr
 # UMR 6249 Chrono-Environnement, Besançon, France
 # Licence GPL
-
+import logging
 import os
 import click
 import tempfile
@@ -13,7 +13,7 @@ import tempfile
 import requests
 
 from pymlst import open_wg
-from pymlst.common.utils import create_logger
+from pymlst.common import utils
 from pymlst.common.web import prompt_cgmlst, build_coregene
 
 
@@ -28,32 +28,32 @@ from pymlst.common.web import prompt_cgmlst, build_coregene
 def cli(prompt, database, species):
     """Create a wgMLST database from an online resource"""
 
-    logger = create_logger()
+    utils.create_logger()
 
     try:
 
         url = prompt_cgmlst(' '.join(species), prompt)
         if url == '':
-            logger.info('No choice selected')
+            logging.info('No choice selected')
             return
-        logger.info('Downloading the core genome...')
+        logging.info('Downloading the core genome...')
 
         with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
 
             skipped = build_coregene(url, tmp)
             tmp.close()
             if len(skipped) > 0:
-                logger.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
+                logging.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
 
             with open_wg(os.path.abspath(database.name)) as mlst:
                 mlst.create(tmp.name)
 
     except requests.exceptions.HTTPError:
-        logger.error('An error occurred while retrieving online data')
+        logging.error('An error occurred while retrieving online data')
         exit(1)
     except requests.exceptions.ConnectionError:
-        logger.error('Couldn\'t access to the server, please verify your internet connection')
+        logging.error('Couldn\'t access to the server, please verify your internet connection')
         exit(2)
     except requests.exceptions.Timeout:
-        logger.error('The server took too long to respond')
+        logging.error('The server took too long to respond')
         exit(3)

@@ -1,7 +1,7 @@
 """Core classes and functions to work with Whole Genome data.
 
 """
-
+import logging
 import os
 import sys
 from abc import ABC
@@ -386,7 +386,8 @@ class WholeGenomeMLST:
         self.database = DatabaseWG(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'  # TODO: change this
-        self.logger = create_logger()
+
+        create_logger()
 
     def create(self, coregene, concatenate=False, remove=False):
         """Creates an MLST database from a core genome `fasta`_ file.
@@ -422,7 +423,7 @@ class WholeGenomeMLST:
             if not added:
                 if concatenate:
                     self.database.concatenate_gene(seq_id, gene.id)
-                    self.logger.info("Concatenate gene " + gene.id)
+                    logging.info("Concatenate gene " + gene.id)
                 elif remove:
                     to_remove.add(seq_id)
                 else:
@@ -433,15 +434,15 @@ class WholeGenomeMLST:
 
         if to_remove:
             self.database.remove_sequences(to_remove)
-            self.logger.info("Remove duplicate sequence: " + str(len(to_remove)))
+            logging.info("Remove duplicate sequence: " + str(len(to_remove)))
 
         if rc_genes:
-            self.logger.info('Reverse-complemented genes: ' + str(rc_genes))
+            logging.info('Reverse-complemented genes: ' + str(rc_genes))
 
         if invalid_genes:
-            self.logger.info('Skipped invalid genes: ' + str(invalid_genes))
+            logging.info('Skipped invalid genes: ' + str(invalid_genes))
 
-        self.logger.info('Database initialized')
+        logging.info('Database initialized')
 
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         """Adds a strain to the database.
@@ -484,9 +485,9 @@ class WholeGenomeMLST:
             tmpfile.close()
 
             # BLAT analysis
-            self.logger.info("Search coregene with BLAT")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage, self.logger)
-            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes")
+            logging.info("Search coregene with BLAT")
+            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
+            logging.info("Finish run BLAT, found " + str(len(genes)) + " genes")
 
             # add MLST sequence
             seqs = read_genome(genome)
@@ -515,16 +516,16 @@ class WholeGenomeMLST:
 
                     if sequence and psl.test_cds(sequence):
                         if gene.coverage == 1:
-                            self.logger.debug("Gene " + gene.geneId() + " correct: added")
+                            logging.debug("Gene " + gene.geneId() + " correct: added")
                         else:
-                            self.logger.debug("Gene " + gene.geneId() + " fill: added")
+                            logging.debug("Gene " + gene.geneId() + " fill: added")
                             partial_filled += 1
                             partial += 1
                     else:
                         if gene.coverage == 1:
-                            self.logger.debug("Gene " + gene.geneId() + " not correct: removed")
+                            logging.debug("Gene " + gene.geneId() + " not correct: removed")
                         else:
-                            self.logger.debug("Gene " + gene.geneId() + " partial: removed")
+                            logging.debug("Gene " + gene.geneId() + " partial: removed")
                             partial += 1
                         bad += 1
                         continue
@@ -533,10 +534,10 @@ class WholeGenomeMLST:
                     seqid = self.database.add_sequence(str(sequence))[1]
                     self.database.add_mlst(name, gene.geneId(), seqid)
 
-            self.logger.info("Added " + str(len(genes) - bad) + " new MLST genes to the database")
-            self.logger.info('Found ' + str(partial)
+            logging.info("Added " + str(len(genes) - bad) + " new MLST genes to the database")
+            logging.info('Found ' + str(partial)
                                       + ' partial genes, filled ' + str(partial_filled))
-            self.logger.info("DONE")
+            logging.info("DONE")
 
         finally:
             if os.path.exists(tmpfile.name):
@@ -559,13 +560,13 @@ class WholeGenomeMLST:
         all_genes = set(all_genes)
 
         for gene in all_genes:
-            self.logger.info(gene + " : ")
+            logging.info(gene + " : ")
 
             seqids = self.database.get_gene_sequences_ids(gene)
             if len(seqids) == 0:
-                self.logger.info("Not found")
+                logging.info("Not found")
             else:
-                self.logger.info("OK")
+                logging.info("OK")
 
             self.database.remove_gene(gene)
             self.database.remove_orphan_sequences(seqids)
@@ -588,13 +589,13 @@ class WholeGenomeMLST:
         all_strains = set(all_strains)
 
         for strain in all_strains:
-            self.logger.info(strain + " : ")
+            logging.info(strain + " : ")
 
             seqids = self.database.get_strain_sequences_ids(strain)
             if len(seqids) == 0:
-                self.logger.info("Not found")
+                logging.info("Not found")
             else:
-                self.logger.info("OK")
+                logging.info("OK")
 
             self.database.remove_strain(strain)
             self.database.remove_orphan_sequences(seqids)
@@ -605,7 +606,7 @@ class WholeGenomeMLST:
         :param extractor: A :class:`~pymlst.wg.core.Extractor` object describing the way data should be extracted.
         :param output: The output that will receive extracted data.
         """
-        extractor.extract(self.database, self.ref, output, self.logger)
+        extractor.extract(self.database, self.ref, output, logging)
 
     def __create_coregene(self, tmpfile):
         ref_genes = self.database.get_sequences_by_souche(self.ref)
@@ -630,12 +631,11 @@ class WholeGenomeMLST:
 
 class Extractor(ABC):
     """A simple interface to ease the process of creating new extractors."""
-    def extract(self, base, ref, output, logger):
+    def extract(self, base, ref, output):
         """
         :param base: The database to extract data from.
         :param ref: The name of the reference genome.
         :param output: The output where to write the extraction results.
-        :param logger: A logger to give extra information.
         """
         pass
 
@@ -648,10 +648,8 @@ def find_recombination(genes, alignment, output):
                       (output of :class:`~pymlst.wg.extractors.SequenceExtractor` using ``align=True``).
     :param output: The output where to write the results.
     """
-    logger = create_logger()
-
     genes = [line.rstrip("\n") for line in genes]
-    logger.info("Number of genes to look at : " + str(len(genes)))
+    logging.info("Number of genes to look at : " + str(len(genes)))
 
     sequences = [[] for _ in genes]
     samples = []

@@ -7,6 +7,7 @@
 # Licence GPL
 
 """Initialize a database from an online base"""
+import logging
 import os
 import click
 import tempfile
@@ -16,7 +17,7 @@ import requests
 from pymlst import open_cla
 
 from pymlst.common.web import get_mlst_files, prompt_mlst
-from pymlst.common.utils import create_logger
+from pymlst.common import utils
 
 
 @click.command()
@@ -33,17 +34,17 @@ def cli(prompt, mlst, database, species):
     """Initialize a database from an online base"""
 
     database.close()
-    logger = create_logger()
+    utils.create_logger()
 
     try:
 
         url = prompt_mlst(' '.join(species), prompt, mlst)
 
         if url is None:
-            logger.info('No choice selected')
+            logging.info('No choice selected')
             return
         else:
-            logger.info('Downloading mlst...')
+            logging.info('Downloading mlst...')
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
                 open_cla(os.path.abspath(database.name)) as mlst:
@@ -54,11 +55,11 @@ def cli(prompt, mlst, database, species):
                         [open(tmp_dir + '/locus/' + locus, 'r') for locus in os.listdir(tmp_dir + '/locus')])
 
     except requests.exceptions.HTTPError:
-        logger.error('An error occurred while retrieving online data')
+        logging.error('An error occurred while retrieving online data')
         exit(1)
     except requests.exceptions.ConnectionError:
-        logger.error('Couldn\'t access to the server, please verify your internet connection')
+        logging.error('Couldn\'t access to the server, please verify your internet connection')
         exit(2)
     except requests.exceptions.Timeout:
-        logger.error('The server took too long to respond')
+        logging.error('The server took too long to respond')
         exit(3)

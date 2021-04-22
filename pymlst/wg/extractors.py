@@ -1,5 +1,6 @@
 import abc
 import importlib
+import logging
 
 from abc import ABC
 
@@ -31,7 +32,7 @@ class SequenceExtractor(Extractor):
         self.realign = realign
         self.mincover = mincover
 
-    def extract(self, base, ref, output, logger):
+    def extract(self, base, ref, output):
         # Minimun number of strain
         strains = base.get_all_strains(ref)
         if self.mincover < 1 or self.mincover > len(strains):
@@ -44,7 +45,7 @@ class SequenceExtractor(Extractor):
         else:
             coregene = [l[0] for l in base.get_genes_coverages(ref) if l[1] >= self.mincover]
 
-        logger.info("Number of gene to analyse : " + str(len(coregene)) + "\n")
+        logging.info("Number of gene to analyse : " + str(len(coregene)) + "\n")
 
         if self.align is False:
             # no multialign
@@ -59,23 +60,23 @@ class SequenceExtractor(Extractor):
             # search duplicate
             dupli = base.get_duplicated_genes(ref)
             for d in dupli:
-                logger.info('Duplicated: ', d)
+                logging.info('Duplicated: ', d)
 
             sequences = {s: [] for s in strains}
             for i, g in enumerate(coregene):
-                logger.info(str(i + 1) + "/" + str(len(coregene)) + " | " + g + "     ")
+                logging.info(str(i + 1) + "/" + str(len(coregene)) + " | " + g + "     ")
                 if g in dupli:
-                    logger.info("No: Repeat gene\n")
+                    logging.info("No: Repeat gene\n")
                     continue
                 seqs = base.get_gene_sequences(g, ref)
                 size = set()
                 for seq in seqs:
                     size.add(len(seq[2]))
                 if len(size) == 1 and self.realign is False:
-                    logger.info("Direct")
+                    logging.info("Direct")
                     add_sequence_strain(seqs, strains, sequences)
                 else:
-                    logger.info("Align")
+                    logging.info("Align")
                     #write_tmp_seqs(tmpfile, seqs)
                     mafft_path = get_binary_path('mafft')
                     if mafft_path is None:
@@ -86,7 +87,7 @@ class SequenceExtractor(Extractor):
                     for seq in seqs:
                         seq[2] = corrseqs.get(seq[0])
                     add_sequence_strain(seqs, strains, sequences)
-                logger.info("\n")
+                logging.info("\n")
 
             # output align result
             for s in strains:
@@ -104,7 +105,7 @@ class TableExtractor(Extractor):
         self.duplicate = duplicate
         self.inverse = inverse
 
-    def extract(self, base, ref, output, logger):
+    def extract(self, base, ref, output):
         # read samples mlst
         strains = base.get_all_strains(ref)
 
@@ -156,8 +157,8 @@ class TableExtractor(Extractor):
                     valid_shema.append(g)
 
         # report
-        logger.info("Number of coregene used : " + str(len(valid_shema)) +
-                    "/" + str(len(allgene)) + "\n")
+        logging.info("Number of coregene used : " + str(len(valid_shema)) +
+                     "/" + str(len(allgene)) + "\n")
 
         exporter = ExportType.get_type(self.export)
 
@@ -165,7 +166,7 @@ class TableExtractor(Extractor):
             raise Exception('Unknown export type: ', self.export)
 
         data = ExportData(valid_shema, strains, allgene, ref, self.count, self.duplicate)
-        exporter.export(data, base, output, logger)
+        exporter.export(data, base, output)
 
 
 class ExportType(ABC):
@@ -183,7 +184,7 @@ class ExportType(ABC):
         return None
 
     @abc.abstractmethod
-    def export(self, data, base, output, logger):
+    def export(self, data, base, output):
         pass
 
     @staticmethod

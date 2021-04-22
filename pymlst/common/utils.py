@@ -55,8 +55,11 @@ def validate_sequence(sequence):
         return True
 
 
-def create_logger():
+def create_logger(verbose=False):
+    if verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=level,
         format='[%(levelname)s: %(asctime)s] %(message)s')
-    return logging.getLogger('mlst')

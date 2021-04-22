@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import sys
@@ -108,7 +109,8 @@ class ClassicalMLST:
         self.database = DatabaseCLA(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'
-        self.logger = create_logger()
+
+        create_logger()
 
     def create(self, scheme, alleles):
         # Verify sheme list with fasta files
@@ -152,13 +154,13 @@ class ClassicalMLST:
             st = int(h[0])
             for g, a in zip(header[1:], h[1:]):
                 if int(a) not in alleles.get(g):
-                    self.logger.info(
+                    logging.info(
                         "Unable to find the allele number " + a + " for gene " + g + "; replace by 0")
                     self.database.add_mlst(st, g, 0)
                 else:
                     self.database.add_mlst(st, g, int(a))
 
-        self.logger.info('Database initialized')
+        logging.info('Database initialized')
 
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         if identity < 0 or identity > 1:
@@ -176,13 +178,13 @@ class ClassicalMLST:
             tmpfile.close()
 
             # BLAT analysis
-            self.logger.info("Search coregene with BLAT")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage, self.logger)
-            self.logger.info("Finish run BLAT, found " + str(len(genes)) + " genes")
+            logging.info("Search coregene with BLAT")
+            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
+            logging.info("Finish run BLAT, found " + str(len(genes)) + " genes")
 
             # Search sequence MLST
             seqs = read_genome(genome)
-            self.logger.info("Search allele gene to database")
+            logging.info("Search allele gene to database")
             # print(genes)
             allele = {i: [] for i in coregenes}
             st = {i: set() for i in coregenes}
@@ -198,14 +200,14 @@ class ClassicalMLST:
                     # verify coverage and correct
                     if gene.coverage != 1:
                         gene.searchCorrect()
-                        self.logger.info("Gene " + gene.geneId() + " fill: added")
+                        logging.info("Gene " + gene.geneId() + " fill: added")
 
                     # get sequence
                     sequence = str(gene.get_sequence(seq)).upper()
 
                     # verify complet sequence
                     if len(sequence) != (gene.end - gene.start):
-                        self.logger.info("Gene " + gene.geneId() + " removed")
+                        logging.info("Gene " + gene.geneId() + " removed")
                         continue
 
                     # write fasta file with coregene
@@ -245,7 +247,7 @@ class ClassicalMLST:
             for coregene in coregenes:
                 output.write("\t" + ";".join(map(str, allele.get(coregene))))
             output.write("\n")
-            self.logger.info("FINISH")
+            logging.info("FINISH")
         finally:
             if os.path.exists(tmpfile.name):
                 os.remove(tmpfile.name)
