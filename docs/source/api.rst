@@ -16,3 +16,9 @@ Whole Genome MLST
 
 .. automodule:: pymlst.wg.core
     :members:
+
+Classical MLST
+-----------------
+
+.. automodule:: pymlst.cla.core
+    :members:

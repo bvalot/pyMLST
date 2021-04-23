@@ -21,6 +21,17 @@ from pymlst.common.utils import read_genome, create_logger
 
 @contextmanager
 def open_cla(file=None, ref='ref'):
+    """A context manager function to wrap the creation a
+       :class:`~pymlst.cla.core.ClassicalMLST` object.
+
+    Context managers allow you to instantiate objects using the ``with`` keyword,
+    this way you don't have to manage exceptions and the committing/closing processes yourself.
+
+    :param file: The path to the database file to work with.
+    :param ref: The name that will be given to the reference strain in the database.
+
+    :yields: A :class:`~pymlst.cla.core.ClassicalMLST` object.
+    """
     mlst = ClassicalMLST(file, ref)
     try:
         yield mlst
@@ -34,8 +45,16 @@ def open_cla(file=None, ref='ref'):
 
 
 class DatabaseCLA:
+    """A core level class to manipulate the genomic database.
+
+        .. warning:: Shouldn't be instantiated directly,
+                     see :class:`~pymlst.cla.core.ClassicalMLST` instead.
+    """
 
     def __init__(self, path):
+        """
+       :param path: The path to the database file to work with.
+       """
         self.engine = create_engine('sqlite:///' + path)
 
         metadata = MetaData()
@@ -58,54 +77,73 @@ class DatabaseCLA:
         self.transaction = self.connection.begin()
 
     def add_sequence(self, sequence, gene, allele):
+        """Adds a new sequence associated to a gene and an allele."""
         self.connection.execute(
             self.sequences.insert(),
             sequence=sequence, gene=gene, allele=allele)
 
     def add_mlst(self, sequence_typing, gene, allele):
+        """Adds a new sequence typing, associated to a gene and an allele."""
         self.connection.execute(
             self.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
 
     def get_genes_by_allele(self, allele):
-        """Returns all the distinct genes in the database and their sequences for a given allele"""
+        """Returns all the distinct genes in the database and their sequences for a given allele."""
         return self.connection.execute(
             select([distinct(self.mlst.c.gene), self.sequences.c.sequence])
-            .select_from(self.mlst.join(
+                .select_from(self.mlst.join(
                 self.sequences,
                 self.mlst.c.gene == self.sequences.c.gene))
-            .where(self.sequences.c.allele == allele)
+                .where(self.sequences.c.allele == allele)
         ).fetchall()
 
     def get_allele_by_sequence_and_gene(self, sequence, gene):
+        """Gets an allele by sequence and gene."""
         return self.connection.execute(
             select([self.sequences.c.allele])
-            .where(and_(
+                .where(and_(
                 self.sequences.c.sequence == sequence,
                 self.sequences.c.gene == gene))
         ).fetchone()
 
     def get_strains_by_gene_and_allele(self, gene, allele):
+        """Gets a strain by gene and allele."""
         return self.connection.execute(
             select([self.mlst.c.st])
-            .where(and_(
+                .where(and_(
                 self.mlst.c.gene == gene,
                 self.mlst.c.allele == allele))
         ).fetchall()
 
     def commit(self):
+        """Commits the modifications."""
         self.transaction.commit()
 
     def rollback(self):
+        """Rollback the modifications."""
         self.transaction.rollback()
 
     def close(self):
+        """Closes the database engine."""
         self.engine.dispose()
 
 
 class ClassicalMLST:
+    """Classical MLST python representation.
+
+        Example of usage::
+
+            open_cla('database.db') as db:
+                db.create(open('scheme.txt'), [open('gene1.fasta'), open('gene2.fasta'), open('gene3.fasta')])
+                db.search_st(open('genome.fasta'))
+        """
 
     def __init__(self, file=None, ref='ref'):
+        """
+        :param file: The path to the database file to work with.
+        :param ref: The name that will be given to the reference strain in the database.
+        """
         self.database = DatabaseCLA(file)
         self.ref = ref
         self.blat_path = '/usr/bin/'
@@ -113,6 +151,24 @@ class ClassicalMLST:
         create_logger()
 
     def create(self, scheme, alleles):
+        """Creates a classical MLST database from an MLST profile and a list of alleles.
+
+        :param scheme: The MLST profile
+        :param alleles: A list of alleles files.
+
+        The MLST profile should be a **CSV** file respecting the following format:
+
+        .. csv-table:: MLST Profile CSV
+            :header: "ST", "gene1", "gene2", "gene3", "..."
+            :widths: 5, 5, 5, 5, 5
+
+            1, 1, 1, 1, ...
+            2, 3, 3, 2, ...
+            3, 1, 2, 1, ...
+            4, 1, 1, 3, ...
+            ..., ..., ..., ..., ...
+
+        """
         # Verify sheme list with fasta files
         header = scheme.readline().rstrip("\n").split("\t")
         if len(header) != len(alleles) + 1:
@@ -157,6 +213,14 @@ class ClassicalMLST:
         logging.info('Database initialized')
 
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+        """Search the **Sequence Type** number of a strain.
+
+        :param genome: The strain genome we want to add as a `fasta`_ file.
+        :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
+        :param coverage: Sets the minimum accepted coverage for found sequences.
+        :param fasta: A file where to export genes alleles results in a fasta format.
+        :param output: An output for the sequence type research results.
+        """
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
 
@@ -257,11 +321,14 @@ class ClassicalMLST:
             coregenes.append(row[0])
         return coregenes
 
-    def close(self):
-        self.database.close()
-
     def commit(self):
+        """Commits the modifications."""
         self.database.commit()
 
     def rollback(self):
+        """Rollback the modifications."""
         self.database.rollback()
+
+    def close(self):
+        """Closes the database engine."""
+        self.database.close()

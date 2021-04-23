@@ -393,7 +393,7 @@ class WholeGenomeMLST:
         utils.create_logger()
 
     def create(self, coregene, concatenate=False, remove=False):
-        """Creates an MLST database from a core genome `fasta`_ file.
+        """Creates a whole genome MLST database from a core genome `fasta`_ file.
 
         :param coregene: The fasta file containing the reference core genome.
         :param concatenate: Whether we should concatenate genes with identical sequences.
