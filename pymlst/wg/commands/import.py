@@ -7,6 +7,8 @@
 # Licence GPL
 import logging
 import os
+import sys
+
 import click
 import tempfile
 
@@ -14,7 +16,7 @@ import requests
 
 from pymlst import open_wg
 from pymlst.common import utils
-from pymlst.common.web import prompt_cgmlst, build_coregene
+from pymlst.common import web
 
 
 @click.command()
@@ -32,7 +34,7 @@ def cli(prompt, database, species):
 
     try:
 
-        url = prompt_cgmlst(' '.join(species), prompt)
+        url = web.retrieve_cgmlst(' '.join(species), prompt)
         if url == '':
             logging.info('No choice selected')
             return
@@ -40,7 +42,7 @@ def cli(prompt, database, species):
 
         with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
 
-            skipped = build_coregene(url, tmp)
+            skipped = web.get_coregene_file(url, tmp)
             tmp.close()
             if len(skipped) > 0:
                 logging.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
@@ -50,10 +52,14 @@ def cli(prompt, database, species):
 
     except requests.exceptions.HTTPError:
         logging.error('An error occurred while retrieving online data')
-        exit(1)
+        sys.exit(1)
     except requests.exceptions.ConnectionError:
         logging.error('Couldn\'t access to the server, please verify your internet connection')
-        exit(2)
+        sys.exit(2)
     except requests.exceptions.Timeout:
         logging.error('The server took too long to respond')
-        exit(3)
+        sys.exit(3)
+    except web.StructureError:
+        logging.error('It seems like the structure of the website/API changed '
+                      'since this application was developed.')
+        sys.exit(4)

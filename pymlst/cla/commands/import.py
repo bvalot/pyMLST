@@ -18,7 +18,7 @@ import requests
 
 from pymlst import open_cla
 
-from pymlst.common.web import get_mlst_files, prompt_mlst
+from pymlst.common import web
 from pymlst.common import utils
 
 
@@ -26,7 +26,8 @@ from pymlst.common import utils
 @click.option('--prompt/--no-prompt',
               default=True)
 @click.option('--mlst', '-m',
-              type=click.STRING)
+              type=click.STRING,
+              default='')
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('species',
@@ -40,7 +41,7 @@ def cli(prompt, mlst, database, species):
 
     try:
 
-        url = prompt_mlst(' '.join(species), prompt, mlst)
+        url = web.retrieve_mlst(' '.join(species), prompt, mlst)
 
         if url is None:
             logging.info('No choice selected')
@@ -50,7 +51,7 @@ def cli(prompt, mlst, database, species):
         with tempfile.TemporaryDirectory() as tmp_dir, \
                 open_cla(os.path.abspath(database.name)) as mlst_db:
 
-            get_mlst_files(tmp_dir, url=url)
+            web.get_mlst_files(tmp_dir, url=url)
 
             mlst_db.create(open(tmp_dir + '/profiles.csv', 'rt'),
                            [open(tmp_dir + '/locus/' + locus, 'r')
@@ -65,3 +66,7 @@ def cli(prompt, mlst, database, species):
     except requests.exceptions.Timeout:
         logging.error('The server took too long to respond')
         sys.exit(3)
+    except web.StructureError:
+        logging.error('It seems like the structure of the website/API changed '
+                      'since this application was developed.')
+        sys.exit(4)
