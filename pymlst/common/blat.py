@@ -27,10 +27,10 @@ def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
     for line in open(tmpout.name, 'r'):
         try:
             int(line.split()[0])
-        except:
+        except (ValueError, IndexError):
             continue
         psl = Psl(line)
-        if psl.coverage >=coverage and psl.coverage <= 1:
+        if coverage <= psl.coverage <= 1:
             genes.setdefault(psl.gene_id(), []).append(psl)
     if len(genes) == 0:
         raise Exception("No path found for the coregenome")

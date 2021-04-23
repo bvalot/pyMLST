@@ -1,6 +1,7 @@
+import logging
+
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
-import logging
 
 
 def records_to_dict(records):
@@ -31,11 +32,11 @@ def strip_file(file):
 
 def compar_seqs(seqs):
     count = 0
-    for j in range(0, len(seqs[0])):
-        d = set([s[j] for s in seqs])
-        if '-' in d:
-            d.remove('-')
-        if len(d) > 1:
+    for index in range(0, len(seqs[0])):
+        seqs_char = set([s[index] for s in seqs])
+        if '-' in seqs_char:
+            seqs_char.remove('-')
+        if len(seqs_char) > 1:
             count += 1
     return count
 

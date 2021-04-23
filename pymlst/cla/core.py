@@ -135,7 +135,9 @@ class ClassicalMLST:
         Example of usage::
 
             open_cla('database.db') as db:
-                db.create(open('scheme.txt'), [open('gene1.fasta'), open('gene2.fasta'), open('gene3.fasta')])
+                db.create(open('scheme.txt'), [open('gene1.fasta'),
+                                               open('gene2.fasta'),
+                                               open('gene3.fasta')])
                 db.search_st(open('genome.fasta'))
         """
 
@@ -245,7 +247,7 @@ class ClassicalMLST:
             logging.info("Search allele gene to database")
             # print(genes)
             allele = {i: [] for i in coregenes}
-            st = {i: set() for i in coregenes}
+            sequence_type = {i: set() for i in coregenes}
             for coregene in coregenes:
                 if coregene not in genes:
                     allele.get(coregene).append("")
@@ -281,7 +283,7 @@ class ClassicalMLST:
                         #                (coregene, row[0]))
                         strains = self.database.get_strains_by_gene_and_allele(coregene, res[0])
                         for strain in strains:
-                            st.get(coregene).add(strain[0])
+                            sequence_type.get(coregene).add(strain[0])
                     else:
                         allele.get(gene.gene_id()).append("new")
 
@@ -290,12 +292,12 @@ class ClassicalMLST:
             st_val = []
             if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
                 tmp = None
-                for s in st.values():
-                    if s:
+                for st_value in sequence_type.values():
+                    if st_value:
                         if tmp is None:
-                            tmp = s
+                            tmp = st_value
                         else:
-                            tmp = tmp.intersection(s)
+                            tmp = tmp.intersection(st_value)
                 st_val = list(tmp)
 
             # print result

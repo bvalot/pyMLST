@@ -5,7 +5,7 @@
 ##benoit.valot@univ-fcomte.fr
 ##UMR 6249 Chrono-Environnement, Besançon, France
 ##Licence GPL
-from Bio import Align
+
 from Bio.Data.CodonTable import TranslationError
 
 from pymlst.common import mafft

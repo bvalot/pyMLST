@@ -9,4 +9,3 @@ def benchmark(func):
         print('Execution time (' + func.__name__ + '): ' + str(end - begin) + 's')
         return result
     return wrapper
-

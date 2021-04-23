@@ -315,35 +315,35 @@ class DatabaseWG:
 
     def get_strains_distances(self, ref, valid_schema):
         """Gets the strains distances."""
-        m1 = self.mlst.alias()
-        m2 = self.mlst.alias()
+        alias_1 = self.mlst.alias()
+        alias_2 = self.mlst.alias()
 
-        res = self.connection.execute(
+        result = self.connection.execute(
             select(
-                [m1.c.souche, m2.c.souche, count(distinct(m1.c.gene))])
+                [alias_1.c.souche, alias_2.c.souche, count(distinct(alias_1.c.gene))])
             .select_from(
-                m1.join(m2,
+                alias_1.join(alias_2,
                         and_(
-                            m1.c.gene == m2.c.gene,
-                            m1.c.souche != m2.c.souche,
-                            m1.c.seqid != m2.c.seqid)))
+                            alias_1.c.gene == alias_2.c.gene,
+                            alias_1.c.souche != alias_2.c.souche,
+                            alias_1.c.seqid != alias_2.c.seqid)))
             .where(and_(
-                in_(m1.c.gene, valid_schema),
-                m1.c.souche != ref,
-                m2.c.souche != ref))
-            .group_by(m1.c.souche, m2.c.souche)
+                in_(alias_1.c.gene, valid_schema),
+                alias_1.c.souche != ref,
+                alias_2.c.souche != ref))
+            .group_by(alias_1.c.souche, alias_2.c.souche)
         ).fetchall()
 
         distance = {}
-        for r in res:
-            x = distance.setdefault(r[0], {})
-            x[r[1]] = r[2]
+        for entry in result:
+            dist = distance.setdefault(entry[0], {})
+            dist[entry[1]] = entry[2]
 
         return distance
 
     def get_mlst(self, ref, valid_schema):
         """Gets the MLST sequences and their strains associated to the genes in the given schema."""
-        res = self.connection.execute(
+        result = self.connection.execute(
             select([self.mlst.c.gene, self.mlst.c.souche, func.group_concat(self.mlst.c.seqid, ';')])
             .where(and_(self.mlst.c.souche != ref,
                         in_(self.mlst.c.gene, valid_schema)))
@@ -352,9 +352,9 @@ class DatabaseWG:
 
         mlst = {}
 
-        for r in res:
-            x = mlst.setdefault(r[0], {})
-            x[r[1]] = r[2]
+        for entry in result:
+            sequences = mlst.setdefault(entry[0], {})
+            sequences[entry[1]] = entry[2]
         return mlst
 
     def commit(self):
