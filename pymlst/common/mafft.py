@@ -5,7 +5,7 @@ from Bio import AlignIO
 from Bio.Align.Applications import MafftCommandline
 
 from pymlst.common import binaries
-from pymlst.common.utils import records_to_dict, write_genome
+from pymlst.common import utils
 
 
 def align(genes):
@@ -13,7 +13,7 @@ def align(genes):
     if not path:
         raise Exception('Unable to locate the Mafft executable\n')
     with tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta') as tmp:
-        write_genome(genes, tmp)
+        utils.write_genome(genes, tmp)
         tmp.flush()
         mafft_cmd = MafftCommandline(path, input=tmp.name, quiet=True)
         stdout, _ = mafft_cmd()
@@ -22,7 +22,7 @@ def align(genes):
             alignments = next(records)
         except StopIteration:
             return {}
-        return records_to_dict(alignments)
+        return utils.records_to_dict(alignments)
 
 
 def _first_aligned_position(sequence):

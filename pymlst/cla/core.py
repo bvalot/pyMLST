@@ -14,13 +14,13 @@ from sqlalchemy import MetaData, Table, Column, Integer, Text
 from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
-from pymlst.common import blat
+from pymlst.common import blat, psl
 from pymlst.common.binaries import get_binary_path
 from pymlst.common.utils import read_genome, create_logger
 
 
 @contextmanager
-def open_cla(file=None, ref='ref'):
+def open_cla(file=None, ref=1):
     """A context manager function to wrap the creation a
        :class:`~pymlst.cla.core.ClassicalMLST` object.
 
@@ -107,7 +107,7 @@ class DatabaseCLA:
                 self.sequences.c.gene == gene))
         ).fetchone()
 
-    def get_strains_by_gene_and_allele(self, gene, allele):
+    def get_st_by_gene_and_allele(self, gene, allele):
         """Gets a strain by gene and allele."""
         return self.connection.execute(
             select([self.mlst.c.st])
@@ -115,6 +115,14 @@ class DatabaseCLA:
                 self.mlst.c.gene == gene,
                 self.mlst.c.allele == allele))
         ).fetchall()
+
+    def get_sequence_by_gene_and_allele(self, gene, allele):
+        return self.connection.execute(
+            select([self.sequences.c.sequence])
+            .where(and_(
+                self.sequences.c.gene == gene,
+                self.sequences.c.allele == allele))
+        ).fetchone()
 
     def commit(self):
         """Commits the modifications."""
@@ -141,7 +149,7 @@ class ClassicalMLST:
                 db.search_st(open('genome.fasta'))
         """
 
-    def __init__(self, file=None, ref='ref'):
+    def __init__(self, file=None, ref=1):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
@@ -258,15 +266,24 @@ class ClassicalMLST:
                         raise Exception("Chromosome ID not found " + gene.chro)
 
                     # verify coverage and correct
-                    if gene.coverage != 1:
-                        gene.searchCorrect()
-                        logging.info("Gene %s fill: added", gene.gene_id())
+                    # if gene.coverage != 1:
+                    #     gene.searchCorrect()
+                    #     logging.info("Gene %s fill: added", gene.gene_id())
+
+                    if gene.coverage == 1:
+                        sequence = gene.get_sequence(seq)
+                    else:
+                        coregene_seq = self.database.get_sequence_by_gene_and_allele(
+                            coregene, self.ref)[0]
+                        sequence = gene.get_aligned_sequence(seq, coregene_seq)
+
+                    sequence = str(sequence)
 
                     # get sequence
-                    sequence = str(gene.get_sequence(seq)).upper()
+                    # sequence = str(gene.get_sequence(seq)).upper()
 
                     # verify complet sequence
-                    if len(sequence) != (gene.end - gene.start):
+                    if not (sequence and len(sequence) == (gene.end - gene.start)):
                         logging.info("Gene %s removed", gene.gene_id())
                         continue
 
@@ -281,9 +298,9 @@ class ClassicalMLST:
                         allele.get(coregene).append(str(res[0]))
                         # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
                         #                (coregene, row[0]))
-                        strains = self.database.get_strains_by_gene_and_allele(coregene, res[0])
-                        for strain in strains:
-                            sequence_type.get(coregene).add(strain[0])
+                        sts = self.database.get_st_by_gene_and_allele(coregene, res[0])
+                        for st in sts:
+                            sequence_type.get(coregene).add(st[0])
                     else:
                         allele.get(gene.gene_id()).append("new")
 
@@ -315,8 +332,7 @@ class ClassicalMLST:
                 os.remove(tmpout.name)
 
     def __create_coregene(self, tmpfile):
-        ref = int(1)
-        all_rows = self.database.get_genes_by_allele(ref)
+        all_rows = self.database.get_genes_by_allele(self.ref)
         coregenes = []
         for row in all_rows:
             tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
