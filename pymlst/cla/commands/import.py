@@ -1,12 +1,5 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+"""import CLI command file."""
 
-# Copyright (c) 2019 Benoit Valot
-# benoit.valot@univ-fcomte.fr
-# UMR 6249 Chrono-Environnement, Besançon, France
-# Licence GPL
-
-"""Initialize a database from an online base"""
 import logging
 import os
 import sys

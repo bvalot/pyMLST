@@ -67,8 +67,8 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
 
     try:
         whole_base = request(url).json()
-    except ValueError:
-        raise StructureError()
+    except ValueError as error:
+        raise StructureError() from error
 
     species = {}
     query_low = query.lower()
@@ -82,8 +82,8 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
                 if query_low in des:
                     if database['name'].endswith('seqdef'):
                         species[des] = database['href']
-    except KeyError:
-        raise StructureError()
+    except KeyError as error:
+        raise StructureError() from error
 
     species_choice = process_results(list(species.keys()), query, prompt_enabled)
 
@@ -103,8 +103,8 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
             des = scheme['description'].lower()
             if mlst_low in des:
                 schemes[des] = scheme['scheme']
-    except KeyError:
-        raise StructureError()
+    except KeyError as error:
+        raise StructureError() from error
 
     scheme_choice = process_results(list(schemes.keys()), mlst, prompt_enabled)
 

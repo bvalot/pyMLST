@@ -14,20 +14,20 @@ def add_sequence_strain(seqs, strains, sequences):
     size = 0
     if len(seqs) > 0:
         size = len(seqs[0][2])
-    for s in strains:
-        seq = [i[2] for i in seqs if s in i[1]]
+    for strain in strains:
+        seq = [i[2] for i in seqs if strain in i[1]]
         if len(seq) == 0:
-            sequences.get(s).append('-' * size)
+            sequences.get(strain).append('-' * size)
         elif len(seq) == 1:
-            sequences.get(s).append(seq[0])
+            sequences.get(strain).append(seq[0])
         else:
             raise Exception("repeated gene must be excluded in order to align export\n")
 
 
 class SequenceExtractor(Extractor):
 
-    def __init__(self, list=None, align=False, realign=False, mincover=1):
-        self.list = list
+    def __init__(self, gene_list=None, align=False, realign=False, mincover=1):
+        self.list = gene_list
         self.align = align
         self.realign = realign
         self.mincover = mincover
@@ -45,30 +45,30 @@ class SequenceExtractor(Extractor):
         else:
             coregene = [l[0] for l in base.get_genes_coverages(ref) if l[1] >= self.mincover]
 
-        logging.info("Number of gene to analyse : " + str(len(coregene)) + "\n")
+        logging.info("Number of gene to analyse : %s", len(coregene))
 
         if self.align is False:
             # no multialign
-            for g in coregene:
-                seqs = base.get_gene_sequences(g, ref)
+            for gene in coregene:
+                seqs = base.get_gene_sequences(gene, ref)
                 for seq in seqs:
-                    output.write(">" + g + "|" + str(seq[0]) + " "
+                    output.write(">" + gene + "|" + str(seq[0]) + " "
                                  + ";".join(seq[1]) + "\n")
                     output.write(seq[2] + "\n")
         else:
             # multialign
             # search duplicate
-            dupli = base.get_duplicated_genes(ref)
-            for d in dupli:
-                logging.info('Duplicated: ', d)
+            duplicated = base.get_duplicated_genes(ref)
+            for dupli in duplicated:
+                logging.info('Duplicated: ', dupli)
 
             sequences = {s: [] for s in strains}
-            for i, g in enumerate(coregene):
-                logging.info(str(i + 1) + "/" + str(len(coregene)) + " | " + g + "     ")
-                if g in dupli:
+            for index, gene in enumerate(coregene):
+                logging.info("%s/%s | %s     ", index + 1, len(coregene), gene)
+                if gene in duplicated:
                     logging.info("No: Repeat gene\n")
                     continue
-                seqs = base.get_gene_sequences(g, ref)
+                seqs = base.get_gene_sequences(gene, ref)
                 size = set()
                 for seq in seqs:
                     size.add(len(seq[2]))
@@ -90,9 +90,9 @@ class SequenceExtractor(Extractor):
                 logging.info("\n")
 
             # output align result
-            for s in strains:
-                output.write('>' + s + "\n")
-                output.write("\n".join(sequences.get(s)) + "\n")
+            for strain in strains:
+                output.write('>' + strain + "\n")
+                output.write("\n".join(sequences.get(strain)) + "\n")
 
 
 class TableExtractor(Extractor):
@@ -111,7 +111,8 @@ class TableExtractor(Extractor):
 
         # Minimun number of strain
         if self.mincover < 0 or self.mincover > len(strains):
-            raise Exception("Mincover must be between 0 to number of strains : " + str(len(strains)))
+            raise Exception("Mincover must be between 0 to number of strains : "
+                            + str(len(strains)))
 
         # allgene
         allgene = base.get_all_genes(ref)
@@ -129,21 +130,21 @@ class TableExtractor(Extractor):
         valid_shema = []
 
         # Test different case for validation
-        for g in allgene:
+        for gene in allgene:
             valid = []
             if self.keep is True:
-                if diff.get(g, 0) > 1:
+                if diff.get(gene, 0) > 1:
                     valid.append(True)
                 else:
                     valid.append(False)
             else:
                 valid.append(True)
-            if count_souches.get(g, 0) >= self.mincover:
+            if count_souches.get(gene, 0) >= self.mincover:
                 valid.append(True)
             else:
                 valid.append(False)
             if self.duplicate:
-                if g in dupli:
+                if gene in dupli:
                     valid.append(False)
                 else:
                     valid.append(True)
@@ -151,14 +152,13 @@ class TableExtractor(Extractor):
                 valid.append(True)
             if self.inverse is False:
                 if sum(valid) == 3:
-                    valid_shema.append(g)
+                    valid_shema.append(gene)
             else:
                 if sum(valid) < 3:
-                    valid_shema.append(g)
+                    valid_shema.append(gene)
 
         # report
-        logging.info("Number of coregene used : " + str(len(valid_shema)) +
-                     "/" + str(len(allgene)) + "\n")
+        logging.info("Number of coregene used : %s/%s", len(valid_shema), len(allgene))
 
         exporter = ExportType.get_type(self.export)
 

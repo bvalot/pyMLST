@@ -1,11 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2020 Benoit Valot
-# benoit.valot@univ-fcomte.fr
-# UMR 6249 Chrono-Environnement, Besançon, France
-# Licence GPL
-
+"""find_recombinaison CLI command file."""
 
 import sys
 import click

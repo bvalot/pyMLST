@@ -1,6 +1,5 @@
-"""Core classes and functions to work with Whole Genome data.
+"""Core classes and functions to work with Whole Genome MLST data."""
 
-"""
 import logging
 import os
 import sys
@@ -344,7 +343,8 @@ class DatabaseWG:
     def get_mlst(self, ref, valid_schema):
         """Gets the MLST sequences and their strains associated to the genes in the given schema."""
         result = self.connection.execute(
-            select([self.mlst.c.gene, self.mlst.c.souche, func.group_concat(self.mlst.c.seqid, ';')])
+            select([self.mlst.c.gene, self.mlst.c.souche,
+                    func.group_concat(self.mlst.c.seqid, ';')])
             .where(and_(self.mlst.c.souche != ref,
                         in_(self.mlst.c.gene, valid_schema)))
             .group_by(self.mlst.c.gene, self.mlst.c.souche)
@@ -399,7 +399,8 @@ class WholeGenomeMLST:
         :param concatenate: Whether we should concatenate genes with identical sequences.
         :param remove: Whether we should remove genes with identical sequences.
 
-        For instance, if concatenate is set to ``True``, 2 genes **g1** and **g2** having the same sequence
+        For instance, if concatenate is set to ``True``, 2 genes **g1** and **g2**
+        having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
         genes = set()
@@ -425,7 +426,7 @@ class WholeGenomeMLST:
             if not added:
                 if concatenate:
                     self.database.concatenate_gene(seq_id, gene.id)
-                    logging.info("Concatenate gene " + gene.id)
+                    logging.info("Concatenate gene %s", gene.id)
                 elif remove:
                     to_remove.add(seq_id)
                 else:
@@ -436,13 +437,13 @@ class WholeGenomeMLST:
 
         if to_remove:
             self.database.remove_sequences(to_remove)
-            logging.info("Remove duplicate sequence: " + str(len(to_remove)))
+            logging.info("Remove duplicate sequence: %s", str(len(to_remove)))
 
         if rc_genes:
-            logging.info('Reverse-complemented genes: ' + str(rc_genes))
+            logging.info('Reverse-complemented genes: %s', str(rc_genes))
 
         if invalid_genes:
-            logging.info('Skipped invalid genes: ' + str(invalid_genes))
+            logging.info('Skipped invalid genes: %s', str(invalid_genes))
 
         logging.info('Database initialized')
 
@@ -453,8 +454,8 @@ class WholeGenomeMLST:
 
         1. A `BLAT`_ research is performed on each given contig of the strain to find
            sub-sequences matching the core genes.
-        2. The identified sub-sequences are extracted and added to our database where they are associated
-           to a **sequence ID**.
+        2. The identified sub-sequences are extracted and added to our database where
+           they are associated to a **sequence ID**.
         3. An MLST entry is created, referencing the sequence,
            the gene it belongs to, and the strain it was found in.
 
@@ -490,7 +491,7 @@ class WholeGenomeMLST:
             # BLAT analysis
             logging.info("Search coregene with BLAT")
             genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
-            logging.info("Finish run BLAT, found " + str(len(genes)) + " genes")
+            logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
             # add MLST sequence
             seqs = utils.read_genome(genome)
@@ -520,14 +521,14 @@ class WholeGenomeMLST:
 
                     if sequence and psl.test_cds(sequence):
                         if gene.coverage != 1:
-                            logging.debug("Gene " + gene.gene_id() + " fill: added")
+                            logging.debug("Gene %s fill: added", gene.gene_id())
                             partial_filled += 1
                             partial += 1
                     else:
                         if gene.coverage == 1:
-                            logging.debug("Gene " + gene.gene_id() + " not correct: removed")
+                            logging.debug("Gene %s not correct: removed", gene.gene_id())
                         else:
-                            logging.debug("Gene " + gene.gene_id() + " partial: removed")
+                            logging.debug("Gene %s partial: removed", gene.gene_id())
                             partial += 1
                         bad += 1
                         continue
@@ -536,9 +537,8 @@ class WholeGenomeMLST:
                     seqid = self.database.add_sequence(str(sequence))[1]
                     self.database.add_mlst(name, gene.gene_id(), seqid)
 
-            logging.info("Added " + str(len(genes) - bad) + " new MLST genes to the database")
-            logging.info('Found ' + str(partial)
-                                      + ' partial genes, filled ' + str(partial_filled))
+            logging.info("Added %s new MLST genes to the database", len(genes) - bad)
+            logging.info('Found %s partial genes, filled %s', partial, partial_filled)
             logging.info("DONE")
 
         finally:
@@ -562,7 +562,7 @@ class WholeGenomeMLST:
         all_genes = set(all_genes)
 
         for gene in all_genes:
-            logging.info(gene + " : ")
+            logging.info("%s : ", gene)
 
             seqids = self.database.get_gene_sequences_ids(gene)
             if len(seqids) == 0:
@@ -605,7 +605,8 @@ class WholeGenomeMLST:
     def extract(self, extractor, output=sys.stdout):
         """Takes an extractor object and writes the extraction result on the given output.
 
-        :param extractor: A :class:`~pymlst.wg.core.Extractor` object describing the way data should be extracted.
+        :param extractor: A :class:`~pymlst.wg.core.Extractor` object describing
+                          the way data should be extracted.
         :param output: The output that will receive extracted data.
         """
         extractor.extract(self.database, self.ref, output, logging)
@@ -639,19 +640,19 @@ class Extractor(ABC):
         :param ref: The name of the reference genome.
         :param output: The output where to write the extraction results.
         """
-        pass
 
 
 def find_recombination(genes, alignment, output):
     """Counts the number of versions of each gene.
 
-    :param genes: List of genes (output of :class:`~pymlst.wg.extractors.TableExtractor` using ``export='gene'``).
+    :param genes: List of genes (output of :class:`~pymlst.wg.extractors.TableExtractor`
+                  using ``export='gene'``).
     :param alignment: `fasta`_ file alignment
                       (output of :class:`~pymlst.wg.extractors.SequenceExtractor` using ``align=True``).
     :param output: The output where to write the results.
     """
     genes = [line.rstrip("\n") for line in genes]
-    logging.info("Number of genes to look at : " + str(len(genes)))
+    logging.info("Number of genes to look at : %s", len(genes))
 
     sequences = [[] for _ in genes]
     samples = []
@@ -682,15 +683,15 @@ def find_recombination(genes, alignment, output):
             raise Exception("Following genes seems to be not align: " + genes[i])
 
     for i, seqs in enumerate(sequences):
-        c = utils.compar_seqs(seqs)
-        output.write(genes[i] + "\t" + str(c) + "\t" + str(len(seqs[0])) + "\n")
+        compared = utils.compar_seqs(seqs)
+        output.write(genes[i] + "\t" + str(compared) + "\t" + str(len(seqs[0])) + "\n")
 
 
-def find_subgraph(threshold, count, distance, output):
+def find_subgraph(threshold, do_count, distance, output):
     """Searches groups of strains separated by a distance threshold.
 
     :param threshold: Minimum distance to maintain for groups extraction.
-    :param count: Whether to write count or not.
+    :param do_count: Whether to write count or not.
     :param distance: Distance matrix file
                      (output of :class:`~pymlst.wg.extractors.TableExtractor`
                      with ``export='distance'``).
@@ -704,30 +705,30 @@ def find_subgraph(threshold, count, distance, output):
         raise Exception("The distance file seems not correctly formatted\n Not integer on first line")
 
     for line in distance.readlines():
-        h = line.rstrip("\n").split("\t")
-        samps.append(h[0])
-        dists.append(h[1:])
+        dist_line = line.rstrip("\n").split("\t")
+        samps.append(dist_line[0])
+        dists.append(dist_line[1:])
 
     if len(samps) != strains:
         raise Exception("The distance file seems not correctly formatted\n Number of strains " + str(
             len(samps)) + " doesn't correspond to " + str(strains))
 
     # create graph
-    G = nx.Graph()
-    G.add_nodes_from(samps)
+    graph = nx.Graph()
+    graph.add_nodes_from(samps)
 
-    for i, s in enumerate(samps):
-        for j, d in enumerate(dists[i]):
-            d = int(d)
-            if i == j or d > threshold:
+    for strain_index, strain in enumerate(samps):
+        for dist_index, dist in enumerate(dists[strain_index]):
+            dist = int(dist)
+            if strain_index == dist_index or dist > threshold:
                 continue
-            G.add_edge(samps[i], samps[j], weight=d)
+            graph.add_edge(samps[strain_index], samps[dist_index], weight=dist)
 
     # extract interconnected subgraph
     # count sample not found
     samps2 = set(samps)
     grps = []
-    for subG in [G.subgraph(c) for c in nx.connected_components(G)]:
+    for subG in [graph.subgraph(c) for c in nx.connected_components(graph)]:
 
         inds = []
         for n in subG.nodes():
@@ -738,16 +739,16 @@ def find_subgraph(threshold, count, distance, output):
     grps.sort(key=len, reverse=True)
 
     # write result
-    utils.write_count(count, "Group\t" + "\t".join(samps) + "\n")
-    for i, g in enumerate(grps):
+    utils.write_count(do_count, "Group\t" + "\t".join(samps) + "\n")
+    for strain_index, group in enumerate(grps):
         a = len(samps) * [0]
-        output.write("Group" + str(i))
-        for n in g:
+        output.write("Group" + str(strain_index))
+        for n in group:
             a[n] = 1
             output.write(" " + samps[n])
-        utils.write_count(count, str(i) + "\t" + "\t".join(map(str, a)) + "\n")
+        utils.write_count(do_count, str(strain_index) + "\t" + "\t".join(map(str, a)) + "\n")
         output.write("\n")
 
-    if count:
-        count.close()
+    if do_count:
+        do_count.close()
     output.close()

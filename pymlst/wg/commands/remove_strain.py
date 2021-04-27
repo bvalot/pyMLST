@@ -1,10 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2019 Benoit Valot
-# benoit.valot@univ-fcomte.fr
-# UMR 6249 Chrono-Environnement, Besançon, France
-# Licence GPL
+"""remove_strain CLI command file."""
 
 import os
 

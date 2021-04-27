@@ -1,10 +1,5 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+"""import CLI command file."""
 
-# Copyright (c) 2019 Benoit Valot
-# benoit.valot@univ-fcomte.fr
-# UMR 6249 Chrono-Environnement, Besançon, France
-# Licence GPL
 import logging
 import os
 import sys
@@ -45,7 +40,7 @@ def cli(prompt, database, species):
             skipped = web.get_coregene_file(url, tmp)
             tmp.close()
             if len(skipped) > 0:
-                logging.info('Skipped the following malformed file(s): ' + ', '.join(skipped))
+                logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))
 
             with open_wg(os.path.abspath(database.name)) as mlst:
                 mlst.create(tmp.name)

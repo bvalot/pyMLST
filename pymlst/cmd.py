@@ -1,5 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""PyMLST entry commands and common parameters creation.
+
+Subcommands are being instantiated dynamically from their respective folders.
+"""
 
 import os
 import click
@@ -11,6 +13,7 @@ from pymlst.common import utils
 
 
 class PyMlstCommand(click.MultiCommand):
+    """Global PyMLST command."""
 
     def __init__(self, path):
         super().__init__(help='Subcommands are loaded from a '
@@ -43,12 +46,14 @@ class PyMlstCommand(click.MultiCommand):
 
 
 def set_debug(ctx, param, value):
+    del param
     if not value or ctx.resilient_parsing:
         return
     utils.create_logger(verbose=True)
 
 
 def print_version(ctx, param, value):
+    del param
     if not value or ctx.resilient_parsing:
         return
     click.echo('Version: ' + version.__version__)

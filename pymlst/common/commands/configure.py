@@ -1,3 +1,5 @@
+"""configure CLI command file."""
+
 import click
 
 import pymlst.common.binaries as binaries

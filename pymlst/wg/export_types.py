@@ -32,14 +32,14 @@ class GeneExport(ExportType):
 class DistanceExport(ExportType):
     def export(self, data, base, output):
         if data.duplicate is False:
-            logging.info("WARNINGS : Calculate distance between strains " +
-                         "using duplicate genes could reported bad result\n")
+            logging.info("WARNINGS : Calculate distance between strains ",
+                         "using duplicate genes could reported bad result.")
         output.write(str(len(data.strains)) + "\n")
         distance = base.get_strains_distances(data.ref, data.valid_schema)
-        for s1 in data.strains:
-            output.write(s1 + "\t")
-            c = [str(distance.get(s1, {}).get(s2, 0)) for s2 in data.strains]
-            output.write("\t".join(c) + "\n")
+        for strain in data.strains:
+            output.write(strain + "\t")
+            dist = [str(distance.get(strain, {}).get(s2, 0)) for s2 in data.strains]
+            output.write("\t".join(dist) + "\n")
 
     @staticmethod
     def name():
@@ -50,11 +50,11 @@ class MlstExport(ExportType):
     def export(self, data, base, output):
         output.write("GeneId\t" + "\t".join(data.strains) + "\n")
         mlst = base.get_mlst(data.ref, data.valid_schema)
-        for g in data.valid_schema:
-            towrite = [g]
-            mlstg = mlst.get(g, {})
-            for s in data.strains:
-                towrite.append(mlstg.get(s, ""))
+        for gene in data.valid_schema:
+            towrite = [gene]
+            mlstg = mlst.get(gene, {})
+            for strain in data.strains:
+                towrite.append(mlstg.get(strain, ""))
             output.write("\t".join(towrite) + "\n")
 
     @staticmethod
@@ -65,17 +65,17 @@ class MlstExport(ExportType):
 class GrapetreeExport(ExportType):
     def export(self, data, base, output):
         mlst = base.get_mlst(data.ref, data.valid_schema)
-        df = pd.DataFrame(columns=["#GeneId"] + data.strains)
-        for g in data.valid_schema:
-            row = {"#GeneId": g}
-            mlstg = mlst.get(g, {})
+        strains = pd.DataFrame(columns=["#GeneId"] + data.strains)
+        for gene in data.valid_schema:
+            row = {"#GeneId": gene}
+            mlstg = mlst.get(gene, {})
             for s in data.strains:
                 row[s] = mlstg.get(s, np.NaN)
-            df = df.append(row, ignore_index=True)
-        df = df.set_index('#GeneId')
-        df = df.transpose()
-        df = df.fillna(-1).astype(int)
-        df.to_csv(output, sep='\t')
+            strains = strains.append(row, ignore_index=True)
+        strains = strains.set_index('#GeneId')
+        strains = strains.transpose()
+        strains = strains.fillna(-1).astype(int)
+        strains.to_csv(output, sep='\t')
 
     @staticmethod
     def name():

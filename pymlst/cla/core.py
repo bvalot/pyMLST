@@ -1,3 +1,5 @@
+"""Core classes and functions to work with Classical MLST data."""
+
 import logging
 import os
 import re
@@ -14,7 +16,7 @@ from sqlalchemy import MetaData, Table, Column, Integer, Text
 from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
-from pymlst.common import blat, psl
+from pymlst.common import blat
 from pymlst.common.binaries import get_binary_path
 from pymlst.common.utils import read_genome, create_logger
 
@@ -117,6 +119,7 @@ class DatabaseCLA:
         ).fetchall()
 
     def get_sequence_by_gene_and_allele(self, gene, allele):
+        """Gets a sequence by gene and allele."""
         return self.connection.execute(
             select([self.sequences.c.sequence])
             .where(and_(
@@ -226,7 +229,8 @@ class ClassicalMLST:
         """Search the **Sequence Type** number of a strain.
 
         :param genome: The strain genome we want to add as a `fasta`_ file.
-        :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
+        :param identity: Sets the minimum identity used by `BLAT`_
+                         for sequences research (in percent).
         :param coverage: Sets the minimum accepted coverage for found sequences.
         :param fasta: A file where to export genes alleles results in a fasta format.
         :param output: An output for the sequence type research results.
@@ -298,9 +302,9 @@ class ClassicalMLST:
                         allele.get(coregene).append(str(res[0]))
                         # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
                         #                (coregene, row[0]))
-                        sts = self.database.get_st_by_gene_and_allele(coregene, res[0])
-                        for st in sts:
-                            sequence_type.get(coregene).add(st[0])
+                        seq_types = self.database.get_st_by_gene_and_allele(coregene, res[0])
+                        for seq_type in seq_types:
+                            sequence_type.get(coregene).add(seq_type[0])
                     else:
                         allele.get(gene.gene_id()).append("new")
 
