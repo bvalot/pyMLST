@@ -31,8 +31,7 @@ class PyMlstCommand(click.MultiCommand):
     def list_commands(self, ctx):
         cmd_names = []
         for filename in os.listdir(self.path):
-            if filename.endswith('.py') and not filename.startswith('__init__'):
-                cmd_names.append(filename[:-3])
+            cmd_names.append(filename[:-3])
         cmd_names.sort()
         return cmd_names
 

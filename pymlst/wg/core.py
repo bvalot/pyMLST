@@ -313,7 +313,12 @@ class DatabaseWG:
         ).fetchone()[0]
 
     def get_strains_distances(self, ref, valid_schema):
-        """Gets the strains distances."""
+        """Gets the strains distances.
+
+        For all the possible pairs of strains, counts how many of their genes
+        are different (different seqids so different sequences)
+        The compared genes are restricted to the ones given in the valid_schema.
+        """
         alias_1 = self.mlst.alias()
         alias_2 = self.mlst.alias()
 
@@ -321,15 +326,17 @@ class DatabaseWG:
             select(
                 [alias_1.c.souche, alias_2.c.souche, count(distinct(alias_1.c.gene))])
             .select_from(
-                alias_1.join(alias_2,
-                        and_(
-                            alias_1.c.gene == alias_2.c.gene,
-                            alias_1.c.souche != alias_2.c.souche,
-                            alias_1.c.seqid != alias_2.c.seqid)))
-            .where(and_(
-                in_(alias_1.c.gene, valid_schema),
-                alias_1.c.souche != ref,
-                alias_2.c.souche != ref))
+                alias_1.join(
+                    alias_2,
+                    and_(
+                        alias_1.c.gene == alias_2.c.gene,
+                        alias_1.c.souche != alias_2.c.souche,
+                        alias_1.c.seqid != alias_2.c.seqid)))
+            .where(
+                and_(
+                    in_(alias_1.c.gene, valid_schema),
+                    alias_1.c.souche != ref,
+                    alias_2.c.souche != ref))
             .group_by(alias_1.c.souche, alias_2.c.souche)
         ).fetchall()
 
@@ -609,7 +616,7 @@ class WholeGenomeMLST:
                           the way data should be extracted.
         :param output: The output that will receive extracted data.
         """
-        extractor.extract(self.database, self.ref, output, logging)
+        extractor.extract(self.database, self.ref, output)
 
     def __create_coregene(self, tmpfile):
         ref_genes = self.database.get_sequences_by_souche(self.ref)

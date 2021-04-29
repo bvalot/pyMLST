@@ -16,9 +16,11 @@ Whole Genome MLST
 
 .. automodule:: pymlst.wg.core
     :members:
+    :member-order: bysource
 
 Classical MLST
 -----------------
 
 .. automodule:: pymlst.cla.core
     :members:
+    :member-order: bysource
