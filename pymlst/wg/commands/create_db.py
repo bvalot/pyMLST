@@ -6,7 +6,7 @@ import click
 from pymlst import open_wg
 
 
-@click.command(name="create_db")
+@click.command()
 @click.option('--concatenate', '-c',
               is_flag=True,
               help='Automatically concatenate genes with duplicated sequences')

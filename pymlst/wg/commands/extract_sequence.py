@@ -6,16 +6,16 @@ import os
 import click
 
 from pymlst import open_wg
+from pymlst.common import utils
 from pymlst.wg.extractors import SequenceExtractor
 
 
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
-              default=sys.stdout,
               help='Output result in fasta format (default:stdout)')
 @click.option('--list', '-l',
-              type=click.File('r'), default=None,
+              type=click.File('r'),
               help='List of coregenes to extract (default:all)')
 @click.option('--align', '-a',
               is_flag=True,
@@ -25,15 +25,23 @@ from pymlst.wg.extractors import SequenceExtractor
               is_flag=True,
               help='Realign genes with same length (Default:No)')
 @click.option('--mincover', '-m',
-              type=int, default=1,
+              type=click.INT,
               help='Minimun number of strain found '
               'to keep a coregene (default:1)')
 @click.argument('database',
                 type=click.File('r'))
-def cli(output, list, align, realign, mincover, database):
+def cli(database, list, **kwargs):
     """Get sequences from a wgMLST database"""
 
     database.close()
 
+    seq_kwargs = utils.clean_kwargs(kwargs)
+
+    if 'output' in seq_kwargs:
+        ext_kwargs = {'output': seq_kwargs['output']}
+        seq_kwargs.pop('output')
+    else:
+        ext_kwargs = {}
+
     with open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.extract(SequenceExtractor(list, align, realign, mincover), output)
+        mlst.extract(SequenceExtractor(list, **seq_kwargs), **ext_kwargs)

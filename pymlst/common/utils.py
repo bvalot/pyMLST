@@ -63,3 +63,21 @@ def create_logger(verbose=False):
     logging.basicConfig(
         level=level,
         format='[%(levelname)s: %(asctime)s] %(message)s')
+
+
+def clean_kwargs(kwargs):
+    """Removes kwargs with None values produced by Click.
+
+    Because of the way the Click library binds
+    every arguments and options to kwargs entries,
+    when a user doesn't specify an option, its name
+    is bound to None in the kwargs dictionary.
+
+    By removing the None entries we can pass the kwargs directly
+    to the API core functions without overriding the default values.
+    """
+    for key, value in kwargs.copy().items():
+        if value is None:
+            kwargs.pop(key)
+    return kwargs
+

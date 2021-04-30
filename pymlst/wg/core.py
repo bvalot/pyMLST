@@ -694,15 +694,15 @@ def find_recombination(genes, alignment, output):
         output.write(genes[i] + "\t" + str(compared) + "\t" + str(len(seqs[0])) + "\n")
 
 
-def find_subgraph(threshold, do_count, distance, output):
+def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
     """Searches groups of strains separated by a distance threshold.
 
     :param threshold: Minimum distance to maintain for groups extraction.
-    :param do_count: Whether to write count or not.
     :param distance: Distance matrix file
                      (output of :class:`~pymlst.wg.extractors.TableExtractor`
                      with ``export='distance'``).
     :param output: The output where to write the results.
+    :param export: Sets the export type.
     """
     samps = []
     dists = []
@@ -717,8 +717,8 @@ def find_subgraph(threshold, do_count, distance, output):
         dists.append(dist_line[1:])
 
     if len(samps) != strains:
-        raise Exception("The distance file seems not correctly formatted\n Number of strains " + str(
-            len(samps)) + " doesn't correspond to " + str(strains))
+        raise Exception("The distance file seems not correctly formatted\n Number of strains " +
+                        str(len(samps)) + " doesn't correspond to " + str(strains))
 
     # create graph
     graph = nx.Graph()
@@ -746,16 +746,21 @@ def find_subgraph(threshold, do_count, distance, output):
     grps.sort(key=len, reverse=True)
 
     # write result
-    utils.write_count(do_count, "Group\t" + "\t".join(samps) + "\n")
-    for strain_index, group in enumerate(grps):
-        a = len(samps) * [0]
-        output.write("Group" + str(strain_index))
-        for n in group:
-            a[n] = 1
-            output.write(" " + samps[n])
-        utils.write_count(do_count, str(strain_index) + "\t" + "\t".join(map(str, a)) + "\n")
-        output.write("\n")
+    if export == 'group':
+        for i, g in enumerate(grps):
+            output.write('Group' + str(i))
+            for n in g:
+                output.write(" " + samps[n])
+            output.write("\n")
 
-    if do_count:
-        do_count.close()
-    output.close()
+    elif export == 'count':
+        output.write('Group\t' + '\t'.join(samps) + '\n')
+        for i, g in enumerate(grps):
+            a = len(samps) * [0]
+            for n in g:
+                a[n] = 1
+            output.write(str(i) + '\t' + '\t'.join(map(str, a)) + '\n')
+    else:
+        for i, g in enumerate(grps):
+            for n in g:
+                output.write('Group' + str(i) + '\t' + samps[n] + '\n')

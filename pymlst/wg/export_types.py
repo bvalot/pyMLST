@@ -31,7 +31,7 @@ class GeneExport(ExportType):
 
 class DistanceExport(ExportType):
     def export(self, data, base, output):
-        if data.duplicate is False:
+        if data.duplicate:
             logging.info("WARNINGS : Calculate distance between strains ",
                          "using duplicate genes could reported bad result.")
         output.write(str(len(data.strains)) + "\n")

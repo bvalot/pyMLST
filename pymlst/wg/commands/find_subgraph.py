@@ -1,26 +1,25 @@
 """find_subgraph CLI command file."""
 
-import sys
 import click
 
+from pymlst.common import utils
 from pymlst.wg.core import find_subgraph
 
 
 @click.command()
 @click.option('--output', '-o',
               type=click.File('w'),
-              default=sys.stdout,
               help='Output group files (default:stdout)')
 @click.option('--threshold', '-t',
-              type=int, default=50,
+              type=click.INT,
               help='Minimum distance to conserve '
                    'for extraction of group (default:50)')
-@click.option('--count', '-c',
-              type=click.File('w'),
-              help='Output count file')
+@click.option('--export', '-e',
+              type=click.STRING,
+              help='Export type (default:group)')
 @click.argument('distance',
                 type=click.File('r'))
-def cli(output, threshold, count, distance):
-    """Search group os strain at a distance treshold"""
+def cli(distance, **kwargs):
+    """Search group os strain at a distance threshold."""
 
-    find_subgraph(threshold, count, distance, output)
+    find_subgraph(distance, **utils.clean_kwargs(kwargs))

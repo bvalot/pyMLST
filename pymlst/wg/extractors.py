@@ -97,7 +97,7 @@ class SequenceExtractor(Extractor):
 
 class TableExtractor(Extractor):
 
-    def __init__(self, export='mlst', count=False, mincover=0, keep=False, duplicate=True, inverse=False):
+    def __init__(self, export='mlst', count=False, mincover=0, keep=False, duplicate=False, inverse=False):
         self.export = export
         self.count = count
         self.mincover = mincover
@@ -143,7 +143,7 @@ class TableExtractor(Extractor):
                 valid.append(True)
             else:
                 valid.append(False)
-            if self.duplicate:
+            if not self.duplicate:
                 if gene in dupli:
                     valid.append(False)
                 else:
