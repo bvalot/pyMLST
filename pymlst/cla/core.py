@@ -201,12 +201,13 @@ class ClassicalMLST:
         for gene, file in fastas.items():
             alleles[gene] = set()
             for seq in SeqIO.parse(file, 'fasta'):
+
                 try:
                     match = re.search('[0-9]+$', seq.id)
                     allele = int(match.group(0))
+                except Exception as err:
+                    raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
 
-                except Exception:
-                    raise Exception("Unable to obtain allele number for the sequence: " + seq.id)
                 self.database.add_sequence(str(seq.seq).upper(), gene, allele)
                 alleles.get(gene).add(allele)
 
@@ -218,7 +219,7 @@ class ClassicalMLST:
                 if int(allele) not in alleles.get(gene):
                     logging.info(
                         "Unable to find the allele number %s"
-                        + " for gene %s; replace by 0", str(allele), gene)
+                        " for gene %s; replace by 0", str(allele), gene)
                     self.database.add_mlst(sequence_typing, gene, 0)
                 else:
                     self.database.add_mlst(sequence_typing, gene, int(allele))

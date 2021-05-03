@@ -3,9 +3,9 @@
 import logging
 import os
 import sys
+import tempfile
 
 import click
-import tempfile
 import requests
 
 import pymlst

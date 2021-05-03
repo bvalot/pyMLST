@@ -34,9 +34,7 @@ class Psl:
         self.rend = int(pslelement[12])
         self.rtotal = int(pslelement[10])
         self.coverage = (float(self.rend) - self.rstart)/self.rtotal
-        # if self.coverage !=1 and self.coverage>=0.95:
-        #     self.correct()
-        
+
     def gene_id(self):
         return self.pslelement[9]
 

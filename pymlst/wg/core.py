@@ -260,7 +260,7 @@ class DatabaseWG:
                 .group_by(self.mlst.c.gene)
         ).fetchall()
 
-        return set([row[0] for row in res])
+        return {row[0] for row in res}
 
     def get_all_strains(self, ref):
         """Gets all distinct strains."""
@@ -395,7 +395,6 @@ class WholeGenomeMLST:
         """
         self.database = DatabaseWG(file)
         self.ref = ref
-        self.blat_path = '/usr/bin/'  # TODO: change this
 
         utils.create_logger()
 
@@ -598,7 +597,7 @@ class WholeGenomeMLST:
         all_strains = set(all_strains)
 
         for strain in all_strains:
-            logging.info(strain + " : ")
+            logging.info("%s : ", strain)
 
             seqids = self.database.get_strain_sequences_ids(strain)
             if len(seqids) == 0:
@@ -685,8 +684,8 @@ def find_recombination(genes, alignment, output):
 
     # check sequences are correctly align
     for i, seqs in enumerate(sequences):
-        if len(set([len(s) for s in seqs])) > 1:
-            print(set([len(s) for s in seqs]))
+        if len({len(s) for s in seqs}) > 1:
+            print({len(s) for s in seqs})
             raise Exception("Following genes seems to be not align: " + genes[i])
 
     for i, seqs in enumerate(sequences):
@@ -708,8 +707,8 @@ def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
     dists = []
     try:
         strains = int(distance.readline().rstrip("\n"))
-    except:
-        raise Exception("The distance file seems not correctly formatted\n Not integer on first line")
+    except Exception as err:
+        raise Exception("The distance file seems not correctly formatted\n Not integer on first line") from err
 
     for line in distance.readlines():
         dist_line = line.rstrip("\n").split("\t")
@@ -724,7 +723,7 @@ def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
     graph = nx.Graph()
     graph.add_nodes_from(samps)
 
-    for strain_index, strain in enumerate(samps):
+    for strain_index, _ in enumerate(samps):
         for dist_index, dist in enumerate(dists[strain_index]):
             dist = int(dist)
             if strain_index == dist_index or dist > threshold:
@@ -735,32 +734,32 @@ def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
     # count sample not found
     samps2 = set(samps)
     grps = []
-    for subG in [graph.subgraph(c) for c in nx.connected_components(graph)]:
+    for sub_graph in [graph.subgraph(c) for c in nx.connected_components(graph)]:
 
         inds = []
-        for n in subG.nodes():
-            samps2.remove(n)
-            inds.append(samps.index(n))
+        for node in sub_graph.nodes():
+            samps2.remove(node)
+            inds.append(samps.index(node))
         grps.append(inds)
 
     grps.sort(key=len, reverse=True)
 
     # write result
     if export == 'group':
-        for i, g in enumerate(grps):
+        for i, group in enumerate(grps):
             output.write('Group' + str(i))
-            for n in g:
-                output.write(" " + samps[n])
+            for node in group:
+                output.write(" " + samps[node])
             output.write("\n")
 
     elif export == 'count':
         output.write('Group\t' + '\t'.join(samps) + '\n')
-        for i, g in enumerate(grps):
-            a = len(samps) * [0]
-            for n in g:
-                a[n] = 1
-            output.write(str(i) + '\t' + '\t'.join(map(str, a)) + '\n')
+        for i, group in enumerate(grps):
+            line = len(samps) * [0]
+            for node in group:
+                line[node] = 1
+            output.write(str(i) + '\t' + '\t'.join(map(str, line)) + '\n')
     else:
-        for i, g in enumerate(grps):
-            for n in g:
-                output.write('Group' + str(i) + '\t' + samps[n] + '\n')
+        for i, group in enumerate(grps):
+            for node in group:
+                output.write('Group' + str(i) + '\t' + samps[node] + '\n')

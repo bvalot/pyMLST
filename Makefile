@@ -20,7 +20,7 @@ freeze:
 	pip freeze > requirements.txt
 
 lint:
-	$(LINTER) $(PROJ_SLUG)
+	$(LINTER) --rcfile=rcfile.rc $(PROJ_SLUG)
 
 test: lint
 	py.test --cov-report term --cov=$(PROJ_SLUG) tests/

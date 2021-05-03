@@ -33,7 +33,7 @@ def strip_file(file):
 def compar_seqs(seqs):
     count = 0
     for index in range(0, len(seqs[0])):
-        seqs_char = set([s[index] for s in seqs])
+        seqs_char = {s[index] for s in seqs}
         if '-' in seqs_char:
             seqs_char.remove('-')
         if len(seqs_char) > 1:
@@ -80,4 +80,3 @@ def clean_kwargs(kwargs):
         if value is None:
             kwargs.pop(key)
     return kwargs
-

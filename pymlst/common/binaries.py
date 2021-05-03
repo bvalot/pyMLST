@@ -1,3 +1,13 @@
+"""Binary dependencies management utility functions.
+
+This module provides tools to manage the binary dependencies
+within the application. Those binaries are external dependencies
+and are left to the user to provide.
+
+The following functions are used within the application to retrieve
+binaries location that might have been defined by the user.
+"""
+
 import os
 
 import configparser
@@ -10,6 +20,7 @@ config_path = resource_filename(Requirement.parse("pymlst"), "pymlst.conf")
 
 
 def update_binary_paths(paths):
+    """Updates the paths stored in the configuration file."""
     config = get_config()
     if config is None:
         config = configparser.ConfigParser()
@@ -25,11 +36,13 @@ def update_binary_paths(paths):
 
 
 def reset_config():
+    """Removes the configuration file."""
     if os.path.exists(config_path):
         os.remove(config_path)
 
 
 def get_config():
+    """Retrieves the configuration file."""
     if os.path.exists(config_path):
         config = configparser.ConfigParser()
         config.read(config_path)
@@ -38,6 +51,7 @@ def get_config():
 
 
 def get_binary_path(bin_name):
+    """Retrieves a binary path."""
     config = get_config()
     if config is not None:
         if config.has_option('BINARIES', bin_name):
@@ -46,6 +60,7 @@ def get_binary_path(bin_name):
 
 
 def list_binary_paths():
+    """Lists the binary paths stored in the configuration file."""
     config = get_config()
     if config is not None:
         if config.has_section('BINARIES'):

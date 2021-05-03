@@ -36,7 +36,8 @@ class SequenceExtractor(Extractor):
         # Minimun number of strain
         strains = base.get_all_strains(ref)
         if self.mincover < 1 or self.mincover > len(strains):
-            raise Exception("Mincover must be between 1 to number of strains : " + str(len(strains)))
+            raise Exception("Mincover must be between 1 to number of strains : "
+                            + str(len(strains)))
 
         #  Coregene
         coregene = []
@@ -97,7 +98,13 @@ class SequenceExtractor(Extractor):
 
 class TableExtractor(Extractor):
 
-    def __init__(self, export='mlst', count=False, mincover=0, keep=False, duplicate=False, inverse=False):
+    def __init__(self,
+                 export='mlst',
+                 count=False,
+                 mincover=0,
+                 keep=False,
+                 duplicate=False,
+                 inverse=False):
         self.export = export
         self.count = count
         self.mincover = mincover

@@ -69,8 +69,8 @@ class GrapetreeExport(ExportType):
         for gene in data.valid_schema:
             row = {"#GeneId": gene}
             mlstg = mlst.get(gene, {})
-            for s in data.strains:
-                row[s] = mlstg.get(s, np.NaN)
+            for strain in data.strains:
+                row[strain] = mlstg.get(strain, np.NaN)
             strains = strains.append(row, ignore_index=True)
         strains = strains.set_index('#GeneId')
         strains = strains.transpose()
