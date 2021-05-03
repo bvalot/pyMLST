@@ -4,7 +4,7 @@ import os
 
 import click
 
-from pymlst import open_wg
+import pymlst
 from pymlst.common import utils
 
 
@@ -21,5 +21,5 @@ def cli(database, strains, **kwargs):
 
     database.close()
 
-    with open_wg(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
         mlst.remove_strain(strains, **utils.clean_kwargs(kwargs))

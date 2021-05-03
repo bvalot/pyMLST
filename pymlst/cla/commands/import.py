@@ -9,7 +9,7 @@ import click
 
 import requests
 
-from pymlst import open_cla
+import pymlst
 
 from pymlst.common import web
 from pymlst.common import utils
@@ -42,7 +42,7 @@ def cli(prompt, mlst, database, species):
         logging.info('Downloading mlst...')
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
-                open_cla(os.path.abspath(database.name)) as mlst_db:
+                pymlst.open_cla(os.path.abspath(database.name)) as mlst_db:
 
             web.get_mlst_files(tmp_dir, url=url)
 

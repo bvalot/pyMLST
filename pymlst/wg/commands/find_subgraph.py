@@ -3,7 +3,7 @@
 import click
 
 from pymlst.common import utils
-from pymlst.wg.core import find_subgraph
+from pymlst.wg import core
 
 
 @click.command()
@@ -22,4 +22,4 @@ from pymlst.wg.core import find_subgraph
 def cli(distance, **kwargs):
     """Search group os strain at a distance threshold."""
 
-    find_subgraph(distance, **utils.clean_kwargs(kwargs))
+    core.find_subgraph(distance, **utils.clean_kwargs(kwargs))

@@ -3,7 +3,7 @@
 import os
 import click
 
-from pymlst import open_wg
+import pymlst
 
 
 @click.command()
@@ -20,5 +20,5 @@ def cli(coregene, database, concatenate, remove):
 
     database.close()
 
-    with open_wg(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
         mlst.create(coregene, concatenate, remove)

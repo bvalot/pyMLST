@@ -2,7 +2,7 @@
 
 import click
 
-import pymlst.common.binaries as binaries
+from pymlst.common import binaries
 
 
 @click.command()

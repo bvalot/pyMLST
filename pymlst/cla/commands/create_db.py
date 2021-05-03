@@ -3,7 +3,7 @@
 import os
 import click
 
-from pymlst import open_cla
+import pymlst
 
 
 @click.command()
@@ -18,5 +18,5 @@ def cli(database, scheme, alleles):
 
     database.close()
 
-    with open_cla(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
         mlst.create(scheme, alleles)

@@ -1,13 +1,12 @@
 """extract_table CLI command file."""
 
 import os
-import sys
 
 import click
 
-from pymlst.wg.extractors import TableExtractor, ExportType
+import pymlst
 from pymlst.common import utils
-from pymlst import open_wg
+from pymlst.wg.extractors import TableExtractor, ExportType
 
 
 @click.command()
@@ -47,5 +46,5 @@ def cli(database, **kwargs):
     else:
         ext_kwargs = {}
 
-    with open_wg(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
         mlst.extract(TableExtractor(**tab_kwargs), **ext_kwargs)

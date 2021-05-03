@@ -6,10 +6,9 @@ import sys
 
 import click
 import tempfile
-
 import requests
 
-from pymlst import open_wg
+import pymlst
 from pymlst.common import utils
 from pymlst.common import web
 
@@ -42,7 +41,7 @@ def cli(prompt, database, species):
             if len(skipped) > 0:
                 logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))
 
-            with open_wg(os.path.abspath(database.name)) as mlst:
+            with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
                 mlst.create(tmp.name)
 
     except requests.exceptions.HTTPError:

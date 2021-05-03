@@ -3,7 +3,7 @@
 import click
 
 from pymlst.common import utils
-from pymlst.wg.core import find_recombination
+from pymlst.wg import core
 
 
 @click.command()
@@ -17,4 +17,4 @@ from pymlst.wg.core import find_recombination
 def cli(genes, alignment, **kwargs):
     """Search potential gene recombinaison from wgMLST database export"""
 
-    find_recombination(genes, alignment, **utils.clean_kwargs(kwargs))
+    core.find_recombination(genes, alignment, **utils.clean_kwargs(kwargs))

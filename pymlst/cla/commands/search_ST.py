@@ -1,11 +1,10 @@
 """search_ST CLI command file."""
 
-import sys
 import os
 
 import click
 
-from pymlst import open_cla
+import pymlst
 from pymlst.common import utils
 
 
@@ -31,5 +30,5 @@ def cli(genome, database, **kwargs):
 
     database.close()
 
-    with open_cla(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
         mlst.search_st(genome, **utils.clean_kwargs(kwargs))

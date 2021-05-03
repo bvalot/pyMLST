@@ -1,11 +1,10 @@
 """extract_sequence CLI command file."""
 
-import sys
 import os
 
 import click
 
-from pymlst import open_wg
+import pymlst
 from pymlst.common import utils
 from pymlst.wg.extractors import SequenceExtractor
 
@@ -43,5 +42,5 @@ def cli(database, list, **kwargs):
     else:
         ext_kwargs = {}
 
-    with open_wg(os.path.abspath(database.name)) as mlst:
+    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
         mlst.extract(SequenceExtractor(list, **seq_kwargs), **ext_kwargs)
