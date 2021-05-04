@@ -6,23 +6,29 @@
 ##UMR 6249 Chrono-Environnement, Besançon, France
 ##Licence GPL
 import logging
-import sys
+
 import subprocess
 import tempfile
+from io import BytesIO
+
 from pymlst.common.psl import Psl
 
 
 def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
     """Run Blat and return Psl Object"""
-    command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),\
+    command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),
                genome.name, tmpfile.name, tmpout.name]
-    proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=sys.stderr)
-    error = ""
-    for line in proc.stderr:
-        error += line.decode()
-    if error != "":
-        logging.error("An error occurred while running BLAT\n")
-        raise Exception(error)
+    proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    output, error = proc.communicate()
+    for line in BytesIO(output).readlines():
+        logging.info(line.decode().rstrip())
+    have_error = False
+    for line in BytesIO(error).readlines():
+        have_error = True
+        logging.error(line.decode().rstrip())
+    if have_error:
+        raise Exception('An error occurred while running BLAT,'
+                        ' see the logs for more details.\n')
     genes = {}
     for line in open(tmpout.name, 'r'):
         try:

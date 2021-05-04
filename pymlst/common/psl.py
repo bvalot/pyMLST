@@ -103,7 +103,7 @@ class Psl:
         if expand_end:
             end = self.end + 36
             if end > len(seq.seq):
-                end = len(seq.seq) - 1
+                end = len(seq.seq)
         else:
             end = self.end
 

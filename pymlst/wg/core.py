@@ -84,7 +84,7 @@ class DatabaseWG:
 
         self.cached_queries = {}
 
-    def _get_cached_query(self, name, query_supplier):
+    def __get_cached_query(self, name, query_supplier):
         if name in self.cached_queries:
             return self.cached_queries[name]
         query = query_supplier()
@@ -99,7 +99,7 @@ class DatabaseWG:
 
     def add_sequence(self, sequence):
         """Adds a sequence if it doesn't already exist."""
-        query = self._get_cached_query(
+        query = self.__get_cached_query(
             'add_sequence',
             lambda:
             select([self.sequences.c.id])
@@ -189,7 +189,7 @@ class DatabaseWG:
         """Gets all the sequences associated to a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
-                .where(and_(
+            .where(and_(
                 self.mlst.c.souche == souche,
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchall()
@@ -198,14 +198,14 @@ class DatabaseWG:
         """Whether the strain exists in the base or not."""
         return self.connection.execute(
             select([self.mlst.c.id])
-                .where(self.mlst.c.souche == souche)
-                .limit(1)
+            .where(self.mlst.c.souche == souche)
+            .limit(1)
         ).fetchone() is not None
 
     def get_gene_sequences(self, gene, souche):
         """Gets all the sequences for a specific gene and
         lists the strains that are referencing them."""
-        query = self._get_cached_query(
+        query = self.__get_cached_query(
             'get_gene_sequences',
             lambda:
             select([self.mlst.c.seqid,
@@ -237,8 +237,8 @@ class DatabaseWG:
         return self.connection.execute(
             select([self.mlst.c.gene,
                     func.count(distinct(self.mlst.c.souche))])
-                    .where(self.mlst.c.souche != ref)
-                    .group_by(self.mlst.c.gene)
+            .where(self.mlst.c.souche != ref)
+            .group_by(self.mlst.c.gene)
         ).fetchall()
 
     def get_duplicated_genes(self, ref):
@@ -247,17 +247,16 @@ class DatabaseWG:
 
         exist_sub = select([self.mlst]) \
             .where(and_(
-            self.mlst.c.souche == m_alias.c.souche,
-            self.mlst.c.gene == m_alias.c.gene,
-            self.mlst.c.id != m_alias.c.id))
+                self.mlst.c.souche == m_alias.c.souche,
+                self.mlst.c.gene == m_alias.c.gene,
+                self.mlst.c.id != m_alias.c.id))
 
         res = self.connection.execute(
             select([self.mlst.c.gene])
-                .where(and_(
+            .where(and_(
                 exists(exist_sub),
-                self.mlst.c.souche != ref
-            ))
-                .group_by(self.mlst.c.gene)
+                self.mlst.c.souche != ref))
+            .group_by(self.mlst.c.gene)
         ).fetchall()
 
         return {row[0] for row in res}

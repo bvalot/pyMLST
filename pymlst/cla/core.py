@@ -94,17 +94,17 @@ class DatabaseCLA:
         """Returns all the distinct genes in the database and their sequences for a given allele."""
         return self.connection.execute(
             select([distinct(self.mlst.c.gene), self.sequences.c.sequence])
-                .select_from(self.mlst.join(
+            .select_from(self.mlst.join(
                 self.sequences,
                 self.mlst.c.gene == self.sequences.c.gene))
-                .where(self.sequences.c.allele == allele)
+            .where(self.sequences.c.allele == allele)
         ).fetchall()
 
     def get_allele_by_sequence_and_gene(self, sequence, gene):
         """Gets an allele by sequence and gene."""
         return self.connection.execute(
             select([self.sequences.c.allele])
-                .where(and_(
+            .where(and_(
                 self.sequences.c.sequence == sequence,
                 self.sequences.c.gene == gene))
         ).fetchone()
@@ -113,7 +113,7 @@ class DatabaseCLA:
         """Gets a strain by gene and allele."""
         return self.connection.execute(
             select([self.mlst.c.st])
-                .where(and_(
+            .where(and_(
                 self.mlst.c.gene == gene,
                 self.mlst.c.allele == allele))
         ).fetchall()
@@ -152,7 +152,7 @@ class ClassicalMLST:
                 db.search_st(open('genome.fasta'))
         """
 
-    def __init__(self, file=None, ref=1):
+    def __init__(self, file, ref):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
@@ -288,9 +288,11 @@ class ClassicalMLST:
                     # sequence = str(gene.get_sequence(seq)).upper()
 
                     # verify complet sequence
-                    if not (sequence and len(sequence) == (gene.end - gene.start)):
-                        logging.info("Gene %s removed", gene.gene_id())
-                        continue
+                    # if not (sequence and len(sequence) == (gene.end - gene.start)):
+                    #     print('Len Seq: {} and gene : {} \n -> {}'.format(len(sequence), gene.end - gene.start, sequence))
+                    #     logging.info("Gene %s removed", gene.gene_id())
+                    #     #continue
+                    # print('OK: {}'.format(sequence))
 
                     # write fasta file with coregene
                     if fasta is not None:

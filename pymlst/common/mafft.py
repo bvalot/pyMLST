@@ -25,7 +25,7 @@ def align(genes):
         return utils.records_to_dict(alignments)
 
 
-def _first_aligned_position(sequence):
+def __first_aligned_position(sequence):
     position = 0
     for char in sequence:
         if char != '-':
@@ -40,8 +40,8 @@ def get_aligned_area(query, target):
         return None, None
     q_align = alignments['query']
     q_len = len(q_align)
-    start_index = _first_aligned_position(q_align)
+    start_index = __first_aligned_position(q_align)
     if start_index == -1:
         return None, None
-    end_index = q_len - _first_aligned_position(reversed(q_align))
+    end_index = q_len - __first_aligned_position(reversed(q_align))
     return start_index, end_index
