@@ -4,14 +4,16 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from abc import ABC
 
 import networkx as nx
 from Bio import SeqIO
 from decorator import contextmanager
+from diff_match_patch import diff_match_patch
 from sqlalchemy.sql.functions import count
 
-from sqlalchemy import create_engine, bindparam, not_
+from sqlalchemy import create_engine, bindparam, not_, Index
 from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
@@ -70,7 +72,10 @@ class DatabaseWG:
 
         self.sequences = Table('sequences', metadata,
                                Column('id', Integer, primary_key=True),
-                               Column('sequence', Text, unique=True))
+                               Column('sequence', Text),
+                               Column('gene', Text))
+
+        Index('seq_gene_ind', self.sequences.c.sequence, self.sequences.c.gene, unique=True)
 
         self.mlst = Table('mlst', metadata,
                           Column('id', Integer, primary_key=True),
@@ -85,13 +90,15 @@ class DatabaseWG:
 
         self.cached_queries = {}
 
+        self.insert = 0.0
+        self.get_seq_time = 0.0
+
     def __get_cached_query(self, name, query_supplier):
         if name in self.cached_queries:
             return self.cached_queries[name]
         query = query_supplier()
         self.cached_queries[name] = query
         return query
-
 
     def get_sequences_by_gene(self, gene):
         return self.connection.execute(
@@ -101,34 +108,38 @@ class DatabaseWG:
                 self.mlst.c.gene == gene))
         ).fetchall()
 
-
     def add_mlst(self, souche, gene, seqid):
         """Adds an MLST gene bound to an existing sequence."""
         self.connection.execute(
             self.mlst.insert(),
             souche=souche, gene=gene, seqid=seqid)
 
-    def add_sequence(self, sequence):
-        """Adds a sequence if it doesn't already exist."""
-        query = self.__get_cached_query(
-            'add_sequence',
-            lambda:
-            select([self.sequences.c.id])
-                .where(self.sequences.c.sequence == bindparam('sequence')))
-
-        existing = self.connection.execute(
-            query,
-            sequence=sequence
-        ).fetchone()
-
-        if existing is not None:
-            return False, existing.id
-
+    def add_sequence(self, sequence, gene):
+        """Adds a sequence."""
+        # query = self.__get_cached_query(
+        #     'add_sequence',
+        #     lambda:
+        #     select([self.sequences.c.id])
+        #         .where(and_(
+        #             self.sequences.c.sequence == bindparam('sequence'),
+        #             self.sequences.c.gene == bindparam('gene'))))
+        #
+        # existing = self.connection.execute(
+        #     query,
+        #     sequence=sequence,
+        #     gene=gene
+        # ).fetchone()
+        #
+        # if existing is not None:
+        #     return False, existing.id
+        bef = time.time()
         res = self.connection.execute(
             self.sequences.insert(),
-            sequence=sequence)
-
-        return True, res.inserted_primary_key[0]
+            sequence=sequence,
+            gene=gene)
+        self.insert += (time.time() - bef)
+        # return True, res.inserted_primary_key[0]
+        return res.inserted_primary_key[0]
 
     def concatenate_gene(self, seq_id, gene_name):
         """Associates a new gene to an existing sequence using concatenation."""
@@ -172,6 +183,22 @@ class DatabaseWG:
             self.mlst.delete()
                 .where(self.mlst.c.souche == strain))
 
+    def get_seq_id_by_sequence(self, sequence):
+        """Gets a sequence ID, searching by sequence."""
+        return self.connection.execute(
+            select([self.sequences.c.id])
+            .where(self.sequences.c.sequence == sequence)
+        ).fetchone()
+
+    def get_seq_id_by_sequence_and_gene(self, sequence, gene):
+        """Gets a sequence ID, searching by sequence and gene."""
+        return self.connection.execute(
+            select([self.sequences.c.id])
+            .where(and_(
+                self.sequences.c.sequence == sequence,
+                self.sequences.c.gene == gene))
+        ).fetchone()
+
     def get_gene_sequences_ids(self, gene):
         """Gets the IDs of the sequences associated with a specific gene."""
         return self.connection.execute(
@@ -186,15 +213,18 @@ class DatabaseWG:
             .where(self.mlst.c.souche == strain)
         ).fetchall()
 
-    def get_sequence_by_gene_and_souche(self, gene, souche):
+    def get_sequence_by_gene_and_strain(self, gene, souche):
         """Gets the sequence associated to a specific gene in a specific strain."""
-        return self.connection.execute(
-            select([self.mlst.c.gene, self.sequences.c.sequence])
+        bef = time.time()
+        val = self.connection.execute(
+            select([self.mlst.c.gene, self.sequences.c.sequence, self.sequences.c.id])
             .where(and_(
                 self.mlst.c.gene == gene,
                 self.mlst.c.souche == souche,
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchone()
+        self.get_seq_time += (time.time() - bef)
+        return val
 
     def get_sequences_by_souche(self, souche):
         """Gets all the sequences associated to a specific strain."""
@@ -213,7 +243,7 @@ class DatabaseWG:
             .limit(1)
         ).fetchone() is not None
 
-    def get_gene_sequences(self, gene, souche):
+    def get_gene_sequences(self, gene, ref):
         """Gets all the sequences for a specific gene and
         lists the strains that are referencing them."""
         query = self.__get_cached_query(
@@ -225,14 +255,14 @@ class DatabaseWG:
             .select_from(
                 self.mlst.join(self.sequences))
             .where(and_(
-                self.mlst.c.souche != bindparam('souche'),
+                self.mlst.c.souche != bindparam('ref'),
                 self.mlst.c.gene == bindparam('gene')))
             .group_by(self.mlst.c.seqid))
 
         res = self.connection.execute(
             query,
             separator=';',
-            souche=souche,
+            ref=ref,
             gene=gene
         ).fetchall()
 
@@ -385,6 +415,8 @@ class DatabaseWG:
         self.transaction.rollback()
 
     def close(self):
+        logging.info('TIME SPENT INSERTING {}'.format(self.insert))
+        logging.info('TIME SPENT GETTING SEQUENCE {}'.format(self.get_seq_time))
         """Closes the database engine."""
         self.engine.dispose()
 
@@ -407,8 +439,33 @@ class WholeGenomeMLST:
         """
         self.database = DatabaseWG(file)
         self.ref = ref
+        self.patcher = diff_match_patch()
+
+        self.spent = 0.0
+        self.patch_search = 0.0
+        self.add_mlst_time = 0
 
         utils.create_logger()
+
+    def __add_mlst(self, sequence, gene, strain):
+        ref_gene = self.database.get_sequence_by_gene_and_strain(gene, self.ref)
+        before = time.time()
+        patches = self.patcher.patch_make(ref_gene.sequence, sequence)
+        self.spent += (time.time() - before)
+        if len(patches) == 0:
+            new_id = ref_gene.id
+        else:
+            before = time.time()
+            diff = self.patcher.patch_toText(patches)
+            self.spent += (time.time() - before)
+            bef = time.time()
+            patch_id = self.database.get_seq_id_by_sequence_and_gene(diff, gene)  # test if patch already exists
+            self.patch_search += (time.time() - bef)
+            if patch_id is None:
+                new_id = self.database.add_sequence(diff, gene)
+            else:
+                new_id = patch_id[0]
+        self.database.add_mlst(strain, gene, new_id)
 
     def create(self, coregene, concatenate=False, remove=False):
         """Creates a whole genome MLST database from a core genome `fasta`_ file.
@@ -439,9 +496,13 @@ class WholeGenomeMLST:
                     invalid_genes += 1
                     continue
 
-            added, seq_id = self.database.add_sequence(str(gene.seq))
+            #added, seq_id = self.database.add_sequence(str(gene.seq))
+            sequence = str(gene.seq)
+            seq_id = self.database.get_seq_id_by_sequence(sequence)
 
-            if not added:
+            if seq_id is None: # This is a new sequence
+                seq_id = self.database.add_sequence(sequence, gene.id)
+            else: # A similar sequence was found
                 if concatenate:
                     self.database.concatenate_gene(seq_id, gene.id)
                     logging.info("Concatenate gene %s", gene.id)
@@ -450,8 +511,8 @@ class WholeGenomeMLST:
                 else:
                     raise Exception("Two genes have the same sequence " + gene.id +
                                     "\nUse -c or -r options to manage it")
-            else:
-                self.database.add_mlst(self.ref, gene.id, seq_id)
+
+            self.database.add_mlst(self.ref, gene.id, seq_id)
 
         if to_remove:
             self.database.remove_sequences(to_remove)
@@ -534,7 +595,7 @@ class WholeGenomeMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_sequence_by_gene_and_souche(
+                        coregene_seq = self.database.get_sequence_by_gene_and_strain(
                             coregene, self.ref)[1]
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
@@ -553,8 +614,11 @@ class WholeGenomeMLST:
                         continue
 
                     # Insert data in database
-                    seqid = self.database.add_sequence(str(sequence))[1]
-                    self.database.add_mlst(name, gene.gene_id(), seqid)
+                    bef = time.time()
+                    self.__add_mlst(str(sequence), gene.gene_id(), name)
+                    self.add_mlst_time += (time.time() - bef)
+                    # seqid = self.database.add_sequence(str(sequence))[1]
+                    # self.database.add_mlst(name, gene.gene_id(), seqid)
 
             logging.info("Added %s new MLST genes to the database", len(genes) - bad)
             logging.info('Found %s partial genes, filled %s', partial, partial_filled)
@@ -649,6 +713,9 @@ class WholeGenomeMLST:
 
     def close(self):
         """Closes the database engine."""
+        logging.info('TIME SPENT FORMATTING: {}'.format(self.spent))
+        logging.info('TIME SPENT SEARCHING PATCH: {}'.format(self.patch_search))
+        logging.info('TIME SPENT ON ADD MLST: {}'.format(self.add_mlst_time))
         self.database.close()
 
 
