@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import tempfile
 from abc import ABC
 
 import networkx as nx
@@ -44,7 +45,7 @@ def open_wg(file=None, ref='ref'):
         mlst.rollback()
         raise
     else:
-        mlst.commit()
+        mlst.commit(renew=False)
     finally:
         mlst.close()
 
@@ -90,6 +91,16 @@ class DatabaseWG:
         query = query_supplier()
         self.cached_queries[name] = query
         return query
+
+
+    def get_sequences_by_gene(self, gene):
+        return self.connection.execute(
+            select([self.mlst.c.souche, self.sequences.c.sequence])
+            .where(and_(
+                self.mlst.c.seqid == self.sequences.c.id,
+                self.mlst.c.gene == gene))
+        ).fetchall()
+
 
     def add_mlst(self, souche, gene, seqid):
         """Adds an MLST gene bound to an existing sequence."""
@@ -363,9 +374,11 @@ class DatabaseWG:
             sequences[entry[1]] = entry[2]
         return mlst
 
-    def commit(self):
+    def commit(self, renew):
         """Commits the modifications."""
         self.transaction.commit()
+        if renew:
+            self.transaction = self.connection.begin()
 
     def rollback(self):
         """Rollback the modifications."""
@@ -483,6 +496,7 @@ class WholeGenomeMLST:
             raise Exception("Strain name must not contains special ';'\n")
 
         tmpfile, tmpout = blat.blat_tmp()
+        tmpout.close()
 
         try:
             # verify that the strain is not already in the database
@@ -544,6 +558,7 @@ class WholeGenomeMLST:
 
             logging.info("Added %s new MLST genes to the database", len(genes) - bad)
             logging.info('Found %s partial genes, filled %s', partial, partial_filled)
+            logging.info('Removed %s genes', bad)
             logging.info("DONE")
 
         finally:
@@ -624,9 +639,9 @@ class WholeGenomeMLST:
             coregenes.append(row[0])
         return coregenes
 
-    def commit(self):
+    def commit(self, renew=True):
         """Commits the modifications."""
-        self.database.commit()
+        self.database.commit(renew)
 
     def rollback(self):
         """Rollback the modifications."""

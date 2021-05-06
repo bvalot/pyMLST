@@ -81,16 +81,3 @@ def clean_kwargs(kwargs):
         if value is None:
             kwargs.pop(key)
     return kwargs
-
-
-class OutputLogger(StringIO):
-    def __init__(self, level="INFO"):
-        super().__init__()
-        self.level = getattr(logging, level)
-
-    def write(self, msg):
-        if msg and not msg.isspace():
-            logging.log(self.level, msg)
-
-    def flush(self):
-        pass
