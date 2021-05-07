@@ -79,9 +79,9 @@ class DatabaseWG:
                           Column('id', Integer, primary_key=True),
                           Column('souche', Text),
                           Column('gene', Text),
-                          Column('seqid', Integer, index=True))
+                          Column('seqid', Integer))
 
-        Index('souche_gene_ind', self.mlst.c.souche, self.mlst.c.gene, unique=True)
+        Index('souche_gene_seqid_ind', self.mlst.c.souche, self.mlst.c.gene, self.mlst.c.seqid)
 
         metadata.create_all(self.engine)
 
