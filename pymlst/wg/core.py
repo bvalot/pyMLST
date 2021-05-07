@@ -3,8 +3,6 @@
 import logging
 import os
 import sys
-import tempfile
-import time
 from abc import ABC
 
 import networkx as nx
@@ -79,9 +77,11 @@ class DatabaseWG:
 
         self.mlst = Table('mlst', metadata,
                           Column('id', Integer, primary_key=True),
-                          Column('souche', Text, index=True),
-                          Column('gene', Text, index=True),
-                          Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
+                          Column('souche', Text),
+                          Column('gene', Text),
+                          Column('seqid', Integer, index=True))
+
+        Index('souche_gene_ind', self.mlst.c.souche, self.mlst.c.gene, unique=True)
 
         metadata.create_all(self.engine)
 
@@ -89,9 +89,6 @@ class DatabaseWG:
         self.transaction = self.connection.begin()
 
         self.cached_queries = {}
-
-        self.insert = 0.0
-        self.get_seq_time = 0.0
 
     def __get_cached_query(self, name, query_supplier):
         if name in self.cached_queries:
@@ -132,12 +129,10 @@ class DatabaseWG:
         #
         # if existing is not None:
         #     return False, existing.id
-        bef = time.time()
         res = self.connection.execute(
             self.sequences.insert(),
             sequence=sequence,
             gene=gene)
-        self.insert += (time.time() - bef)
         # return True, res.inserted_primary_key[0]
         return res.inserted_primary_key[0]
 
@@ -215,16 +210,13 @@ class DatabaseWG:
 
     def get_sequence_by_gene_and_strain(self, gene, souche):
         """Gets the sequence associated to a specific gene in a specific strain."""
-        bef = time.time()
-        val = self.connection.execute(
+        return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence, self.sequences.c.id])
             .where(and_(
                 self.mlst.c.gene == gene,
                 self.mlst.c.souche == souche,
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchone()
-        self.get_seq_time += (time.time() - bef)
-        return val
 
     def get_sequences_by_souche(self, souche):
         """Gets all the sequences associated to a specific strain."""
@@ -415,8 +407,6 @@ class DatabaseWG:
         self.transaction.rollback()
 
     def close(self):
-        logging.info('TIME SPENT INSERTING {}'.format(self.insert))
-        logging.info('TIME SPENT GETTING SEQUENCE {}'.format(self.get_seq_time))
         """Closes the database engine."""
         self.engine.dispose()
 
@@ -441,26 +431,16 @@ class WholeGenomeMLST:
         self.ref = ref
         self.patcher = diff_match_patch()
 
-        self.spent = 0.0
-        self.patch_search = 0.0
-        self.add_mlst_time = 0
-
         utils.create_logger()
 
     def __add_mlst(self, sequence, gene, strain):
         ref_gene = self.database.get_sequence_by_gene_and_strain(gene, self.ref)
-        before = time.time()
         patches = self.patcher.patch_make(ref_gene.sequence, sequence)
-        self.spent += (time.time() - before)
         if len(patches) == 0:
             new_id = ref_gene.id
         else:
-            before = time.time()
             diff = self.patcher.patch_toText(patches)
-            self.spent += (time.time() - before)
-            bef = time.time()
             patch_id = self.database.get_seq_id_by_sequence_and_gene(diff, gene)  # test if patch already exists
-            self.patch_search += (time.time() - bef)
             if patch_id is None:
                 new_id = self.database.add_sequence(diff, gene)
             else:
@@ -614,9 +594,7 @@ class WholeGenomeMLST:
                         continue
 
                     # Insert data in database
-                    bef = time.time()
                     self.__add_mlst(str(sequence), gene.gene_id(), name)
-                    self.add_mlst_time += (time.time() - bef)
                     # seqid = self.database.add_sequence(str(sequence))[1]
                     # self.database.add_mlst(name, gene.gene_id(), seqid)
 
@@ -713,9 +691,6 @@ class WholeGenomeMLST:
 
     def close(self):
         """Closes the database engine."""
-        logging.info('TIME SPENT FORMATTING: {}'.format(self.spent))
-        logging.info('TIME SPENT SEARCHING PATCH: {}'.format(self.patch_search))
-        logging.info('TIME SPENT ON ADD MLST: {}'.format(self.add_mlst_time))
         self.database.close()
 
 

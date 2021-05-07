@@ -29,3 +29,7 @@ def cli(genome, database, **kwargs):
 
     with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
         mlst.add_strain(genome, **utils.clean_kwargs(kwargs))
+
+
+if __name__ == '__main__':
+    cli()
