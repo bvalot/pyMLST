@@ -1,16 +1,17 @@
+import logging
 import time
 import os
 
 import pymlst
-
+from pymlst.common.blat import GenomePathNotFoundError
 
 genome_path = '/home/abordy/workspace/data/FATgenome/genome'
-db_path = '/home/abordy/workspace/data/FATgenome/database.db'
+db_path = '/home/abordy/workspace/data/FATgenome/database_small.db'
 script = '/home/abordy/workspace/pyMLST/mlst_add_strain.py'
 
 
-low = 1000
-up = 2000
+low = 30
+up = 40
 
 
 def with_reopen():
@@ -28,7 +29,10 @@ def with_keepopen():
             if i % 50 == 0:
                 mlst.commit()
             file_path = os.path.join(genome_path, file_name)
-            mlst.add_strain(open(file_path))
+            try:
+                mlst.add_strain(open(file_path))
+            except GenomePathNotFoundError:
+                logging.error('No genome found for {}'.format(file_name))
 
 
 def with_old():
