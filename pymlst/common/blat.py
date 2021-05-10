@@ -14,6 +14,10 @@ from io import BytesIO
 from pymlst.common.psl import Psl
 
 
+class GenomePathNotFoundError(Exception):
+    pass
+
+
 def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
     """Run Blat and return Psl Object"""
     command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),

@@ -79,9 +79,9 @@ class SequenceExtractor(Extractor):
                 else:
                     logging.info("Align")
                     #write_tmp_seqs(tmpfile, seqs)
-                    mafft_path = get_binary_path('mafft')
-                    if mafft_path is None:
-                        raise Exception('Unable to locate the Mafft executable\n')
+                    # mafft_path = get_binary_path('mafft')
+                    # if mafft_path is None:
+                    #     raise Exception('Unable to locate the Mafft executable\n')
 
                     genes = {str(s[0]): s[2] for s in seqs}
                     corrseqs = mafft.align(genes)
