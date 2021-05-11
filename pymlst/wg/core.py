@@ -73,7 +73,7 @@ class DatabaseWG:
                                Column('sequence', Text),
                                Column('gene', Text))
 
-        Index('seq_gene_ind', self.sequences.c.gene, self.sequences.c.sequence, unique=True)
+        Index('seq_gene_ind', self.sequences.c.sequence, self.sequences.c.gene, unique=True)
 
         self.mlst = Table('mlst', metadata,
                           Column('id', Integer, primary_key=True),
@@ -187,13 +187,13 @@ class DatabaseWG:
             .where(self.sequences.c.sequence == sequence)
         ).fetchone()
 
-    def get_seq_id_by_gene_and_sequence(self, sequence, gene):
+    def get_seq_id_by_sequence_and_gene(self, sequence, gene):
         """Gets a sequence ID, searching by sequence and gene."""
         return self.connection.execute(
             select([self.sequences.c.id])
             .where(and_(
-                self.sequences.c.gene == gene,
-                self.sequences.c.sequence == sequence))
+                self.sequences.c.sequence == sequence,
+                self.sequences.c.gene == gene))
         ).fetchone()
 
     def get_gene_sequences_ids(self, gene):
@@ -448,7 +448,7 @@ class WholeGenomeMLST:
             return None
         else:
             diff = self.patcher.patch_toText(patches)
-            patch_id = self.database.get_seq_id_by_gene_and_sequence(diff, gene)  # test if patch already exists
+            patch_id = self.database.get_seq_id_by_sequence_and_gene(diff, gene)  # test if patch already exists
             if patch_id is None:
                 new_id = self.database.add_sequence(diff, gene)
             else:
