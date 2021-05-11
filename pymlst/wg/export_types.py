@@ -35,7 +35,7 @@ class DistanceExport(ExportType):
             logging.info("WARNINGS : Calculate distance between strains ",
                          "using duplicate genes could reported bad result.")
         output.write(str(len(data.strains)) + "\n")
-        distance = base.get_strains_distances(data.ref, data.valid_schema)
+        distance = base.get_strains_distances(data.valid_schema)
         for strain in data.strains:
             output.write(strain + "\t")
             dist = [str(distance.get(strain, {}).get(s2, 0)) for s2 in data.strains]
@@ -49,7 +49,7 @@ class DistanceExport(ExportType):
 class MlstExport(ExportType):
     def export(self, data, base, output):
         output.write("GeneId\t" + "\t".join(data.strains) + "\n")
-        mlst = base.get_mlst(data.ref, data.valid_schema)
+        mlst = base.get_mlst(data.valid_schema)
         for gene in data.valid_schema:
             towrite = [gene]
             mlstg = mlst.get(gene, {})
@@ -64,7 +64,7 @@ class MlstExport(ExportType):
 
 class GrapetreeExport(ExportType):
     def export(self, data, base, output):
-        mlst = base.get_mlst(data.ref, data.valid_schema)
+        mlst = base.get_mlst(data.valid_schema)
         strains = pd.DataFrame(columns=["#GeneId"] + data.strains)
         for gene in data.valid_schema:
             row = {"#GeneId": gene}
@@ -86,7 +86,7 @@ class StatExport(ExportType):
     def export(self, data, base, output):
         output.write("Strains\t" + str(len(data.strains)) + "\n")
         output.write("Coregenes\t" + str(len(data.all_genes)) + "\n")
-        output.write("Sequences\t" + str(base.get_sequences_number(data.ref)) + "\n")
+        output.write("Sequences\t" + str(base.get_sequences_number()) + "\n")
 
     @staticmethod
     def name():

@@ -32,9 +32,9 @@ class SequenceExtractor(Extractor):
         self.realign = realign
         self.mincover = mincover
 
-    def extract(self, base, ref, output):
+    def extract(self, base, output):
         # Minimun number of strain
-        strains = base.get_all_strains(ref)
+        strains = base.get_all_strains()
         if self.mincover < 1 or self.mincover > len(strains):
             raise Exception("Mincover must be between 1 to number of strains : "
                             + str(len(strains)))
@@ -44,14 +44,14 @@ class SequenceExtractor(Extractor):
         if self.list is not None:
             coregene = [l.rstrip("\n") for l in iter(self.list.readline, '')]
         else:
-            coregene = [l[0] for l in base.get_genes_coverages(ref) if l[1] >= self.mincover]
+            coregene = [l[0] for l in base.get_genes_coverages() if l[1] >= self.mincover]
 
         logging.info("Number of gene to analyse : %s", len(coregene))
 
         if self.align is False:
             # no multialign
             for gene in coregene:
-                seqs = base.get_gene_sequences(gene, ref)
+                seqs = base.get_gene_sequences(gene)
                 for seq in seqs:
                     output.write(">" + gene + "|" + str(seq[0]) + " "
                                  + ";".join(seq[1]) + "\n")
@@ -59,7 +59,7 @@ class SequenceExtractor(Extractor):
         else:
             # multialign
             # search duplicate
-            duplicated = base.get_duplicated_genes(ref)
+            duplicated = base.get_duplicated_genes()
             for dupli in duplicated:
                 logging.info('Duplicated: ', dupli)
 
@@ -69,7 +69,7 @@ class SequenceExtractor(Extractor):
                 if gene in duplicated:
                     logging.info("No: Repeat gene\n")
                     continue
-                seqs = base.get_gene_sequences(gene, ref)
+                seqs = base.get_gene_sequences(gene)
                 size = set()
                 for seq in seqs:
                     size.add(len(seq[2]))
@@ -112,9 +112,9 @@ class TableExtractor(Extractor):
         self.duplicate = duplicate
         self.inverse = inverse
 
-    def extract(self, base, ref, output):
+    def extract(self, base, output):
         # read samples mlst
-        strains = base.get_all_strains(ref)
+        strains = base.get_all_strains()
 
         # Minimun number of strain
         if self.mincover < 0 or self.mincover > len(strains):
@@ -122,16 +122,16 @@ class TableExtractor(Extractor):
                             + str(len(strains)))
 
         # allgene
-        allgene = base.get_all_genes(ref)
+        allgene = base.get_core_genes()
 
         # duplicate gene
-        dupli = base.get_duplicated_genes(ref)
+        dupli = base.get_duplicated_genes()
 
         # cover without duplication
-        count_souches = base.count_souches_per_gene(ref)
+        count_souches = base.count_souches_per_gene()
 
         # Count distinct gene
-        diff = base.count_sequences_per_gene(ref)
+        diff = base.count_sequences_per_gene()
 
         # filter coregene that is not sufficient mincover or keep only different or return inverse
         valid_shema = []
@@ -172,7 +172,7 @@ class TableExtractor(Extractor):
         if exporter is None:
             raise Exception('Unknown export type: ', self.export)
 
-        data = ExportData(valid_shema, strains, allgene, ref, self.count, self.duplicate)
+        data = ExportData(valid_shema, strains, allgene, self.count, self.duplicate)
         exporter.export(data, base, output)
 
 
@@ -201,10 +201,9 @@ class ExportType(ABC):
 
 
 class ExportData:
-    def __init__(self, valid_schema, strains, all_genes, ref, count, duplicate):
+    def __init__(self, valid_schema, strains, all_genes, count, duplicate):
         self.valid_schema = valid_schema
         self.strains = strains
         self.all_genes = all_genes
-        self.ref = ref
         self.count = count
         self.duplicate = duplicate
