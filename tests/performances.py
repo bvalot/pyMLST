@@ -6,12 +6,12 @@ import pymlst
 from pymlst.common.blat import GenomePathNotFoundError
 
 genome_path = '/home/abordy/workspace/data/FATgenome/genome'
-db_path = '/home/abordy/workspace/data/FATgenome/database_new.db'
+db_path = '/home/abordy/workspace/data/FATgenome/database.db'
 script = '/home/abordy/workspace/pyMLST/mlst_add_strain.py'
 
 
-low = 500
-up = 1000
+low = 60
+up = 70
 
 
 def with_reopen():
