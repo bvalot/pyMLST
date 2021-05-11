@@ -1,4 +1,5 @@
 import logging
+from io import StringIO
 
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError

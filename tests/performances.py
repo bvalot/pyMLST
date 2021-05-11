@@ -9,8 +9,8 @@ db_path = '/home/abordy/workspace/data/FATgenome/database.db'
 script = '/home/abordy/workspace/pyMLST/mlst_add_strain.py'
 
 
-low = 1000
-up = 2000
+low = 20
+up = 40
 
 
 def with_reopen():
@@ -23,7 +23,7 @@ def with_reopen():
 def with_keepopen():
     i = 0
     with pymlst.open_wg(db_path) as mlst:
-        for file_name in os.listdir(genome_path)[low:up]:
+        for file_name in os.listdir(genome_path):
             i += 1
             if i % 50 == 0:
                 mlst.commit()
@@ -32,7 +32,7 @@ def with_keepopen():
 
 
 def with_old():
-    for file_name in os.listdir(genome_path)[low:up]:
+    for file_name in os.listdir(genome_path):
         file_path = os.path.join(genome_path, file_name)
         os.system('python {} {} {}'.format(script, file_path, db_path))
 
@@ -61,7 +61,7 @@ def process_similarities(gene):
 if __name__ == '__main__':
     start = time.time()
 
-    with_keepopen()
+    process_similarities('PA4819')
 
     elapsed = time.time() - start
     print('Elapsed: {}s'.format(elapsed))
