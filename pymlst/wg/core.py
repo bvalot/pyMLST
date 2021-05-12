@@ -246,7 +246,7 @@ class DatabaseWG:
             .limit(1)
         ).fetchone() is not None
 
-    def get_gene_sequences(self, gene): # HERE
+    def get_gene_sequences(self, gene):
         """Gets all the sequences for a specific gene and
         lists the strains that are referencing them."""
         query = self.__get_cached_query(
@@ -374,8 +374,8 @@ class DatabaseWG:
                     alias_2,
                     and_(
                         alias_1.c.seqid != alias_2.c.seqid,
-                        alias_1.c.gene == alias_2.c.gene,
-                        alias_1.c.souche != alias_2.c.souche)))
+                        alias_1.c.souche != alias_2.c.souche,
+                        alias_1.c.gene == alias_2.c.gene)))
             .where(
                 and_(
                     in_(alias_1.c.gene, valid_schema),

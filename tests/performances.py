@@ -14,7 +14,7 @@ up = 40
 
 
 def with_reopen():
-    for file_name in os.listdir(genome_path):
+    for file_name in os.listdir(genome_path)[low:up]:
         file_path = os.path.join(genome_path, file_name)
         with pymlst.open_wg(db_path) as mlst:
             mlst.add_strain(open(file_path))
@@ -61,9 +61,9 @@ def process_similarities(gene):
 if __name__ == '__main__':
     start = time.time()
 
-    #with_keepopen()
-    with pymlst.open_wg('/home/abordy/workspace/data/database_BIG.db') as mlst:
-        mlst.extract(SequenceExtractor())
+    with_keepopen()
+    # with pymlst.open_wg('/home/abordy/workspace/data/database_BIG.db') as mlst:
+    #     mlst.extract(TableExtractor(export='stat'))
 
     elapsed = time.time() - start
     print('Elapsed: {}s'.format(elapsed))
