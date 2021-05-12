@@ -1,5 +1,5 @@
 """Core classes and functions to work with Whole Genome MLST data."""
-
+import collections
 import logging
 import os
 import sys
@@ -11,7 +11,7 @@ from Bio import SeqIO
 from decorator import contextmanager
 from sqlalchemy.sql.functions import count
 
-from sqlalchemy import create_engine, bindparam, not_
+from sqlalchemy import create_engine, bindparam, not_, Index
 from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
@@ -74,16 +74,32 @@ class DatabaseWG:
 
         self.mlst = Table('mlst', metadata,
                           Column('id', Integer, primary_key=True),
-                          Column('souche', Text, index=True),
-                          Column('gene', Text, index=True),
+                          Column('souche', Text),
+                          Column('gene', Text),
                           Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
 
         metadata.create_all(self.engine)
+
+        Index('ix_souche',
+              self.mlst.c.souche)\
+            .create(bind=self.engine, checkfirst=True)
+        Index('ix_gene',
+              self.mlst.c.gene)\
+            .create(bind=self.engine, checkfirst=True)
+        Index('ix_seqid',
+              self.mlst.c.seqid)\
+            .create(bind=self.engine, checkfirst=True)
+        Index('ix_souche_gene_seqid',
+              self.mlst.c.gene,
+              self.mlst.c.souche,
+              self.mlst.c.seqid)\
+            .create(bind=self.engine, checkfirst=True)
 
         self.connection = self.engine.connect()
         self.transaction = self.connection.begin()
 
         self.cached_queries = {}
+        self.core_genome = None
 
         self.ref = ref
 
@@ -93,6 +109,23 @@ class DatabaseWG:
         query = query_supplier()
         self.cached_queries[name] = query
         return query
+
+    def __load_core_genome(self):
+        result = self.connection.execute(
+            select([self.mlst.c.gene, self.sequences.c.sequence])
+            .where(and_(
+                self.mlst.c.souche == self.ref,
+                self.mlst.c.seqid == self.sequences.c.id))
+        ).fetchall()
+        genes = collections.defaultdict(list)
+        for row in result:
+            genes[row.gene].append(row.sequence)
+        return genes
+
+    def get_core_genome(self):
+        if self.core_genome is None:
+            self.core_genome = self.__load_core_genome()
+        return self.core_genome
 
     def get_sequences_by_gene(self, gene):
         return self.connection.execute(
@@ -213,7 +246,7 @@ class DatabaseWG:
             .limit(1)
         ).fetchone() is not None
 
-    def get_gene_sequences(self, gene):
+    def get_gene_sequences(self, gene): # HERE
         """Gets all the sequences for a specific gene and
         lists the strains that are referencing them."""
         query = self.__get_cached_query(
@@ -225,8 +258,8 @@ class DatabaseWG:
             .select_from(
                 self.mlst.join(self.sequences))
             .where(and_(
-                self.mlst.c.souche != bindparam('souche'),
-                self.mlst.c.gene == bindparam('gene')))
+                self.mlst.c.gene == bindparam('gene'),
+                self.mlst.c.souche != bindparam('souche')))
             .group_by(self.mlst.c.seqid))
 
         res = self.connection.execute(
@@ -258,15 +291,16 @@ class DatabaseWG:
 
         exist_sub = select([self.mlst]) \
             .where(and_(
-                self.mlst.c.souche == m_alias.c.souche,
                 self.mlst.c.gene == m_alias.c.gene,
-                self.mlst.c.id != m_alias.c.id))
+                self.mlst.c.souche == m_alias.c.souche,
+                self.mlst.c.id != m_alias.c.id)) \
+            .limit(1)
 
         res = self.connection.execute(
             select([self.mlst.c.gene])
             .where(and_(
-                exists(exist_sub),
-                self.mlst.c.souche != self.ref))
+                self.mlst.c.souche != self.ref,
+                exists(exist_sub)))
             .group_by(self.mlst.c.gene)
         ).fetchall()
 
@@ -339,9 +373,9 @@ class DatabaseWG:
                 alias_1.join(
                     alias_2,
                     and_(
+                        alias_1.c.seqid != alias_2.c.seqid,
                         alias_1.c.gene == alias_2.c.gene,
-                        alias_1.c.souche != alias_2.c.souche,
-                        alias_1.c.seqid != alias_2.c.seqid)))
+                        alias_1.c.souche != alias_2.c.souche)))
             .where(
                 and_(
                     in_(alias_1.c.gene, valid_schema),
@@ -503,7 +537,7 @@ class WholeGenomeMLST:
                 raise Exception("Strain is already present in database:\n" + name)
 
             # read coregene
-            coregenes = self.__create_coregene(tmpfile)
+            self.__create_core_genome_file(tmpfile)
             tmpfile.close()
 
             # BLAT analysis
@@ -518,12 +552,12 @@ class WholeGenomeMLST:
             partial = 0
             partial_filled = 0
 
-            for coregene in coregenes:
+            for core_gene in self.database.get_core_genome().keys():
 
-                if coregene not in genes:
+                if core_gene not in genes:
                     continue
 
-                for gene in genes.get(coregene):
+                for gene in genes.get(core_gene):
 
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
@@ -533,8 +567,7 @@ class WholeGenomeMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_sequence_by_gene_and_souche(
-                            coregene, self.database.ref)[1]
+                        coregene_seq = self.database.get_core_genome()[core_gene][0]  # TODO : How to handle duplication?
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
@@ -630,13 +663,11 @@ class WholeGenomeMLST:
         """
         extractor.extract(self.database, output)
 
-    def __create_coregene(self, tmpfile):
-        ref_genes = self.database.get_sequences_by_souche(self.ref)
-        coregenes = []
-        for row in ref_genes:
-            tmpfile.write('>' + row.gene + "\n" + row.sequence + "\n")
-            coregenes.append(row[0])
-        return coregenes
+    def __create_core_genome_file(self, tmp_file):
+        ref_genes = self.database.get_core_genome()
+        for gene, sequences in ref_genes.items():
+            for seq in sequences:
+                tmp_file.write('>' + gene + "\n" + seq + "\n")
 
     def commit(self, renew=True):
         """Commits the modifications."""

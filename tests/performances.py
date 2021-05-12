@@ -2,7 +2,7 @@ import time
 import os
 
 import pymlst
-
+from pymlst.wg.extractors import TableExtractor, SequenceExtractor
 
 genome_path = '/home/abordy/workspace/data/FATgenome/genome'
 db_path = '/home/abordy/workspace/data/FATgenome/database.db'
@@ -23,7 +23,7 @@ def with_reopen():
 def with_keepopen():
     i = 0
     with pymlst.open_wg(db_path) as mlst:
-        for file_name in os.listdir(genome_path):
+        for file_name in os.listdir(genome_path)[low:up]:
             i += 1
             if i % 50 == 0:
                 mlst.commit()
@@ -32,7 +32,7 @@ def with_keepopen():
 
 
 def with_old():
-    for file_name in os.listdir(genome_path):
+    for file_name in os.listdir(genome_path)[low:up]:
         file_path = os.path.join(genome_path, file_name)
         os.system('python {} {} {}'.format(script, file_path, db_path))
 
@@ -61,7 +61,9 @@ def process_similarities(gene):
 if __name__ == '__main__':
     start = time.time()
 
-    process_similarities('PA4819')
+    #with_keepopen()
+    with pymlst.open_wg('/home/abordy/workspace/data/database_BIG.db') as mlst:
+        mlst.extract(SequenceExtractor())
 
     elapsed = time.time() - start
     print('Elapsed: {}s'.format(elapsed))

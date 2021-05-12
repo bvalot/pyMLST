@@ -52,7 +52,7 @@ setup(
         'biopython~=1.78',
         'click~=7.1.2',
         'pytest~=6.2.2',
-        'SQLAlchemy~=1.3.23',
+        'SQLAlchemy~=1.4.15',
         'networkx~=2.5',
         'decorator~=4.4.2',
         'requests~=2.22.0',
