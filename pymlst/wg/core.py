@@ -191,7 +191,7 @@ class DatabaseWG:
         for seqid in ids:
             self.connection.execute(
                 query,
-                seqid=seqid[0])
+                seqid=seqid)
 
     def remove_gene(self, gene):
         """Removes a specific gene."""
@@ -207,19 +207,21 @@ class DatabaseWG:
 
     def get_gene_sequences_ids(self, gene):
         """Gets the IDs of the sequences associated with a specific gene."""
-        return self.connection.execute(
+        rows = self.connection.execute(
             select([self.mlst.c.seqid])
             .where(self.mlst.c.gene == gene)
         ).fetchall()
+        return {row.seqid for row in rows}
 
     def get_strain_sequences_ids(self, strain):
         """Gets the IDs of the sequences associated with a specific strain."""
-        return self.connection.execute(
+        rows = self.connection.execute(
             select([self.mlst.c.seqid])
             .where(self.mlst.c.souche == strain)
         ).fetchall()
+        return {row.seqid for row in rows}
 
-    def get_sequence_by_gene_and_souche(self, gene, souche):
+    def get_sequence_by_gene_and_souche(self, gene, souche): # TODO : UNUSED
         """Gets the sequence associated to a specific gene in a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
@@ -229,7 +231,7 @@ class DatabaseWG:
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchone()
 
-    def get_sequences_by_souche(self, souche):
+    def get_sequences_by_souche(self, souche): # TODO : UNUSED
         """Gets all the sequences associated to a specific strain."""
         return self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
