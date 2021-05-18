@@ -5,8 +5,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import in_op as in_
 
 import pymlst
-from pymlst.wg.core import DatabaseWG
-
+from pymlst.wg.core import DatabaseWG, DuplicatedSequenceError, DuplicationHandling, DuplicatedGeneError
 
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 wg_path = os.path.join(data_path, 'wg')
@@ -36,16 +35,24 @@ def db_simple(db):
         ('g1', 'ATA'),
         ('g2', 'TTT'),
         ('g3', 'CCC'),
+        ('g4', 'CCC'),
     ]
     for gene, seq in seqs:
-        _, seq_id = db.add_sequence(seq)
-        db.add_mlst('A', gene, seq_id)
-    db.add_mlst('A', 'g4', 4)  # g3 and g4 both on CCC
+        db.add_genome(gene, 'A', seq)
     return db
 
 
 @pytest.fixture()
 def db_many(db):
+    seqs_ref = [
+        ('g1', 'AAA'),
+        ('g2', 'ATA'),
+        ('g3', 'TTT'),
+        ('g4', 'CCC'),
+        ('g5', 'GGG'),
+    ]
+    for gene, seq in seqs_ref:
+        db.add_core_genome(gene, seq)
     seqs = [
         ('A', 'g1', 'AAA'),
         ('A', 'g2', 'ATA'),
@@ -62,67 +69,95 @@ def db_many(db):
         ('D', 'g4', 'CAC'),
     ]
     for strain, gene, seq in seqs:
-        _, seq_id = db.add_sequence(seq)
-        db.add_mlst(strain, gene, seq_id)
+        db.add_genome(gene, strain, seq)
     return db
 
 
-@pytest.fixture()
-def db_ref(db_many):
-    seqs = [
-        ('g1', 'AAA'),
-        ('g2', 'ATA'),
-        ('g3', 'TTT'),
-        ('g4', 'CCC'),
-        ('g5', 'GGG'),
-    ]
-    for gene, seq in seqs:
-        _, seq_id = db_many.add_sequence(seq)
-        db_many.add_mlst('ref', gene, seq_id)
-    return db_many
-
-
-def test_add_sequence(db):
-    inserted, key = db.add_sequence('AAA')
-    assert inserted
+def test_add_genome(db):
+    db.add_genome('g1', 'A', 'AAA')
     seq = db.connection.execute(
-        select([db.sequences.c.sequence])
-        .where(db.sequences.c.id == key)
-    ).fetchone()
-    assert seq.sequence == 'AAA'
-
-
-def test_add_sequence_exist(db):
-    db.add_sequence('AAA')
-    inserted, key = db.add_sequence('AAA')
-    assert not inserted
-    seq = db.connection.execute(
-        select([db.sequences.c.id])
-            .where(db.sequences.c.sequence == 'AAA')
+        select([db.sequences])
     ).fetchall()
     assert len(seq) == 1
-    assert seq[0].id == key
-
-
-def test_add_mlst(db):
-    db.add_mlst('A', 'g1', 0)
-    res = db.connection.execute(
+    assert seq[0].sequence == 'AAA'
+    mlst = db.connection.execute(
         select([db.mlst])
     ).fetchall()
-    assert len(res) == 1
-    assert (res[0].souche == 'A'
-            and res[0].gene == 'g1'
-            and res[0].seqid == 0)
+    assert len(mlst) == 1
+    assert (mlst[0].gene == 'g1'
+            and mlst[0].souche == 'A'
+            and mlst[0].seqid == seq[0].id)
 
 
-def test_concatenate_gene(db):
-    db.add_mlst('A', 'g1', 0)
-    db.concatenate_gene(0, 'g2')
-    res = db.connection.execute(
+def test_add_core_genome(db):
+    added = db.add_core_genome('g1', 'AAA')
+    assert added
+    seq = db.connection.execute(
+        select([db.sequences])
+    ).fetchone()
+    assert seq.sequence == 'AAA'
+    mlst = db.connection.execute(
+        select([db.mlst])
+    ).fetchone()
+    assert mlst.souche == db.ref == 'ref'
+    assert mlst.gene == 'g1' and mlst.seqid == seq.id
+
+
+def test_add_core_genome_exist_no_duplication_handle(db):
+    db.add_core_genome('g1', 'AAA')
+    with pytest.raises(DuplicatedSequenceError):
+        db.add_core_genome('g2', 'AAA')
+
+
+def test_add_core_genome_exist_concatenate_handle(db):
+    db.add_core_genome('g1', 'AAA')
+    added = db.add_core_genome('g2', 'AAA', DuplicationHandling.CONCATENATE)
+    assert not added
+    seq = db.connection.execute(
+         select([db.sequences.c.id])
+         .where(db.sequences.c.sequence == 'AAA')
+    ).fetchall()
+    assert len(seq) == 1
+    mlst = db.connection.execute(
         select([db.mlst.c.gene])
     ).fetchall()
-    assert len(res) == 1
-    assert res[0].gene == 'g1;g2'
+    assert len(mlst) == 1
+    assert mlst[0].gene == 'g1;g2'
+
+
+def test_add_core_genome_exist_remove_handle(db):
+    db.add_core_genome('g1', 'AAA')
+    added = db.add_core_genome('g2', 'AAA', DuplicationHandling.REMOVE)
+    assert not added
+    seq = db.connection.execute(
+         select([db.sequences])
+    ).fetchall()
+    assert len(seq) == 0
+    mlst = db.connection.execute(
+        select([db.mlst])
+    ).fetchall()
+    assert len(mlst) == 0
+
+
+def test_add_core_genome_gene_exist(db):
+    db.add_core_genome('g1', 'AAA')
+    with pytest.raises(DuplicatedGeneError):
+        db.add_core_genome('g1', 'AAT')
+
+
+def test_add_genome_with_invalid_gene_name(db):
+    with pytest.raises(ValueError):
+        db.add_genome('g1;', 'A', 'AAA')
+
+
+def test_get_core_genome(db):
+    db.add_core_genome('g1', 'AAA')
+    db.add_core_genome('g2', 'TTT')
+    core_genome = db.get_core_genome()
+    assert core_genome == {
+        'g1': 'AAA',
+        'g2': 'TTT',
+    }
 
 
 def test_get_sequences_by_gene(db_simple):
@@ -195,7 +230,7 @@ def test_get_gene_sequences_ids(db_simple):
 
 def test_get_strain_sequences_ids(db_many):
     ids = db_many.get_strain_sequences_ids('A')
-    assert ids == {1, 2, 3, 4}
+    assert ids == {1, 2, 4, 6}
 
 
 def test_contains_souche(db_many):
@@ -206,12 +241,13 @@ def test_contains_souche(db_many):
     assert not db_many.contains_souche('B')
 
 
-def test_get_gene_sequences_many_strains(db_ref):
-    g1_seq = db_ref.get_gene_sequences('g1')
+def test_get_gene_sequences_many_strains(db_many):
+    g1_seq = db_many.get_gene_sequences('g1')
     assert g1_seq == [
         [1, ['A', 'C'], 'AAA'],
-        [5, ['B'], 'AAT']]
-    g2_seq = db_ref.get_gene_sequences('g2')
+        [7, ['B'], 'AAT'],
+    ]
+    g2_seq = db_many.get_gene_sequences('g2')
     assert g2_seq == [
         [2, ['A', 'B'], 'ATA']]
 
@@ -228,18 +264,18 @@ def test_get_duplicated_genes(db_simple):
     assert dupli == {'g1'}
 
 
-def test_get_all_strains(db_ref):
-    strains = db_ref.get_all_strains()
+def test_get_all_strains(db_many):
+    strains = db_many.get_all_strains()
     assert strains == ['A', 'B', 'C', 'D']
 
 
-def test_get_core_genes(db_ref):
-    genes = db_ref.get_core_genes()
+def test_get_core_genes(db_many):
+    genes = db_many.get_core_genes()
     assert genes == ['g1', 'g2', 'g3', 'g4', 'g5']
 
 
-def test_count_sequences_per_gene(db_ref):
-    seq_c = db_ref.count_sequences_per_gene()
+def test_count_sequences_per_gene(db_many):
+    seq_c = db_many.count_sequences_per_gene()
     assert seq_c == {
         'g1': 2,
         'g2': 1,
@@ -249,8 +285,8 @@ def test_count_sequences_per_gene(db_ref):
     }
 
 
-def test_count_souches_per_gene(db_ref):
-    str_c = db_ref.count_souches_per_gene()
+def test_count_souches_per_gene(db_many):
+    str_c = db_many.count_souches_per_gene()
     assert str_c == {
         'g1': 3,
         'g2': 2,
@@ -260,8 +296,8 @@ def test_count_souches_per_gene(db_ref):
     }
 
 
-def test_count_genes_per_souche(db_ref):
-    gene_c = db_ref.count_genes_per_souche(['g1', 'g2', 'g3', 'g4', 'g5'])
+def test_count_genes_per_souche(db_many):
+    gene_c = db_many.count_genes_per_souche(['g1', 'g2', 'g3', 'g4', 'g5'])
     assert gene_c == {
         'A': 4,
         'B': 5,
@@ -271,13 +307,13 @@ def test_count_genes_per_souche(db_ref):
     }
 
 
-def test_count_sequences(db_ref):
-    seq_c = db_ref.count_sequences()
+def test_count_sequences(db_many):
+    seq_c = db_many.count_sequences()
     assert seq_c == 9
 
 
-def test_get_strains_distances(db_ref):
-    distances = db_ref.get_strains_distances(['g1', 'g2', 'g3', 'g4', 'g5'])
+def test_get_strains_distances(db_many):
+    distances = db_many.get_strains_distances(['g1', 'g2', 'g3', 'g4', 'g5'])
     assert distances == {
         'A': {
             'B': 3,
@@ -300,12 +336,12 @@ def test_get_strains_distances(db_ref):
     }
 
 
-def test_get_mlst(db_ref):
-    mlst = db_ref.get_mlst(['g1', 'g2', 'g3', 'g4', 'g5'])
+def test_get_mlst(db_many):
+    mlst = db_many.get_mlst(['g1', 'g2', 'g3', 'g4', 'g5'])
     assert mlst == {
         'g1': {
             'A': '1',
-            'B': '5',
+            'B': '7',
             'C': '1',
         },
         'g2': {
@@ -313,17 +349,17 @@ def test_get_mlst(db_ref):
             'B': '2',
         },
         'g3': {
-            'A': '3',
-            'B': '6',
-            'C': '6',
+            'A': '6',
+            'B': '3',
+            'C': '3',
         },
         'g4': {
             'A': '4',
-            'B': '7',
+            'B': '8',
             'C': '9',
-            'D': '7',
+            'D': '8',
         },
         'g5': {
-            'B': '8',
+            'B': '5',
         },
     }

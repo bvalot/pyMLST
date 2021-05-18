@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 from abc import ABC
+from enum import Enum
 
 import networkx as nx
 from Bio import SeqIO
@@ -48,6 +49,19 @@ def open_wg(file=None, ref='ref'):
         mlst.commit(renew=False)
     finally:
         mlst.close()
+
+
+class DuplicationHandling(Enum):
+    CONCATENATE = 1
+    REMOVE = 2
+
+
+class DuplicatedSequenceError(Exception):
+    pass
+
+
+class DuplicatedGeneError(Exception):
+    pass
 
 
 class DatabaseWG:
@@ -99,9 +113,10 @@ class DatabaseWG:
         self.transaction = self.connection.begin()
 
         self.cached_queries = {}
-        self.core_genome = None
+        self.core_genome = {}
 
         self.ref = ref
+        self.separator = ';'
 
     def __get_cached_query(self, name, query_supplier):
         if name in self.cached_queries:
@@ -135,13 +150,40 @@ class DatabaseWG:
                 self.mlst.c.gene == gene))
         ).fetchall()
 
-    def add_mlst(self, souche, gene, seqid):
+    def __check_gene_name(self, name):
+        if self.separator in name:
+            raise ValueError('Gene name can\'t contain {} symbol'
+                             .format(self.separator))
+
+    def add_core_genome(self, gene, sequence, mode=None):
+        self.__check_gene_name(gene)
+        if gene in self.core_genome:
+            raise DuplicatedGeneError()
+        added, seq_id = self.__add_sequence(sequence)
+        if not added:
+            if mode is None:
+                raise DuplicatedSequenceError()
+            if mode == DuplicationHandling.CONCATENATE:
+                self.__concatenate_gene(seq_id, gene)
+            elif mode == DuplicationHandling.REMOVE:
+                self.__remove_sequence(seq_id)
+            return False
+        self.__add_mlst(self.ref, gene, seq_id)
+        self.core_genome[gene] = sequence
+        return True
+
+    def add_genome(self, gene, strain, sequence):
+        self.__check_gene_name(gene)
+        _, seq_id = self.__add_sequence(sequence)
+        self.__add_mlst(strain, gene, seq_id)
+
+    def __add_mlst(self, souche, gene, seqid):
         """Adds an MLST gene bound to an existing sequence."""
         self.connection.execute(
             self.mlst.insert(),
             souche=souche, gene=gene, seqid=seqid)
 
-    def add_sequence(self, sequence):
+    def __add_sequence(self, sequence):
         """Adds a sequence if it doesn't already exist."""
         query = self.__get_cached_query(
             'add_sequence',
@@ -163,12 +205,20 @@ class DatabaseWG:
 
         return True, res.inserted_primary_key[0]
 
-    def concatenate_gene(self, seq_id, gene_name):
+    def __concatenate_gene(self, seq_id, gene_name):
         """Associates a new gene to an existing sequence using concatenation."""
         self.connection.execute(
             self.mlst.update()
                 .values(gene=self.mlst.c.gene + ';' + gene_name)
                 .where(self.mlst.c.seqid == seq_id))
+
+    def __remove_sequence(self, seq_id):
+        self.connection.execute(
+            self.sequences.delete()
+            .where(self.sequences.c.id == seq_id))
+        self.connection.execute(
+            self.mlst.delete()
+            .where(self.mlst.c.seqid == seq_id))
 
     def remove_sequences(self, ids):
         """Removes sequences and the genes that reference them."""
@@ -278,16 +328,6 @@ class DatabaseWG:
             tmp.sort()
             seqs.append([seq[0], tmp, seq[2]])
         return seqs
-
-    # def get_genes_coverages(self):
-    #     """Counts the number of strains referencing each gene."""
-    #     coverages = self.connection.execute(
-    #         select([self.mlst.c.gene,
-    #                 func.count(distinct(self.mlst.c.souche))])
-    #         .where(self.mlst.c.souche != self.ref)
-    #         .group_by(self.mlst.c.gene)
-    #     ).fetchall()
-    #     return [[cov[0], cov[1]] for cov in coverages]
 
     def get_duplicated_genes(self):
         """Gets the genes that are duplicated."""
@@ -465,15 +505,15 @@ class WholeGenomeMLST:
         having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
-        genes = set()
-        to_remove = set()
+        # genes = set()
+        # to_remove = set()
         rc_genes = 0
         invalid_genes = 0
 
         for gene in SeqIO.parse(coregene, 'fasta'):
-            if gene.id in genes:
-                raise Exception("Two sequences have the same gene ID: " + gene.id)
-            genes.add(gene.id)
+            # if gene.id in genes:
+            #     raise Exception("Two sequences have the same gene ID: " + gene.id)
+            #genes.add(gene.id)
 
             if not utils.validate_sequence(gene.seq):
                 gene.seq = gene.seq.reverse_complement()
@@ -483,23 +523,36 @@ class WholeGenomeMLST:
                     invalid_genes += 1
                     continue
 
-            added, seq_id = self.database.add_sequence(str(gene.seq))
+            #added, seq_id = self.database.__add_sequence(str(gene.seq))
+            if concatenate:
+                mode = DuplicationHandling.CONCATENATE
+            elif remove:
+                mode = DuplicationHandling.REMOVE
+            else:
+                mode = None
+
+            added = self.database.add_core_genome(gene.id, str(gene.seq), mode)
 
             if not added:
                 if concatenate:
-                    self.database.concatenate_gene(seq_id, gene.id)
                     logging.info("Concatenate gene %s", gene.id)
                 elif remove:
-                    to_remove.add(seq_id)
-                else:
-                    raise Exception("Two genes have the same sequence " + gene.id +
-                                    "\nUse -c or -r options to manage it")
-            else:
-                self.database.add_mlst(self.database.ref, gene.id, seq_id)
+                    logging.info('Gene %s have duplicated sequence, skipped', gene.id)
 
-        if to_remove:
-            self.database.remove_sequences(to_remove)
-            logging.info("Remove duplicate sequence: %s", str(len(to_remove)))
+            #     if concatenate:
+            #         self.database.__concatenate_gene(seq_id, gene.id)
+            #         logging.info("Concatenate gene %s", gene.id)
+            #     elif remove:
+            #         to_remove.add(seq_id)
+            #     else:
+            #         raise Exception("Two genes have the same sequence " + gene.id +
+            #                         "\nUse -c or -r options to manage it")
+            # else:
+            #     self.database.__add_mlst(self.database.ref, gene.id, seq_id)
+
+        # if to_remove:
+        #     self.database.remove_sequences(to_remove)
+        #     logging.info("Remove duplicate sequence: %s", str(len(to_remove)))
 
         if rc_genes:
             logging.info('Reverse-complemented genes: %s', str(rc_genes))
@@ -596,8 +649,8 @@ class WholeGenomeMLST:
                         continue
 
                     # Insert data in database
-                    seqid = self.database.add_sequence(str(sequence))[1]
-                    self.database.add_mlst(name, gene.gene_id(), seqid)
+                    seqid = self.database.__add_sequence(str(sequence))[1]
+                    self.database.__add_mlst(name, gene.gene_id(), seqid)
 
             logging.info("Added %s new MLST genes to the database", len(genes) - bad)
             logging.info('Found %s partial genes, filled %s', partial, partial_filled)
