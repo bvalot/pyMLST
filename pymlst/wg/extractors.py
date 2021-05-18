@@ -44,7 +44,7 @@ class SequenceExtractor(Extractor):
         if self.list is not None:
             coregene = [l.rstrip("\n") for l in iter(self.list.readline, '')]
         else:
-            coregene = [l[0] for l in base.get_genes_coverages() if l[1] >= self.mincover]
+            coregene = [gene for gene, nb in base.count_souches_per_gene().items() if nb >= self.mincover]  # TODO : to verify
 
         logging.info("Number of gene to analyse : %s", len(coregene))
 

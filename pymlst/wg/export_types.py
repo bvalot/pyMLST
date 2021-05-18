@@ -86,7 +86,7 @@ class StatExport(ExportType):
     def export(self, data, base, output):
         output.write("Strains\t" + str(len(data.strains)) + "\n")
         output.write("Coregenes\t" + str(len(data.all_genes)) + "\n")
-        output.write("Sequences\t" + str(base.get_sequences_number()) + "\n")
+        output.write("Sequences\t" + str(base.count_sequences()) + "\n")
 
     @staticmethod
     def name():

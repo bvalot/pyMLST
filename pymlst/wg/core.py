@@ -11,7 +11,7 @@ from Bio import SeqIO
 from decorator import contextmanager
 from sqlalchemy.sql.functions import count
 
-from sqlalchemy import create_engine, bindparam, not_, Index
+from sqlalchemy import create_engine, bindparam, not_, Index, literal
 from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
@@ -243,10 +243,11 @@ class DatabaseWG:
     def contains_souche(self, souche):
         """Whether the strain exists in the base or not."""
         return self.connection.execute(
-            select([self.mlst.c.id])
-            .where(self.mlst.c.souche == souche)
-            .limit(1)
-        ).fetchone() is not None
+            select([literal(True)])
+            .where(exists(
+                select([self.mlst])
+                .where(self.mlst.c.souche == souche)))
+        ).scalar() is True  # -> True or False (Otherwise returns True or None)
 
     def get_gene_sequences(self, gene):
         """Gets all the sequences for a specific gene and
@@ -278,14 +279,15 @@ class DatabaseWG:
             seqs.append([seq[0], tmp, seq[2]])
         return seqs
 
-    def get_genes_coverages(self):
-        """Counts the number of strains referencing each gene."""
-        return self.connection.execute(
-            select([self.mlst.c.gene,
-                    func.count(distinct(self.mlst.c.souche))])
-            .where(self.mlst.c.souche != self.ref)
-            .group_by(self.mlst.c.gene)
-        ).fetchall()
+    # def get_genes_coverages(self):
+    #     """Counts the number of strains referencing each gene."""
+    #     coverages = self.connection.execute(
+    #         select([self.mlst.c.gene,
+    #                 func.count(distinct(self.mlst.c.souche))])
+    #         .where(self.mlst.c.souche != self.ref)
+    #         .group_by(self.mlst.c.gene)
+    #     ).fetchall()
+    #     return [[cov[0], cov[1]] for cov in coverages]
 
     def get_duplicated_genes(self):
         """Gets the genes that are duplicated."""
@@ -343,7 +345,9 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_genes_per_souche(self, valid_shema):
-        """Gets the number of distinct genes per strain."""
+        """Gets the number of distinct genes per strain.
+
+        The counted genes are restricted to the ones given in the valid_schema."""
         res = self.connection.execute(
             select([self.mlst.c.souche, count(distinct(self.mlst.c.gene))])
             .where(in_(self.mlst.c.gene, valid_shema))
@@ -351,7 +355,7 @@ class DatabaseWG:
         ).fetchall()
         return {r[0]: r[1] for r in res}
 
-    def get_sequences_number(self):
+    def count_sequences(self):
         """Gets the number of distinct."""
         return self.connection.execute(
                select([count(distinct(self.mlst.c.seqid))])
@@ -362,7 +366,7 @@ class DatabaseWG:
         """Gets the strains distances.
 
         For all the possible pairs of strains, counts how many of their genes
-        are different (different seqids so different sequences)
+        are different (different seqids so different sequences).
         The compared genes are restricted to the ones given in the valid_schema.
         """
         alias_1 = self.mlst.alias()
@@ -394,7 +398,12 @@ class DatabaseWG:
         return distance
 
     def get_mlst(self, valid_schema):
-        """Gets the MLST sequences and their strains associated to the genes in the given schema."""
+        """Gets the the genes MLST.
+
+        Returns a dictionary associating to each gene, all the strains
+        that are referencing them and their sequences ids.
+        The returned genes are restricted to the ones given in the valid_schema.
+        """
         result = self.connection.execute(
             select([self.mlst.c.gene, self.mlst.c.souche,
                     func.group_concat(self.mlst.c.seqid, ';')])
