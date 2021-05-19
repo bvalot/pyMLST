@@ -12,13 +12,20 @@ import tempfile
 from io import BytesIO
 
 from pymlst.common.psl import Psl
+from pymlst.common import binaries, exceptions
 
 
-def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
+def run_blat(genome, tmpfile, tmpout, identity, coverage):
     """Run Blat and return Psl Object"""
+
+    path = binaries.get_binary_path('blat')
+    if path is None:
+        raise exceptions.BinaryNotFound('BLAT binary was not found')
+
     command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),
                genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
     output, error = proc.communicate()
     for line in BytesIO(output).readlines():
         logging.info(line.decode().rstrip())
@@ -27,8 +34,8 @@ def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
         have_error = True
         logging.error(line.decode().rstrip())
     if have_error:
-        raise Exception('An error occurred while running BLAT,'
-                        ' see the logs for more details.\n')
+        raise exceptions.PyMLSTError(
+            'An error occurred while running BLAT')
     genes = {}
     for line in open(tmpout.name, 'r'):
         try:
@@ -39,7 +46,8 @@ def run_blat(path, genome, tmpfile, tmpout, identity, coverage):
         if coverage <= psl.coverage <= 1:
             genes.setdefault(psl.gene_id(), []).append(psl)
     if len(genes) == 0:
-        raise Exception("No path found for the coregenome")
+        raise exceptions.CoreGenomePathNotFound(
+            'No path was found for the core genome')
     return genes
 
 

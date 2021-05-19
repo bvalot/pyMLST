@@ -99,7 +99,7 @@ def test_add_core_genome(db):
     mlst = db.connection.execute(
         select([db.mlst])
     ).fetchone()
-    assert mlst.souche == db.ref == 'ref'
+    assert mlst.souche == db.__ref == 'ref'
     assert mlst.gene == 'g1' and mlst.seqid == seq.id
 
 
@@ -165,28 +165,6 @@ def test_get_sequences_by_gene(db_simple):
     assert len(seqs) == 2
     assert (seqs[0].sequence == 'AAA'
             and seqs[1].sequence == 'ATA')
-
-
-def test_remove_sequences(db_simple):
-    db_simple.remove_sequences([1, 3])
-    mlst_c = db_simple.connection.execute(
-        select([count(db_simple.mlst.c.id)])
-    ).scalar()
-    assert mlst_c == 3
-    seq_c = db_simple.connection.execute(
-        select([count(db_simple.sequences.c.id)])
-    ).scalar()
-    assert seq_c == 2
-    seq_e = db_simple.connection.execute(
-        select([db_simple.sequences])
-        .where(in_(db_simple.sequences.c.id, [1, 3]))
-    ).fetchone()
-    assert seq_e is None
-    mlst_e = db_simple.connection.execute(
-        select([db_simple.mlst])
-        .where(in_(db_simple.mlst.c.seqid, [1, 3]))
-    ).fetchone()
-    assert mlst_e is None
 
 
 def test_remove_gene(db_simple):

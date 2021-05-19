@@ -252,7 +252,7 @@ class ClassicalMLST:
 
             # BLAT analysis
             logging.info("Search coregene with BLAT")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
+            genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
             logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
             # Search sequence MLST

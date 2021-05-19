@@ -1,9 +1,7 @@
 """Core classes and functions to work with Whole Genome MLST data."""
-import collections
 import logging
 import os
 import sys
-import tempfile
 from abc import ABC
 from enum import Enum
 
@@ -22,8 +20,7 @@ from sqlalchemy.sql import distinct
 from sqlalchemy.sql.operators import in_op as in_
 
 from pymlst.common import blat, psl
-from pymlst.common.binaries import get_binary_path
-from pymlst.common import utils
+from pymlst.common import utils, exceptions, binaries
 
 
 @contextmanager
@@ -54,14 +51,6 @@ def open_wg(file=None, ref='ref'):
 class DuplicationHandling(Enum):
     CONCATENATE = 1
     REMOVE = 2
-
-
-class DuplicatedSequenceError(Exception):
-    pass
-
-
-class DuplicatedGeneError(Exception):
-    pass
 
 
 class DatabaseWG:
@@ -112,35 +101,34 @@ class DatabaseWG:
         self.connection = self.engine.connect()
         self.transaction = self.connection.begin()
 
-        self.cached_queries = {}
-        self.core_genome = {}
+        self.__cached_queries = {}
 
-        self.ref = ref
-        self.separator = ';'
+        self.__ref = ref
+        self.__separator = ';'
+
+        self.__core_genome = self.__load_core_genome()
 
     def __get_cached_query(self, name, query_supplier):
-        if name in self.cached_queries:
-            return self.cached_queries[name]
+        if name in self.__cached_queries:
+            return self.__cached_queries[name]
         query = query_supplier()
-        self.cached_queries[name] = query
+        self.__cached_queries[name] = query
         return query
 
     def __load_core_genome(self):
         result = self.connection.execute(
             select([self.mlst.c.gene, self.sequences.c.sequence])
             .where(and_(
-                self.mlst.c.souche == self.ref,
+                self.mlst.c.souche == self.__ref,
                 self.mlst.c.seqid == self.sequences.c.id))
         ).fetchall()
-        genes = collections.defaultdict(list)
+        genes = {}
         for row in result:
-            genes[row.gene].append(row.sequence)
+            genes[row.gene] = row.sequence
         return genes
 
     def get_core_genome(self):
-        if self.core_genome is None:
-            self.core_genome = self.__load_core_genome()
-        return self.core_genome
+        return self.__core_genome
 
     def get_sequences_by_gene(self, gene):
         return self.connection.execute(
@@ -150,30 +138,32 @@ class DatabaseWG:
                 self.mlst.c.gene == gene))
         ).fetchall()
 
-    def __check_gene_name(self, name):
-        if self.separator in name:
-            raise ValueError('Gene name can\'t contain {} symbol'
-                             .format(self.separator))
+    def check_gene_name(self, name):
+        if self.__separator in name:
+            raise exceptions.InvalidGeneName(
+                '{} contains {} symbol'.format(name, self.__separator))
 
     def add_core_genome(self, gene, sequence, mode=None):
-        self.__check_gene_name(gene)
-        if gene in self.core_genome:
-            raise DuplicatedGeneError()
+        self.check_gene_name(gene)
+        if gene in self.__core_genome:
+            raise exceptions.DuplicatedGeneName(
+                '{} is duplicated'.format(gene))
         added, seq_id = self.__add_sequence(sequence)
         if not added:
             if mode is None:
-                raise DuplicatedSequenceError()
+                raise exceptions.DuplicatedGeneSequence(
+                    '{} sequence is duplicated'.format(gene))
             if mode == DuplicationHandling.CONCATENATE:
                 self.__concatenate_gene(seq_id, gene)
             elif mode == DuplicationHandling.REMOVE:
                 self.__remove_sequence(seq_id)
             return False
-        self.__add_mlst(self.ref, gene, seq_id)
-        self.core_genome[gene] = sequence
+        self.__add_mlst(self.__ref, gene, seq_id)
+        self.__core_genome[gene] = sequence
         return True
 
     def add_genome(self, gene, strain, sequence):
-        self.__check_gene_name(gene)
+        self.check_gene_name(gene)
         _, seq_id = self.__add_sequence(sequence)
         self.__add_mlst(strain, gene, seq_id)
 
@@ -220,15 +210,6 @@ class DatabaseWG:
             self.mlst.delete()
             .where(self.mlst.c.seqid == seq_id))
 
-    def remove_sequences(self, ids):
-        """Removes sequences and the genes that reference them."""
-        self.connection.execute(
-            self.sequences.delete()
-            .where(in_(self.sequences.c.id, ids)))
-        self.connection.execute(
-            self.mlst.delete()
-            .where(in_(self.mlst.c.seqid, ids)))
-
     def remove_orphan_sequences(self, ids):
         """Removes sequences if they aren't referenced by any gene."""
         query = self.sequences.delete() \
@@ -271,25 +252,6 @@ class DatabaseWG:
         ).fetchall()
         return {row.seqid for row in rows}
 
-    def get_sequence_by_gene_and_souche(self, gene, souche): # TODO : UNUSED
-        """Gets the sequence associated to a specific gene in a specific strain."""
-        return self.connection.execute(
-            select([self.mlst.c.gene, self.sequences.c.sequence])
-            .where(and_(
-                self.mlst.c.gene == gene,
-                self.mlst.c.souche == souche,
-                self.mlst.c.seqid == self.sequences.c.id))
-        ).fetchone()
-
-    def get_sequences_by_souche(self, souche): # TODO : UNUSED
-        """Gets all the sequences associated to a specific strain."""
-        return self.connection.execute(
-            select([self.mlst.c.gene, self.sequences.c.sequence])
-            .where(and_(
-                self.mlst.c.souche == souche,
-                self.mlst.c.seqid == self.sequences.c.id))
-        ).fetchall()
-
     def contains_souche(self, souche):
         """Whether the strain exists in the base or not."""
         return self.connection.execute(
@@ -318,7 +280,7 @@ class DatabaseWG:
         res = self.connection.execute(
             query,
             separator=';',
-            souche=self.ref,
+            souche=self.__ref,
             gene=gene
         ).fetchall()
 
@@ -343,7 +305,7 @@ class DatabaseWG:
         res = self.connection.execute(
             select([self.mlst.c.gene])
             .where(and_(
-                self.mlst.c.souche != self.ref,
+                self.mlst.c.souche != self.__ref,
                 exists(exist_sub)))
             .group_by(self.mlst.c.gene)
         ).fetchall()
@@ -354,7 +316,7 @@ class DatabaseWG:
         """Gets all distinct strains."""
         res = self.connection.execute(
             select([distinct(self.mlst.c.souche)]).
-            where(self.mlst.c.souche != self.ref)
+            where(self.mlst.c.souche != self.__ref)
         ).fetchall()
         return [r[0] for r in res]
 
@@ -362,7 +324,7 @@ class DatabaseWG:
         """Gets all distinct genes."""
         res = self.connection.execute(
             select([distinct(self.mlst.c.gene)]).
-            where(self.mlst.c.souche == self.ref)
+            where(self.mlst.c.souche == self.__ref)
         ).fetchall()
         return [r[0] for r in res]
 
@@ -370,7 +332,7 @@ class DatabaseWG:
         """Gets the number of distinct sequences per gene."""
         res = self.connection.execute(
             select([self.mlst.c.gene, count(distinct(self.mlst.c.seqid))])
-            .where(self.mlst.c.souche != self.ref)
+            .where(self.mlst.c.souche != self.__ref)
             .group_by(self.mlst.c.gene)
         ).fetchall()
         return {r[0]: r[1] for r in res}
@@ -379,7 +341,7 @@ class DatabaseWG:
         """Gets the number of distinct stains per gene."""
         res = self.connection.execute(
             select([self.mlst.c.gene, count(distinct(self.mlst.c.souche))])
-            .where(self.mlst.c.souche != self.ref)
+            .where(self.mlst.c.souche != self.__ref)
             .group_by(self.mlst.c.gene)
         ).fetchall()
         return {r[0]: r[1] for r in res}
@@ -399,7 +361,7 @@ class DatabaseWG:
         """Gets the number of distinct."""
         return self.connection.execute(
                select([count(distinct(self.mlst.c.seqid))])
-               .where(self.mlst.c.souche != self.ref)
+               .where(self.mlst.c.souche != self.__ref)
         ).fetchone()[0]
 
     def get_strains_distances(self, valid_schema):
@@ -425,8 +387,8 @@ class DatabaseWG:
             .where(
                 and_(
                     in_(alias_1.c.gene, valid_schema),
-                    alias_1.c.souche != self.ref,
-                    alias_2.c.souche != self.ref))
+                    alias_1.c.souche != self.__ref,
+                    alias_2.c.souche != self.__ref))
             .group_by(alias_1.c.souche, alias_2.c.souche)
         ).fetchall()
 
@@ -447,7 +409,7 @@ class DatabaseWG:
         result = self.connection.execute(
             select([self.mlst.c.gene, self.mlst.c.souche,
                     func.group_concat(self.mlst.c.seqid, ';')])
-            .where(and_(self.mlst.c.souche != self.ref,
+            .where(and_(self.mlst.c.souche != self.__ref,
                         in_(self.mlst.c.gene, valid_schema)))
             .group_by(self.mlst.c.gene, self.mlst.c.souche)
         ).fetchall()
@@ -505,16 +467,10 @@ class WholeGenomeMLST:
         having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
-        # genes = set()
-        # to_remove = set()
         rc_genes = 0
         invalid_genes = 0
 
         for gene in SeqIO.parse(coregene, 'fasta'):
-            # if gene.id in genes:
-            #     raise Exception("Two sequences have the same gene ID: " + gene.id)
-            #genes.add(gene.id)
-
             if not utils.validate_sequence(gene.seq):
                 gene.seq = gene.seq.reverse_complement()
                 if utils.validate_sequence(gene.seq):
@@ -523,7 +479,6 @@ class WholeGenomeMLST:
                     invalid_genes += 1
                     continue
 
-            #added, seq_id = self.database.__add_sequence(str(gene.seq))
             if concatenate:
                 mode = DuplicationHandling.CONCATENATE
             elif remove:
@@ -535,24 +490,9 @@ class WholeGenomeMLST:
 
             if not added:
                 if concatenate:
-                    logging.info("Concatenate gene %s", gene.id)
+                    logging.info("Concatenated gene %s", gene.id)
                 elif remove:
-                    logging.info('Gene %s have duplicated sequence, skipped', gene.id)
-
-            #     if concatenate:
-            #         self.database.__concatenate_gene(seq_id, gene.id)
-            #         logging.info("Concatenate gene %s", gene.id)
-            #     elif remove:
-            #         to_remove.add(seq_id)
-            #     else:
-            #         raise Exception("Two genes have the same sequence " + gene.id +
-            #                         "\nUse -c or -r options to manage it")
-            # else:
-            #     self.database.__add_mlst(self.database.ref, gene.id, seq_id)
-
-        # if to_remove:
-        #     self.database.remove_sequences(to_remove)
-        #     logging.info("Remove duplicate sequence: %s", str(len(to_remove)))
+                    logging.info('Gene %s has duplicated sequence, removed', gene.id)
 
         if rc_genes:
             logging.info('Reverse-complemented genes: %s', str(rc_genes))
@@ -580,17 +520,12 @@ class WholeGenomeMLST:
         :param coverage: Sets the minimum accepted coverage for found sequences.
         """
         if identity < 0 or identity > 1:
-            raise Exception("Identity must be between 0 and 1")
-
-        path = get_binary_path('blat')
-        if path is None:
-            raise Exception('Unable to locate the Blat executable\n')
+            raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
 
         name = strain
         if name is None:
             name = genome.name.split('/')[-1]
-        if ";" in name:
-            raise Exception("Strain name must not contains special ';'\n")
+        self.database.check_gene_name(name)
 
         tmpfile, tmpout = blat.blat_tmp()
         tmpout.close()
@@ -598,7 +533,8 @@ class WholeGenomeMLST:
         try:
             # verify that the strain is not already in the database
             if self.database.contains_souche(name):
-                raise Exception("Strain is already present in database:\n" + name)
+                raise exceptions.StrainAlreadyPresent(
+                    'Strain {} already present in the base'.format(name))
 
             # read coregene
             self.__create_core_genome_file(tmpfile)
@@ -606,7 +542,7 @@ class WholeGenomeMLST:
 
             # BLAT analysis
             logging.info("Search coregene with BLAT")
-            genes = blat.run_blat(path, genome, tmpfile, tmpout, identity, coverage)
+            genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
             logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
             # add MLST sequence
@@ -625,13 +561,14 @@ class WholeGenomeMLST:
 
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
-                        raise Exception("Chromosome ID not found " + gene.chro)
+                        raise exceptions.ChromosomeNotFound(
+                            'Chromosome {} not found '.format(gene.chro))
 
                     # Correct coverage
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_core_genome()[core_gene][0]  # TODO : How to handle duplication?
+                        coregene_seq = self.database.get_core_genome()[core_gene]
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
@@ -649,8 +586,7 @@ class WholeGenomeMLST:
                         continue
 
                     # Insert data in database
-                    seqid = self.database.__add_sequence(str(sequence))[1]
-                    self.database.__add_mlst(name, gene.gene_id(), seqid)
+                    self.database.add_genome(gene.gene_id(), name, str(sequence))
 
             logging.info("Added %s new MLST genes to the database", len(genes) - bad)
             logging.info('Found %s partial genes, filled %s', partial, partial_filled)
@@ -695,7 +631,7 @@ class WholeGenomeMLST:
         :param strains: Names of the strains to remove.
         :param file: A file containing a strain name per line.
         """
-        if self.database.ref in strains:
+        if self.database.__ref in strains:
             raise Exception("Ref schema could not be remove from this database")
 
         # list strains to remove

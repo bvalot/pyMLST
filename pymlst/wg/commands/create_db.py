@@ -4,6 +4,7 @@ import os
 import click
 
 import pymlst
+from pymlst.common import exceptions
 
 
 @click.command()
@@ -21,4 +22,11 @@ def cli(coregene, database, concatenate, remove):
     database.close()
 
     with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.create(coregene, concatenate, remove)
+
+        try:
+            mlst.create(coregene, concatenate, remove)
+        except exceptions.DuplicatedGeneSequence as err:
+            raise click.UsageError('{}, use -c or -r options to manage it'
+                                   .format(str(err)))
+        except exceptions.PyMLSTError as err:
+            raise click.UsageError(str(err))
