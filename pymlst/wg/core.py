@@ -20,7 +20,7 @@ from sqlalchemy.sql import distinct
 from sqlalchemy.sql.operators import in_op as in_
 
 from pymlst.common import blat, psl
-from pymlst.common import utils, exceptions, binaries
+from pymlst.common import utils, exceptions
 
 
 @contextmanager
@@ -65,41 +65,41 @@ class DatabaseWG:
         :param path: The path to the database file to work with.
         """
         if path is None:
-            self.engine = create_engine('sqlite://')  # creates a :memory: database
+            self.__engine = create_engine('sqlite://')  # creates a :memory: database
         else:
-            self.engine = create_engine('sqlite:///' + path)  # must be an absolute path
+            self.__engine = create_engine('sqlite:///' + path)  # must be an absolute path
 
         metadata = MetaData()
 
-        self.sequences = Table('sequences', metadata,
-                               Column('id', Integer, primary_key=True),
-                               Column('sequence', Text, unique=True))
+        self.__sequences = Table('sequences', metadata,
+                                 Column('id', Integer, primary_key=True),
+                                 Column('sequence', Text, unique=True))
 
-        self.mlst = Table('mlst', metadata,
-                          Column('id', Integer, primary_key=True),
-                          Column('souche', Text),
-                          Column('gene', Text),
-                          Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
+        self.__mlst = Table('mlst', metadata,
+                            Column('id', Integer, primary_key=True),
+                            Column('souche', Text),
+                            Column('gene', Text),
+                            Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
 
-        metadata.create_all(self.engine)
+        metadata.create_all(self.__engine)
 
         Index('ix_souche',
               self.mlst.c.souche)\
-            .create(bind=self.engine, checkfirst=True)
+            .create(bind=self.__engine, checkfirst=True)
         Index('ix_gene',
               self.mlst.c.gene)\
-            .create(bind=self.engine, checkfirst=True)
+            .create(bind=self.__engine, checkfirst=True)
         Index('ix_seqid',
               self.mlst.c.seqid)\
-            .create(bind=self.engine, checkfirst=True)
+            .create(bind=self.__engine, checkfirst=True)
         Index('ix_souche_gene_seqid',
               self.mlst.c.gene,
               self.mlst.c.souche,
               self.mlst.c.seqid)\
-            .create(bind=self.engine, checkfirst=True)
+            .create(bind=self.__engine, checkfirst=True)
 
-        self.connection = self.engine.connect()
-        self.transaction = self.connection.begin()
+        self.__connection = self.__engine.connect()
+        self.__transaction = self.connection.begin()
 
         self.__cached_queries = {}
 
@@ -107,6 +107,30 @@ class DatabaseWG:
         self.__separator = ';'
 
         self.__core_genome = self.__load_core_genome()
+        
+    @property
+    def ref(self):
+        return self.__ref
+    
+    @property
+    def separator(self):
+        return self.__separator
+    
+    @property
+    def connection(self):
+        return self.__connection
+
+    @property
+    def mlst(self):
+        return self.__mlst
+
+    @property
+    def sequences(self):
+        return self.__sequences
+
+    @property
+    def core_genome(self):
+        return self.__core_genome
 
     def __get_cached_query(self, name, query_supplier):
         if name in self.__cached_queries:
@@ -126,9 +150,6 @@ class DatabaseWG:
         for row in result:
             genes[row.gene] = row.sequence
         return genes
-
-    def get_core_genome(self):
-        return self.__core_genome
 
     def get_sequences_by_gene(self, gene):
         return self.connection.execute(
@@ -210,7 +231,7 @@ class DatabaseWG:
             self.mlst.delete()
             .where(self.mlst.c.seqid == seq_id))
 
-    def remove_orphan_sequences(self, ids):
+    def __remove_orphan_sequences(self, ids):
         """Removes sequences if they aren't referenced by any gene."""
         query = self.sequences.delete() \
             .where(and_(
@@ -225,18 +246,28 @@ class DatabaseWG:
                 seqid=seqid)
 
     def remove_gene(self, gene):
-        """Removes a specific gene."""
+        """Removes a specific gene and its sequences."""
+        ids = self.__get_gene_sequences_ids(gene)
+        if len(ids) == 0:
+            return False
         self.connection.execute(
             self.mlst.delete()
             .where(self.mlst.c.gene == gene))
+        self.__remove_orphan_sequences(ids)
+        return True
 
     def remove_strain(self, strain):
         """Removes a specific strain."""
+        ids = self.__get_strain_sequences_ids(strain)
+        if len(ids) == 0:
+            return False
         self.connection.execute(
             self.mlst.delete()
                 .where(self.mlst.c.souche == strain))
+        self.__remove_orphan_sequences(ids)
+        return True
 
-    def get_gene_sequences_ids(self, gene):
+    def __get_gene_sequences_ids(self, gene):
         """Gets the IDs of the sequences associated with a specific gene."""
         rows = self.connection.execute(
             select([self.mlst.c.seqid])
@@ -244,7 +275,7 @@ class DatabaseWG:
         ).fetchall()
         return {row.seqid for row in rows}
 
-    def get_strain_sequences_ids(self, strain):
+    def __get_strain_sequences_ids(self, strain):
         """Gets the IDs of the sequences associated with a specific strain."""
         rows = self.connection.execute(
             select([self.mlst.c.seqid])
@@ -423,17 +454,17 @@ class DatabaseWG:
 
     def commit(self, renew):
         """Commits the modifications."""
-        self.transaction.commit()
+        self.__transaction.commit()
         if renew:
-            self.transaction = self.connection.begin()
+            self.__transaction = self.connection.begin()
 
     def rollback(self):
         """Rollback the modifications."""
-        self.transaction.rollback()
+        self.__transaction.rollback()
 
     def close(self):
         """Closes the database engine."""
-        self.engine.dispose()
+        self.__engine.dispose()
 
 
 class WholeGenomeMLST:
@@ -552,7 +583,7 @@ class WholeGenomeMLST:
             partial = 0
             partial_filled = 0
 
-            for core_gene in self.database.get_core_genome().keys():
+            for core_gene in self.database.core_genome.keys():
 
                 if core_gene not in genes:
                     continue
@@ -568,7 +599,7 @@ class WholeGenomeMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_core_genome()[core_gene]
+                        coregene_seq = self.database.core_genome[core_gene]
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
@@ -610,20 +641,14 @@ class WholeGenomeMLST:
         if genes is not None:
             all_genes.extend(genes)
         if len(all_genes) == 0:
-            raise Exception("No gene to remove found.\n")
+            raise exceptions.NothingToRemove('No gene to remove found')
         all_genes = set(all_genes)
 
         for gene in all_genes:
-            logging.info("%s : ", gene)
-
-            seqids = self.database.get_gene_sequences_ids(gene)
-            if len(seqids) == 0:
-                logging.info("Not found")
+            if self.database.remove_gene(gene):
+                logging.info("%s : OK", gene)
             else:
-                logging.info("OK")
-
-            self.database.remove_gene(gene)
-            self.database.remove_orphan_sequences(seqids)
+                logging.info("%s : Not found", gene)
 
     def remove_strain(self, strains, file=None):
         """Removes entire strains from the database.
@@ -631,28 +656,23 @@ class WholeGenomeMLST:
         :param strains: Names of the strains to remove.
         :param file: A file containing a strain name per line.
         """
-        if self.database.__ref in strains:
-            raise Exception("Ref schema could not be remove from this database")
+        if self.database.ref in strains:
+            raise exceptions.PyMLSTError(
+                '{} schema could not be removed'.format(self.database.ref))
 
         # list strains to remove
         all_strains = utils.strip_file(file)
         if strains is not None:
             all_strains.extend(strains)
         if len(all_strains) == 0:
-            raise Exception("No strain to remove found.\n")
+            raise exceptions.NothingToRemove('No strain to remove found')
         all_strains = set(all_strains)
 
         for strain in all_strains:
-            logging.info("%s : ", strain)
-
-            seqids = self.database.get_strain_sequences_ids(strain)
-            if len(seqids) == 0:
-                logging.info("Not found")
+            if self.database.remove_strain(strain):
+                logging.info("%s : OK", strain)
             else:
-                logging.info("OK")
-
-            self.database.remove_strain(strain)
-            self.database.remove_orphan_sequences(seqids)
+                logging.info("%s : Not found", strain)
 
     def extract(self, extractor, output=sys.stdout):
         """Takes an extractor object and writes the extraction result on the given output.
@@ -664,7 +684,7 @@ class WholeGenomeMLST:
         extractor.extract(self.database, output)
 
     def __create_core_genome_file(self, tmp_file):
-        ref_genes = self.database.get_core_genome()
+        ref_genes = self.database.core_genome
         for gene, sequences in ref_genes.items():
             for seq in sequences:
                 tmp_file.write('>' + gene + "\n" + seq + "\n")
@@ -720,7 +740,8 @@ def find_recombination(genes, alignment, output):
 
         # check genes number correct
         if indice >= len(genes):
-            raise Exception("The genes list seems not correspond to the alignment\n" + str(indice))
+            raise exceptions.PyMLSTError(
+                'The genes list doesn\'t correspond to the alignment {}'.format(indice))
 
         # genes
         sequences[indice].append(line)
@@ -730,7 +751,8 @@ def find_recombination(genes, alignment, output):
     for i, seqs in enumerate(sequences):
         if len({len(s) for s in seqs}) > 1:
             print({len(s) for s in seqs})
-            raise Exception("Following genes seems to be not align: " + genes[i])
+            raise exceptions.PyMLSTError(
+                'The following genes are not aligned: {}'.format(genes[i]))
 
     for i, seqs in enumerate(sequences):
         compared = utils.compar_seqs(seqs)
@@ -752,7 +774,9 @@ def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
     try:
         strains = int(distance.readline().rstrip("\n"))
     except Exception as err:
-        raise Exception("The distance file seems not correctly formatted\n Not integer on first line") from err
+        raise exceptions.PyMLSTError(
+            "The distance file seems not correctly "
+            "formatted, not integer on first line") from err
 
     for line in distance.readlines():
         dist_line = line.rstrip("\n").split("\t")
@@ -760,8 +784,10 @@ def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
         dists.append(dist_line[1:])
 
     if len(samps) != strains:
-        raise Exception("The distance file seems not correctly formatted\n Number of strains " +
-                        str(len(samps)) + " doesn't correspond to " + str(strains))
+        raise exceptions.PyMLSTError(
+            "The distance is not properly formatted, "
+            "the number of strains ({}) doesn't correspond to {}"
+            .format(len(samps), strains))
 
     # create graph
     graph = nx.Graph()

@@ -2,7 +2,7 @@
 
 import click
 
-from pymlst.common import utils
+from pymlst.common import utils, exceptions
 from pymlst.wg import core
 
 
@@ -22,4 +22,7 @@ from pymlst.wg import core
 def cli(distance, **kwargs):
     """Search group os strain at a distance threshold."""
 
-    core.find_subgraph(distance, **utils.clean_kwargs(kwargs))
+    try:
+        core.find_subgraph(distance, **utils.clean_kwargs(kwargs))
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

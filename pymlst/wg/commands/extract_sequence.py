@@ -5,7 +5,7 @@ import os
 import click
 
 import pymlst
-from pymlst.common import utils
+from pymlst.common import utils, exceptions
 from pymlst.wg.extractors import SequenceExtractor
 
 
@@ -42,5 +42,8 @@ def cli(database, list, **kwargs):
     else:
         ext_kwargs = {}
 
-    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.extract(SequenceExtractor(list, **seq_kwargs), **ext_kwargs)
+    try:
+        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+            mlst.extract(SequenceExtractor(list, **seq_kwargs), **ext_kwargs)
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

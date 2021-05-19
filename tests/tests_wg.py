@@ -153,7 +153,7 @@ def test_add_genome_with_invalid_gene_name(db):
 def test_get_core_genome(db):
     db.add_core_genome('g1', 'AAA')
     db.add_core_genome('g2', 'TTT')
-    core_genome = db.get_core_genome()
+    core_genome = db.core_genome
     assert core_genome == {
         'g1': 'AAA',
         'g2': 'TTT',
@@ -179,7 +179,7 @@ def test_remove_gene(db_simple):
 def test_remove_orphan_sequences(db_simple):
     db_simple.remove_gene('g2')
     db_simple.remove_gene('g4')
-    db_simple.remove_orphan_sequences([3, 4])
+    db_simple.__remove_orphan_sequences([3, 4])
     seq_1_e = db_simple.connection.execute(
         select([db_simple.sequences])
         .where(db_simple.sequences.c.id == 3)
@@ -202,12 +202,12 @@ def test_remove_strain(db_simple):
 
 
 def test_get_gene_sequences_ids(db_simple):
-    ids = db_simple.get_gene_sequences_ids('g1')
+    ids = db_simple.__get_gene_sequences_ids('g1')
     assert ids == {1, 2}
 
 
 def test_get_strain_sequences_ids(db_many):
-    ids = db_many.get_strain_sequences_ids('A')
+    ids = db_many.__get_strain_sequences_ids('A')
     assert ids == {1, 2, 4, 6}
 
 

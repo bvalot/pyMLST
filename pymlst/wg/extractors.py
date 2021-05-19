@@ -4,8 +4,7 @@ import logging
 
 from abc import ABC
 
-from pymlst.common import mafft
-from pymlst.common.binaries import get_binary_path
+from pymlst.common import mafft, exceptions
 from pymlst.wg.core import Extractor
 
 
@@ -21,7 +20,8 @@ def add_sequence_strain(seqs, strains, sequences):
         elif len(seq) == 1:
             sequences.get(strain).append(seq[0])
         else:
-            raise Exception("repeated gene must be excluded in order to align export\n")
+            raise exceptions.PyMLSTError(
+                'Repeated genes must be excluded in order to export alignment')
 
 
 class SequenceExtractor(Extractor):
@@ -36,8 +36,8 @@ class SequenceExtractor(Extractor):
         # Minimun number of strain
         strains = base.get_all_strains()
         if self.mincover < 1 or self.mincover > len(strains):
-            raise Exception("Mincover must be between 1 to number of strains : "
-                            + str(len(strains)))
+            raise exceptions.PyMLSTError(
+                'Mincover must be between 1 and number of strains {}'.format(len(strains)))
 
         #  Coregene
         coregene = []
@@ -78,11 +78,6 @@ class SequenceExtractor(Extractor):
                     add_sequence_strain(seqs, strains, sequences)
                 else:
                     logging.info("Align")
-                    #write_tmp_seqs(tmpfile, seqs)
-                    mafft_path = get_binary_path('mafft')
-                    if mafft_path is None:
-                        raise Exception('Unable to locate the Mafft executable\n')
-
                     genes = {str(s[0]): s[2] for s in seqs}
                     corrseqs = mafft.align(genes)
                     for seq in seqs:
@@ -118,8 +113,8 @@ class TableExtractor(Extractor):
 
         # Minimun number of strain
         if self.mincover < 0 or self.mincover > len(strains):
-            raise Exception("Mincover must be between 0 to number of strains : "
-                            + str(len(strains)))
+            raise exceptions.PyMLSTError(
+                'Mincover must be between 0 and number of strains {}'.format(len(strains)))
 
         # allgene
         allgene = base.get_core_genes()
@@ -170,7 +165,8 @@ class TableExtractor(Extractor):
         exporter = ExportType.get_type(self.export)
 
         if exporter is None:
-            raise Exception('Unknown export type: ', self.export)
+            raise exceptions.UndefinedExportType(
+                'Unknown export type: {}'.format(self.export))
 
         data = ExportData(valid_shema, strains, allgene, self.count, self.duplicate)
         exporter.export(data, base, output)

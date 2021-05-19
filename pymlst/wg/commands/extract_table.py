@@ -5,7 +5,7 @@ import os
 import click
 
 import pymlst
-from pymlst.common import utils
+from pymlst.common import utils, exceptions
 from pymlst.wg.extractors import TableExtractor, ExportType
 
 
@@ -46,5 +46,8 @@ def cli(database, **kwargs):
     else:
         ext_kwargs = {}
 
-    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
-        mlst.extract(TableExtractor(**tab_kwargs), **ext_kwargs)
+    try:
+        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+            mlst.extract(TableExtractor(**tab_kwargs), **ext_kwargs)
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

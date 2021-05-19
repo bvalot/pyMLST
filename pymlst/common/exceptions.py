@@ -36,3 +36,11 @@ class ChromosomeNotFound(PyMLSTError):
 
 class CoreGenomePathNotFound(PyMLSTError):
     pass
+
+
+class NothingToRemove(PyMLSTError):
+    pass
+
+
+class UndefinedExportType(PyMLSTError):
+    pass
