@@ -162,13 +162,6 @@ def test_get_core_genome(db):
     }
 
 
-def test_get_sequences_by_gene(db_simple):
-    seqs = db_simple.get_sequences_by_gene('g1')
-    assert len(seqs) == 2
-    assert (seqs[0].sequence == 'AAA'
-            and seqs[1].sequence == 'ATA')
-
-
 def test_remove_gene(db_simple):
     db_simple.remove_gene('g1')
     mlst_e = db_simple.connection.execute(

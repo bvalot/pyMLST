@@ -151,14 +151,6 @@ class DatabaseWG:
             genes[row.gene] = row.sequence
         return genes
 
-    def get_sequences_by_gene(self, gene):
-        return self.connection.execute(
-            select([self.mlst.c.souche, self.sequences.c.sequence])
-            .where(and_(
-                self.mlst.c.seqid == self.sequences.c.id,
-                self.mlst.c.gene == gene))
-        ).fetchall()
-
     def check_gene_name(self, name):
         if self.__separator in name:
             raise exceptions.InvalidGeneName(
@@ -457,15 +449,17 @@ class DatabaseWG:
             sequences[entry[1]] = entry[2]
         return mlst
 
-    def commit(self, renew):
+    def commit(self, renew=True):
         """Commits the modifications."""
         self.__transaction.commit()
         if renew:
             self.__transaction = self.connection.begin()
 
-    def rollback(self):
+    def rollback(self, renew=True):
         """Rollback the modifications."""
         self.__transaction.rollback()
+        if renew:
+            self.__transaction = self.connection.begin()
 
     def close(self):
         """Closes the database engine."""
@@ -697,9 +691,9 @@ class WholeGenomeMLST:
         """Commits the modifications."""
         self.database.commit(renew)
 
-    def rollback(self):
+    def rollback(self, renew=True):
         """Rollback the modifications."""
-        self.database.rollback()
+        self.database.rollback(renew)
 
     def close(self):
         """Closes the database engine."""

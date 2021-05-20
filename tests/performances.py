@@ -45,19 +45,6 @@ def calculate_resemblance(seq1, seq2):
     return alike / len(seq1)
 
 
-def process_similarities(gene):
-    with pymlst.open_wg(db_path) as mlst:
-        sequences = mlst.database.get_sequences_by_gene(gene)
-        ref_seq = sequences[0][1]
-        different = set()
-        for seq in sequences:
-            resemblance = calculate_resemblance(ref_seq, seq[1])
-            print('{} %'.format(resemblance * 100))
-            print('Seq: {}'.format(seq[1]))
-            different.add(resemblance)
-        print('There is {} different sequences stored'.format(len(different)))
-
-
 if __name__ == '__main__':
     start = time.time()
 
