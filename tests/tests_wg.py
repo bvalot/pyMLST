@@ -5,7 +5,8 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import in_op as in_
 
 import pymlst
-from pymlst.wg.core import DatabaseWG, DuplicatedSequenceError, DuplicationHandling, DuplicatedGeneError
+from pymlst.common import exceptions
+from pymlst.wg.core import DatabaseWG, DuplicationHandling
 
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 wg_path = os.path.join(data_path, 'wg')
@@ -99,13 +100,13 @@ def test_add_core_genome(db):
     mlst = db.connection.execute(
         select([db.mlst])
     ).fetchone()
-    assert mlst.souche == db.__ref == 'ref'
+    assert mlst.souche == db.ref == 'ref'
     assert mlst.gene == 'g1' and mlst.seqid == seq.id
 
 
 def test_add_core_genome_exist_no_duplication_handle(db):
     db.add_core_genome('g1', 'AAA')
-    with pytest.raises(DuplicatedSequenceError):
+    with pytest.raises(exceptions.DuplicatedGeneSequence):
         db.add_core_genome('g2', 'AAA')
 
 
@@ -141,12 +142,12 @@ def test_add_core_genome_exist_remove_handle(db):
 
 def test_add_core_genome_gene_exist(db):
     db.add_core_genome('g1', 'AAA')
-    with pytest.raises(DuplicatedGeneError):
+    with pytest.raises(exceptions.DuplicatedGeneName):
         db.add_core_genome('g1', 'AAT')
 
 
 def test_add_genome_with_invalid_gene_name(db):
-    with pytest.raises(ValueError):
+    with pytest.raises(exceptions.InvalidGeneName):
         db.add_genome('g1;', 'A', 'AAA')
 
 
@@ -174,41 +175,34 @@ def test_remove_gene(db_simple):
         .where(db_simple.mlst.c.gene == 'g1')
     ).fetchone()
     assert mlst_e is None
-
-
-def test_remove_orphan_sequences(db_simple):
-    db_simple.remove_gene('g2')
-    db_simple.remove_gene('g4')
-    db_simple.__remove_orphan_sequences([3, 4])
-    seq_1_e = db_simple.connection.execute(
+    seq_e = db_simple.connection.execute(
         select([db_simple.sequences])
-        .where(db_simple.sequences.c.id == 3)
+        .where(in_(db_simple.sequences.c.sequence,
+                   ['AAA', 'ATA']))
     ).fetchone()
-    assert seq_1_e is None
-    seq_2_e = db_simple.connection.execute(
+    assert seq_e is None
+
+
+def test_remove_gene_sequence_still_referenced(db_simple):
+    db_simple.remove_gene('g3')
+    seq_e = db_simple.connection.execute(
         select([db_simple.sequences])
-        .where(db_simple.sequences.c.id == 4)
+        .where(db_simple.sequences.c.sequence == 'CCC')
     ).fetchone()
-    assert seq_2_e is not None
+    assert seq_e is not None
 
 
-def test_remove_strain(db_simple):
-    db_simple.remove_strain('A')
-    mlst_e = db_simple.connection.execute(
-        select([db_simple.mlst])
-        .where(db_simple.mlst.c.souche == 'A')
+def test_remove_strain(db_many):
+    db_many.remove_strain('B')
+    mlst_e = db_many.connection.execute(
+        select([db_many.mlst])
+        .where(db_many.mlst.c.souche == 'B')
     ).fetchone()
     assert mlst_e is None
-
-
-def test_get_gene_sequences_ids(db_simple):
-    ids = db_simple.__get_gene_sequences_ids('g1')
-    assert ids == {1, 2}
-
-
-def test_get_strain_sequences_ids(db_many):
-    ids = db_many.__get_strain_sequences_ids('A')
-    assert ids == {1, 2, 4, 6}
+    seq_c = db_many.connection.execute(
+        select([count(db_many.sequences.c.id)])
+    ).fetchone()
+    assert seq_c[0] == 8  # Removed 1 sequence only
 
 
 def test_contains_souche(db_many):
