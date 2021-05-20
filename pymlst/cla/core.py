@@ -159,7 +159,6 @@ class ClassicalMLST:
         """
         self.database = DatabaseCLA(file)
         self.ref = ref
-        self.blat_path = '/usr/bin/'
 
         create_logger()
 

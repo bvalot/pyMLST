@@ -1,8 +1,13 @@
 import logging
+import os
 import time
 
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
+from alembic import command
+from alembic.config import Config
+from pkg_resources import resource_filename, Requirement
+from sqlalchemy import create_engine
 
 
 def benchmark(func):
@@ -91,3 +96,22 @@ def clean_kwargs(kwargs):
         if value is None:
             kwargs.pop(key)
     return kwargs
+
+
+def get_updated_engine(path, module):
+    env_path = resource_filename(Requirement.parse('pymlst'),
+                                 os.path.join('alembic', module))
+    alembic_cfg = Config()
+    alembic_cfg.set_main_option('script_location', env_path)
+    logging.getLogger('alembic').setLevel(logging.CRITICAL)
+
+    if path is None:
+        engine = create_engine('sqlite://')  # creates a :memory: database
+    else:
+        engine = create_engine('sqlite:///' + os.path.abspath(path))
+
+    with engine.begin() as conn:
+        alembic_cfg.attributes['connection'] = conn
+        command.upgrade(alembic_cfg, 'head')
+
+    return engine

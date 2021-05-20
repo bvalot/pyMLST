@@ -7,7 +7,10 @@ from enum import Enum
 
 import networkx as nx
 from Bio import SeqIO
+from alembic import command
+from alembic.config import Config
 from decorator import contextmanager
+from pkg_resources import resource_filename, Requirement
 from sqlalchemy.sql.functions import count
 
 from sqlalchemy import create_engine, bindparam, not_, Index, literal
@@ -43,7 +46,7 @@ def open_wg(file=None, ref='ref'):
         mlst.rollback()
         raise
     else:
-        mlst.commit(renew=False)
+        mlst.commit()
     finally:
         mlst.close()
 
@@ -64,10 +67,10 @@ class DatabaseWG:
         """
         :param path: The path to the database file to work with.
         """
-        if path is None:
-            self.__engine = create_engine('sqlite://')  # creates a :memory: database
-        else:
-            self.__engine = create_engine('sqlite:///' + path)  # must be an absolute path
+
+        self.__engine = utils.get_updated_engine(path, 'wg')
+        self.__connection = self.__engine.connect()
+        self.__transaction = self.__connection.begin()
 
         metadata = MetaData()
 
@@ -81,25 +84,6 @@ class DatabaseWG:
                             Column('gene', Text),
                             Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
 
-        metadata.create_all(self.__engine)
-
-        Index('ix_souche',
-              self.mlst.c.souche)\
-            .create(bind=self.__engine, checkfirst=True)
-        Index('ix_gene',
-              self.mlst.c.gene)\
-            .create(bind=self.__engine, checkfirst=True)
-        Index('ix_seqid',
-              self.mlst.c.seqid)\
-            .create(bind=self.__engine, checkfirst=True)
-        Index('ix_souche_gene_seqid',
-              self.mlst.c.gene,
-              self.mlst.c.souche,
-              self.mlst.c.seqid)\
-            .create(bind=self.__engine, checkfirst=True)
-
-        self.__connection = self.__engine.connect()
-        self.__transaction = self.connection.begin()
 
         self.__cached_queries = {}
 
@@ -107,7 +91,7 @@ class DatabaseWG:
         self.__separator = ';'
 
         self.__core_genome = self.__load_core_genome()
-        
+
     @property
     def ref(self):
         return self.__ref
@@ -449,17 +433,13 @@ class DatabaseWG:
             sequences[entry[1]] = entry[2]
         return mlst
 
-    def commit(self, renew=True):
+    def commit(self):
         """Commits the modifications."""
         self.__transaction.commit()
-        if renew:
-            self.__transaction = self.connection.begin()
 
-    def rollback(self, renew=True):
+    def rollback(self):
         """Rollback the modifications."""
         self.__transaction.rollback()
-        if renew:
-            self.__transaction = self.connection.begin()
 
     def close(self):
         """Closes the database engine."""
@@ -687,13 +667,13 @@ class WholeGenomeMLST:
         for gene, sequence in ref_genes.items():
             tmp_file.write('>' + gene + "\n" + sequence + "\n")
 
-    def commit(self, renew=True):
+    def commit(self):
         """Commits the modifications."""
-        self.database.commit(renew)
+        self.database.commit()
 
-    def rollback(self, renew=True):
+    def rollback(self):
         """Rollback the modifications."""
-        self.database.rollback(renew)
+        self.database.rollback()
 
     def close(self):
         """Closes the database engine."""
