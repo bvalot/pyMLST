@@ -574,7 +574,7 @@ class WholeGenomeMLST:
             # BLAT analysis
             logging.info("Search coregene with BLAT")
             genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
-            logging.info("Finish run BLAT, found %s genes", str(len(genes)))
+            logging.info("Finish run BLAT, found %s genes", len(genes))
 
             # add MLST sequence
             seqs = utils.read_genome(genome)
@@ -685,9 +685,8 @@ class WholeGenomeMLST:
 
     def __create_core_genome_file(self, tmp_file):
         ref_genes = self.database.core_genome
-        for gene, sequences in ref_genes.items():
-            for seq in sequences:
-                tmp_file.write('>' + gene + "\n" + seq + "\n")
+        for gene, sequence in ref_genes.items():
+            tmp_file.write('>' + gene + "\n" + sequence + "\n")
 
     def commit(self, renew=True):
         """Commits the modifications."""
