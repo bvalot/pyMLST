@@ -254,10 +254,15 @@ class DatabaseWG:
             self.mlst.delete()
             .where(self.mlst.c.gene == gene))
         self.__remove_orphan_sequences(ids)
+        if gene in self.core_genome:
+            self.core_genome.pop(gene)
         return True
 
     def remove_strain(self, strain):
         """Removes a specific strain."""
+        if strain == self.ref:
+            raise exceptions.ReferenceStrainRemoval(
+                '{} strain can not be removed'.format(self.ref))
         ids = self.__get_strain_sequences_ids(strain)
         if len(ids) == 0:
             return False
@@ -657,8 +662,8 @@ class WholeGenomeMLST:
         :param file: A file containing a strain name per line.
         """
         if self.database.ref in strains:
-            raise exceptions.PyMLSTError(
-                '{} schema could not be removed'.format(self.database.ref))
+            raise exceptions.ReferenceStrainRemoval(
+                '{} strain can not be removed'.format(self.database.ref))
 
         # list strains to remove
         all_strains = utils.strip_file(file)

@@ -154,6 +154,7 @@ def test_add_genome_with_invalid_gene_name(db):
 def test_get_core_genome(db):
     db.add_core_genome('g1', 'AAA')
     db.add_core_genome('g2', 'TTT')
+    db.add_genome('g3', 'A', 'CCC')
     core_genome = db.core_genome
     assert core_genome == {
         'g1': 'AAA',
@@ -192,6 +193,13 @@ def test_remove_gene_sequence_still_referenced(db_simple):
     assert seq_e is not None
 
 
+def test_remove_gene_from_core_genome_dict(db):
+    db.add_core_genome('g1', 'AAA')
+    assert 'g1' in db.core_genome
+    db.remove_gene('g1')
+    assert 'g1' not in db.core_genome
+
+
 def test_remove_strain(db_many):
     db_many.remove_strain('B')
     mlst_e = db_many.connection.execute(
@@ -203,6 +211,12 @@ def test_remove_strain(db_many):
         select([count(db_many.sequences.c.id)])
     ).fetchone()
     assert seq_c[0] == 8  # Removed 1 sequence only
+
+
+def test_remove_reference_strain_attempt(db):
+    db.add_core_genome('g1', 'AAA')
+    with pytest.raises(exceptions.ReferenceStrainRemoval):
+        db.remove_strain('ref')
 
 
 def test_contains_souche(db_many):
