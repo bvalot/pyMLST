@@ -6,8 +6,9 @@ from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
 from alembic import command
 from alembic.config import Config
-from pkg_resources import resource_filename, Requirement
 from sqlalchemy import create_engine
+
+from pymlst import config
 
 
 def benchmark(func):
@@ -99,8 +100,7 @@ def clean_kwargs(kwargs):
 
 
 def get_updated_engine(path, module):
-    env_path = resource_filename(Requirement.parse('pymlst'),
-                                 os.path.join('alembic', module))
+    env_path = config.get_data(os.path.join('alembic', module))
     alembic_cfg = Config()
     alembic_cfg.set_main_option('script_location', env_path)
     logging.getLogger('alembic').setLevel(logging.CRITICAL)

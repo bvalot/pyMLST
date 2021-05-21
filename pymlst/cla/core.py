@@ -17,7 +17,6 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
 from pymlst.common import blat
-from pymlst.common.binaries import get_binary_path
 from pymlst.common.utils import read_genome, create_logger
 
 
@@ -237,10 +236,6 @@ class ClassicalMLST:
         """
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
-
-        path = get_binary_path('blat')
-        if path is None:
-            raise Exception('Unable to locate the Blat executable\n')
 
         tmpfile, tmpout = blat.blat_tmp()
 

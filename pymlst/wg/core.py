@@ -24,6 +24,7 @@ from sqlalchemy.sql.operators import in_op as in_
 
 from pymlst.common import blat, psl
 from pymlst.common import utils, exceptions
+from pymlst.wg import model
 
 
 @contextmanager
@@ -72,19 +73,6 @@ class DatabaseWG:
         self.__connection = self.__engine.connect()
         self.__transaction = self.__connection.begin()
 
-        metadata = MetaData()
-
-        self.__sequences = Table('sequences', metadata,
-                                 Column('id', Integer, primary_key=True),
-                                 Column('sequence', Text, unique=True))
-
-        self.__mlst = Table('mlst', metadata,
-                            Column('id', Integer, primary_key=True),
-                            Column('souche', Text),
-                            Column('gene', Text),
-                            Column('seqid', Integer, ForeignKey(self.sequences.c.id)))
-
-
         self.__cached_queries = {}
 
         self.__ref = ref
@@ -105,14 +93,6 @@ class DatabaseWG:
         return self.__connection
 
     @property
-    def mlst(self):
-        return self.__mlst
-
-    @property
-    def sequences(self):
-        return self.__sequences
-
-    @property
     def core_genome(self):
         return self.__core_genome
 
@@ -125,10 +105,10 @@ class DatabaseWG:
 
     def __load_core_genome(self):
         result = self.connection.execute(
-            select([self.mlst.c.gene, self.sequences.c.sequence])
+            select([model.mlst.c.gene, model.sequences.c.sequence])
             .where(and_(
-                self.mlst.c.souche == self.__ref,
-                self.mlst.c.seqid == self.sequences.c.id))
+                model.mlst.c.souche == self.__ref,
+                model.mlst.c.seqid == model.sequences.c.id))
         ).fetchall()
         genes = {}
         for row in result:
@@ -167,7 +147,7 @@ class DatabaseWG:
     def __add_mlst(self, souche, gene, seqid):
         """Adds an MLST gene bound to an existing sequence."""
         self.connection.execute(
-            self.mlst.insert(),
+            model.mlst.insert(),
             souche=souche, gene=gene, seqid=seqid)
 
     def __add_sequence(self, sequence):
@@ -175,8 +155,8 @@ class DatabaseWG:
         query = self.__get_cached_query(
             'add_sequence',
             lambda:
-            select([self.sequences.c.id])
-                .where(self.sequences.c.sequence == bindparam('sequence')))
+            select([model.sequences.c.id])
+                .where(model.sequences.c.sequence == bindparam('sequence')))
 
         existing = self.connection.execute(
             query,
@@ -187,7 +167,7 @@ class DatabaseWG:
             return False, existing.id
 
         res = self.connection.execute(
-            self.sequences.insert(),
+            model.sequences.insert(),
             sequence=sequence)
 
         return True, res.inserted_primary_key[0]
@@ -195,26 +175,26 @@ class DatabaseWG:
     def __concatenate_gene(self, seq_id, gene_name):
         """Associates a new gene to an existing sequence using concatenation."""
         self.connection.execute(
-            self.mlst.update()
-                .values(gene=self.mlst.c.gene + ';' + gene_name)
-                .where(self.mlst.c.seqid == seq_id))
+            model.mlst.update()
+                .values(gene=model.mlst.c.gene + ';' + gene_name)
+                .where(model.mlst.c.seqid == seq_id))
 
     def __remove_sequence(self, seq_id):
         self.connection.execute(
-            self.sequences.delete()
-            .where(self.sequences.c.id == seq_id))
+            model.sequences.delete()
+            .where(model.sequences.c.id == seq_id))
         self.connection.execute(
-            self.mlst.delete()
-            .where(self.mlst.c.seqid == seq_id))
+            model.mlst.delete()
+            .where(model.mlst.c.seqid == seq_id))
 
     def __remove_orphan_sequences(self, ids):
         """Removes sequences if they aren't referenced by any gene."""
-        query = self.sequences.delete() \
+        query = model.sequences.delete() \
             .where(and_(
                 not_(exists(
-                    select([self.mlst.c.id])
-                    .where(self.mlst.c.seqid == self.sequences.c.id))),
-                self.sequences.c.id == bindparam('seqid')))
+                    select([model.mlst.c.id])
+                    .where(model.mlst.c.seqid == model.sequences.c.id))),
+                model.sequences.c.id == bindparam('seqid')))
 
         for seqid in ids:
             self.connection.execute(
@@ -227,8 +207,8 @@ class DatabaseWG:
         if len(ids) == 0:
             return False
         self.connection.execute(
-            self.mlst.delete()
-            .where(self.mlst.c.gene == gene))
+            model.mlst.delete()
+            .where(model.mlst.c.gene == gene))
         self.__remove_orphan_sequences(ids)
         if gene in self.core_genome:
             self.core_genome.pop(gene)
@@ -243,24 +223,24 @@ class DatabaseWG:
         if len(ids) == 0:
             return False
         self.connection.execute(
-            self.mlst.delete()
-                .where(self.mlst.c.souche == strain))
+            model.mlst.delete()
+                .where(model.mlst.c.souche == strain))
         self.__remove_orphan_sequences(ids)
         return True
 
     def __get_gene_sequences_ids(self, gene):
         """Gets the IDs of the sequences associated with a specific gene."""
         rows = self.connection.execute(
-            select([self.mlst.c.seqid])
-            .where(self.mlst.c.gene == gene)
+            select([model.mlst.c.seqid])
+            .where(model.mlst.c.gene == gene)
         ).fetchall()
         return {row.seqid for row in rows}
 
     def __get_strain_sequences_ids(self, strain):
         """Gets the IDs of the sequences associated with a specific strain."""
         rows = self.connection.execute(
-            select([self.mlst.c.seqid])
-            .where(self.mlst.c.souche == strain)
+            select([model.mlst.c.seqid])
+            .where(model.mlst.c.souche == strain)
         ).fetchall()
         return {row.seqid for row in rows}
 
@@ -269,8 +249,8 @@ class DatabaseWG:
         return self.connection.execute(
             select([literal(True)])
             .where(exists(
-                select([self.mlst])
-                .where(self.mlst.c.souche == souche)))
+                select([model.mlst])
+                .where(model.mlst.c.souche == souche)))
         ).scalar() is True  # -> True or False (Otherwise returns True or None)
 
     def get_gene_sequences(self, gene):
@@ -279,15 +259,15 @@ class DatabaseWG:
         query = self.__get_cached_query(
             'get_gene_sequences',
             lambda:
-            select([self.mlst.c.seqid,
-                    func.group_concat(self.mlst.c.souche, bindparam('separator')),
-                    self.sequences.c.sequence])
+            select([model.mlst.c.seqid,
+                    func.group_concat(model.mlst.c.souche, bindparam('separator')),
+                    model.sequences.c.sequence])
             .select_from(
-                self.mlst.join(self.sequences))
+                model.mlst.join(model.sequences))
             .where(and_(
-                self.mlst.c.gene == bindparam('gene'),
-                self.mlst.c.souche != bindparam('souche')))
-            .group_by(self.mlst.c.seqid))
+                model.mlst.c.gene == bindparam('gene'),
+                model.mlst.c.souche != bindparam('souche')))
+            .group_by(model.mlst.c.seqid))
 
         res = self.connection.execute(
             query,
@@ -305,21 +285,21 @@ class DatabaseWG:
 
     def get_duplicated_genes(self):
         """Gets the genes that are duplicated."""
-        m_alias = self.mlst.alias()
+        m_alias = model.mlst.alias()
 
-        exist_sub = select([self.mlst]) \
+        exist_sub = select([model.mlst]) \
             .where(and_(
-                self.mlst.c.gene == m_alias.c.gene,
-                self.mlst.c.souche == m_alias.c.souche,
-                self.mlst.c.id != m_alias.c.id)) \
+                model.mlst.c.gene == m_alias.c.gene,
+                model.mlst.c.souche == m_alias.c.souche,
+                model.mlst.c.id != m_alias.c.id)) \
             .limit(1)
 
         res = self.connection.execute(
-            select([self.mlst.c.gene])
+            select([model.mlst.c.gene])
             .where(and_(
-                self.mlst.c.souche != self.__ref,
+                model.mlst.c.souche != self.__ref,
                 exists(exist_sub)))
-            .group_by(self.mlst.c.gene)
+            .group_by(model.mlst.c.gene)
         ).fetchall()
 
         return {row[0] for row in res}
@@ -327,34 +307,34 @@ class DatabaseWG:
     def get_all_strains(self):
         """Gets all distinct strains."""
         res = self.connection.execute(
-            select([distinct(self.mlst.c.souche)]).
-            where(self.mlst.c.souche != self.__ref)
+            select([distinct(model.mlst.c.souche)]).
+            where(model.mlst.c.souche != self.__ref)
         ).fetchall()
         return [r[0] for r in res]
 
     def get_core_genes(self):
         """Gets all distinct genes."""
         res = self.connection.execute(
-            select([distinct(self.mlst.c.gene)]).
-            where(self.mlst.c.souche == self.__ref)
+            select([distinct(model.mlst.c.gene)]).
+            where(model.mlst.c.souche == self.__ref)
         ).fetchall()
         return [r[0] for r in res]
 
     def count_sequences_per_gene(self):
         """Gets the number of distinct sequences per gene."""
         res = self.connection.execute(
-            select([self.mlst.c.gene, count(distinct(self.mlst.c.seqid))])
-            .where(self.mlst.c.souche != self.__ref)
-            .group_by(self.mlst.c.gene)
+            select([model.mlst.c.gene, count(distinct(model.mlst.c.seqid))])
+            .where(model.mlst.c.souche != self.__ref)
+            .group_by(model.mlst.c.gene)
         ).fetchall()
         return {r[0]: r[1] for r in res}
 
     def count_souches_per_gene(self):
         """Gets the number of distinct stains per gene."""
         res = self.connection.execute(
-            select([self.mlst.c.gene, count(distinct(self.mlst.c.souche))])
-            .where(self.mlst.c.souche != self.__ref)
-            .group_by(self.mlst.c.gene)
+            select([model.mlst.c.gene, count(distinct(model.mlst.c.souche))])
+            .where(model.mlst.c.souche != self.__ref)
+            .group_by(model.mlst.c.gene)
         ).fetchall()
         return {r[0]: r[1] for r in res}
 
@@ -363,17 +343,17 @@ class DatabaseWG:
 
         The counted genes are restricted to the ones given in the valid_schema."""
         res = self.connection.execute(
-            select([self.mlst.c.souche, count(distinct(self.mlst.c.gene))])
-            .where(in_(self.mlst.c.gene, valid_shema))
-            .group_by(self.mlst.c.souche)
+            select([model.mlst.c.souche, count(distinct(model.mlst.c.gene))])
+            .where(in_(model.mlst.c.gene, valid_shema))
+            .group_by(model.mlst.c.souche)
         ).fetchall()
         return {r[0]: r[1] for r in res}
 
     def count_sequences(self):
         """Gets the number of distinct."""
         return self.connection.execute(
-               select([count(distinct(self.mlst.c.seqid))])
-               .where(self.mlst.c.souche != self.__ref)
+               select([count(distinct(model.mlst.c.seqid))])
+               .where(model.mlst.c.souche != self.__ref)
         ).fetchone()[0]
 
     def get_strains_distances(self, valid_schema):
@@ -383,8 +363,8 @@ class DatabaseWG:
         are different (different seqids so different sequences).
         The compared genes are restricted to the ones given in the valid_schema.
         """
-        alias_1 = self.mlst.alias()
-        alias_2 = self.mlst.alias()
+        alias_1 = model.mlst.alias()
+        alias_2 = model.mlst.alias()
 
         result = self.connection.execute(
             select(
@@ -419,11 +399,11 @@ class DatabaseWG:
         The returned genes are restricted to the ones given in the valid_schema.
         """
         result = self.connection.execute(
-            select([self.mlst.c.gene, self.mlst.c.souche,
-                    func.group_concat(self.mlst.c.seqid, ';')])
-            .where(and_(self.mlst.c.souche != self.__ref,
-                        in_(self.mlst.c.gene, valid_schema)))
-            .group_by(self.mlst.c.gene, self.mlst.c.souche)
+            select([model.mlst.c.gene, model.mlst.c.souche,
+                    func.group_concat(model.mlst.c.seqid, ';')])
+            .where(and_(model.mlst.c.souche != self.__ref,
+                        in_(model.mlst.c.gene, valid_schema)))
+            .group_by(model.mlst.c.gene, model.mlst.c.souche)
         ).fetchall()
 
         mlst = {}

@@ -2,7 +2,7 @@
 
 import click
 
-from pymlst.common import binaries
+from pymlst import config
 
 
 @click.command()
@@ -18,7 +18,7 @@ from pymlst.common import binaries
 def cli(blat, mafft, reset):
     """Configure executables paths"""
     if reset:
-        binaries.reset_config()
+        config.reset_binary_paths()
         click.echo('Resetting the configuration...')
 
     if mafft or blat:
@@ -27,12 +27,12 @@ def cli(blat, mafft, reset):
             paths['blat'] = blat
         if mafft:
             paths['mafft'] = mafft
-        binaries.update_binary_paths(paths)
+        config.update_binary_paths(paths)
 
-    config = binaries.list_binary_paths()
-    if len(config) > 0:
+    paths = config.list_binary_paths()
+    if len(paths) > 0:
         click.echo('--- Configuration ---')
-        for key, value in config:
+        for key, value in paths:
             click.echo(key + ': ' + value)
         click.echo('---------------------')
     elif not reset:

@@ -60,7 +60,8 @@ setup(
         'numpy~=1.20.0',
         'beautifulsoup4~=4.9.3',
         'questionary~=1.9.0',
-        'setuptools~=44.0.0'
+        'setuptools~=44.0.0',
+        'alembic~=1.6.2'
     ],
     entry_points="""
     [console_scripts]
@@ -73,7 +74,7 @@ setup(
     author='benoit_valot',
     author_email='benoit.valot@univ-fcomte.fr',
     # Use the URL to the github repo.
-    url= 'http://chrono-galaxy:3000/augustin/PyMLSTPackage.git',
+    url='http://chrono-galaxy:3000/augustin/PyMLSTPackage.git',
     download_url=(
         f'http://chrono-galaxy:3000/augustin/'
         f'pymlst/archive/{version}.tar.gz'

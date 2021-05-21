@@ -4,11 +4,12 @@ from io import StringIO
 from Bio import AlignIO
 from Bio.Align.Applications import MafftCommandline
 
-from pymlst.common import binaries, utils, exceptions
+from pymlst import config
+from pymlst.common import utils, exceptions
 
 
 def align(genes):
-    path = binaries.get_binary_path('mafft')
+    path = config.get_binary_path('mafft')
     if not path:
         raise exceptions.BinaryNotFound('MAFFT binary was not found')
     with tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta') as tmp:

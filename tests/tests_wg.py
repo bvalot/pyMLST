@@ -6,6 +6,7 @@ from sqlalchemy.sql.operators import in_op as in_
 
 import pymlst
 from pymlst.common import exceptions
+from pymlst.wg import model
 from pymlst.wg.core import DatabaseWG, DuplicationHandling
 
 data_path = os.path.join(os.path.dirname(__file__), 'data')
@@ -77,12 +78,12 @@ def db_many(db):
 def test_add_genome(db):
     db.add_genome('g1', 'A', 'AAA')
     seq = db.connection.execute(
-        select([db.sequences])
+        select([model.sequences])
     ).fetchall()
     assert len(seq) == 1
     assert seq[0].sequence == 'AAA'
     mlst = db.connection.execute(
-        select([db.mlst])
+        select([model.mlst])
     ).fetchall()
     assert len(mlst) == 1
     assert (mlst[0].gene == 'g1'
@@ -94,11 +95,11 @@ def test_add_core_genome(db):
     added = db.add_core_genome('g1', 'AAA')
     assert added
     seq = db.connection.execute(
-        select([db.sequences])
+        select([model.sequences])
     ).fetchone()
     assert seq.sequence == 'AAA'
     mlst = db.connection.execute(
-        select([db.mlst])
+        select([model.mlst])
     ).fetchone()
     assert mlst.souche == db.ref == 'ref'
     assert mlst.gene == 'g1' and mlst.seqid == seq.id
@@ -115,12 +116,12 @@ def test_add_core_genome_exist_concatenate_handle(db):
     added = db.add_core_genome('g2', 'AAA', DuplicationHandling.CONCATENATE)
     assert not added
     seq = db.connection.execute(
-         select([db.sequences.c.id])
-         .where(db.sequences.c.sequence == 'AAA')
+         select([model.sequences.c.id])
+         .where(model.sequences.c.sequence == 'AAA')
     ).fetchall()
     assert len(seq) == 1
     mlst = db.connection.execute(
-        select([db.mlst.c.gene])
+        select([model.mlst.c.gene])
     ).fetchall()
     assert len(mlst) == 1
     assert mlst[0].gene == 'g1;g2'
@@ -131,11 +132,11 @@ def test_add_core_genome_exist_remove_handle(db):
     added = db.add_core_genome('g2', 'AAA', DuplicationHandling.REMOVE)
     assert not added
     seq = db.connection.execute(
-         select([db.sequences])
+         select([model.sequences])
     ).fetchall()
     assert len(seq) == 0
     mlst = db.connection.execute(
-        select([db.mlst])
+        select([model.mlst])
     ).fetchall()
     assert len(mlst) == 0
 
@@ -165,13 +166,13 @@ def test_get_core_genome(db):
 def test_remove_gene(db_simple):
     db_simple.remove_gene('g1')
     mlst_e = db_simple.connection.execute(
-        select([db_simple.mlst])
-        .where(db_simple.mlst.c.gene == 'g1')
+        select([model.mlst])
+        .where(model.mlst.c.gene == 'g1')
     ).fetchone()
     assert mlst_e is None
     seq_e = db_simple.connection.execute(
-        select([db_simple.sequences])
-        .where(in_(db_simple.sequences.c.sequence,
+        select([model.sequences])
+        .where(in_(model.sequences.c.sequence,
                    ['AAA', 'ATA']))
     ).fetchone()
     assert seq_e is None
@@ -180,8 +181,8 @@ def test_remove_gene(db_simple):
 def test_remove_gene_sequence_still_referenced(db_simple):
     db_simple.remove_gene('g3')
     seq_e = db_simple.connection.execute(
-        select([db_simple.sequences])
-        .where(db_simple.sequences.c.sequence == 'CCC')
+        select([model.sequences])
+        .where(model.sequences.c.sequence == 'CCC')
     ).fetchone()
     assert seq_e is not None
 
@@ -196,12 +197,12 @@ def test_remove_gene_from_core_genome_dict(db):
 def test_remove_strain(db_many):
     db_many.remove_strain('B')
     mlst_e = db_many.connection.execute(
-        select([db_many.mlst])
-        .where(db_many.mlst.c.souche == 'B')
+        select([model.mlst])
+        .where(model.mlst.c.souche == 'B')
     ).fetchone()
     assert mlst_e is None
     seq_c = db_many.connection.execute(
-        select([count(db_many.sequences.c.id)])
+        select([count(model.sequences.c.id)])
     ).fetchone()
     assert seq_c[0] == 8  # Removed 1 sequence only
 
@@ -215,8 +216,8 @@ def test_remove_reference_strain_attempt(db):
 def test_contains_souche(db_many):
     assert db_many.contains_souche('B')
     db_many.connection.execute(
-        db_many.mlst.delete()
-        .where(db_many.mlst.c.souche == 'B'))
+        model.mlst.delete()
+        .where(model.mlst.c.souche == 'B'))
     assert not db_many.contains_souche('B')
 
 

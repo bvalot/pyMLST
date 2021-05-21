@@ -11,14 +11,15 @@ import subprocess
 import tempfile
 from io import BytesIO
 
+from pymlst import config
 from pymlst.common.psl import Psl
-from pymlst.common import binaries, exceptions
+from pymlst.common import exceptions
 
 
 def run_blat(genome, tmpfile, tmpout, identity, coverage):
     """Run Blat and return Psl Object"""
 
-    path = binaries.get_binary_path('blat')
+    path = config.get_binary_path('blat')
     if path is None:
         raise exceptions.BinaryNotFound('BLAT binary was not found')
 
