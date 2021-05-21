@@ -8,15 +8,13 @@ import sys
 from Bio import SeqIO
 from decorator import contextmanager
 
-from sqlalchemy import create_engine
 from sqlalchemy import and_
-
-from sqlalchemy import MetaData, Table, Column, Integer, Text
 
 from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
-from pymlst.common import blat
+from pymlst.cla import model
+from pymlst.common import blat, utils
 from pymlst.common.utils import read_genome, create_logger
 
 
@@ -54,89 +52,77 @@ class DatabaseCLA:
 
     def __init__(self, path):
         """
-       :param path: The path to the database file to work with.
-       """
-        self.engine = create_engine('sqlite:///' + path)
+        :param path: The path to the database file to work with.
+        """
 
-        metadata = MetaData()
+        self.__engine = utils.get_updated_engine(path, 'cla')
+        self.__connection = self.__engine.connect()
+        self.__transaction = self.__connection.begin()
 
-        self.sequences = Table('sequences', metadata,
-                               Column('id', Integer, primary_key=True),
-                               Column('sequence', Text, unique=True),
-                               Column('gene', Text),
-                               Column('allele', Integer))
-
-        self.mlst = Table('mlst', metadata,
-                          Column('id', Integer, primary_key=True),
-                          Column('st', Integer),
-                          Column('gene', Text),
-                          Column('allele', Integer))
-
-        metadata.create_all(self.engine)
-
-        self.connection = self.engine.connect()
-        self.transaction = self.connection.begin()
+    @property
+    def connection(self):
+        return self.__connection
 
     def add_sequence(self, sequence, gene, allele):
         """Adds a new sequence associated to a gene and an allele."""
         self.connection.execute(
-            self.sequences.insert(),
+            model.sequences.insert(),
             sequence=sequence, gene=gene, allele=allele)
 
     def add_mlst(self, sequence_typing, gene, allele):
         """Adds a new sequence typing, associated to a gene and an allele."""
         self.connection.execute(
-            self.mlst.insert(),
+            model.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
 
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele."""
         return self.connection.execute(
-            select([distinct(self.mlst.c.gene), self.sequences.c.sequence])
-            .select_from(self.mlst.join(
-                self.sequences,
-                self.mlst.c.gene == self.sequences.c.gene))
-            .where(self.sequences.c.allele == allele)
+            select([distinct(model.mlst.c.gene), model.sequences.c.sequence])
+                .select_from(model.mlst.join(
+                model.sequences,
+                model.mlst.c.gene == model.sequences.c.gene))
+                .where(model.sequences.c.allele == allele)
         ).fetchall()
 
     def get_allele_by_sequence_and_gene(self, sequence, gene):
         """Gets an allele by sequence and gene."""
         return self.connection.execute(
-            select([self.sequences.c.allele])
-            .where(and_(
-                self.sequences.c.sequence == sequence,
-                self.sequences.c.gene == gene))
+            select([model.sequences.c.allele])
+                .where(and_(
+                model.sequences.c.sequence == sequence,
+                model.sequences.c.gene == gene))
         ).fetchone()
 
     def get_st_by_gene_and_allele(self, gene, allele):
         """Gets a strain by gene and allele."""
         return self.connection.execute(
-            select([self.mlst.c.st])
-            .where(and_(
-                self.mlst.c.gene == gene,
-                self.mlst.c.allele == allele))
+            select([model.mlst.c.st])
+                .where(and_(
+                model.mlst.c.gene == gene,
+                model.mlst.c.allele == allele))
         ).fetchall()
 
     def get_sequence_by_gene_and_allele(self, gene, allele):
         """Gets a sequence by gene and allele."""
         return self.connection.execute(
-            select([self.sequences.c.sequence])
-            .where(and_(
-                self.sequences.c.gene == gene,
-                self.sequences.c.allele == allele))
+            select([model.sequences.c.sequence])
+                .where(and_(
+                model.sequences.c.gene == gene,
+                model.sequences.c.allele == allele))
         ).fetchone()
 
     def commit(self):
         """Commits the modifications."""
-        self.transaction.commit()
+        self.__transaction.commit()
 
     def rollback(self):
         """Rollback the modifications."""
-        self.transaction.rollback()
+        self.__transaction.rollback()
 
     def close(self):
         """Closes the database engine."""
-        self.engine.dispose()
+        self.__engine.dispose()
 
 
 class ClassicalMLST:

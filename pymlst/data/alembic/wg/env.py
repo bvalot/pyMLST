@@ -5,9 +5,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from pymlst.wg import model
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-from pymlst.wg import model
 
 config = context.config
 
