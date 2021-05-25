@@ -14,7 +14,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
 from pymlst.cla import model
-from pymlst.common import blat, utils
+from pymlst.common import blat, utils, exceptions
 from pymlst.common.utils import read_genome, create_logger
 
 
@@ -50,7 +50,7 @@ class DatabaseCLA:
                      see :class:`~pymlst.cla.core.ClassicalMLST` instead.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, ref):
         """
         :param path: The path to the database file to work with.
         """
@@ -59,9 +59,24 @@ class DatabaseCLA:
         self.__connection = self.__engine.connect()
         self.__transaction = self.__connection.begin()
 
+        self.__ref = ref
+
+        self.__core_genome = self.__load_core_genome()
+
+    @property
+    def ref(self):
+        return self.__ref
+
     @property
     def connection(self):
         return self.__connection
+
+    @property
+    def core_genome(self):
+        return self.__core_genome
+
+    def __load_core_genome(self):
+        return self.get_genes_by_allele(self.__ref)
 
     def add_sequence(self, sequence, gene, allele):
         """Adds a new sequence associated to a gene and an allele."""
@@ -71,46 +86,62 @@ class DatabaseCLA:
 
     def add_mlst(self, sequence_typing, gene, allele):
         """Adds a new sequence typing, associated to a gene and an allele."""
+        sequence = self.get_sequence_by_gene_and_allele(gene, allele)
+        if sequence is None:
+            raise exceptions.AlleleSequenceNotFound(
+                'No sequence found for allele {} of gene {}'
+                .format(allele, gene))
         self.connection.execute(
             model.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
+        if allele == self.__ref:
+            if gene not in self.__core_genome:
+                self.__core_genome[gene] = sequence
 
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele."""
-        return self.connection.execute(
+        genes = self.connection.execute(
             select([distinct(model.mlst.c.gene), model.sequences.c.sequence])
-                .select_from(model.mlst.join(
+            .select_from(model.mlst.join(
                 model.sequences,
                 model.mlst.c.gene == model.sequences.c.gene))
-                .where(model.sequences.c.allele == allele)
+            .where(model.sequences.c.allele == allele)
         ).fetchall()
+        return {gene.gene: gene.sequence for gene in genes}
 
     def get_allele_by_sequence_and_gene(self, sequence, gene):
         """Gets an allele by sequence and gene."""
-        return self.connection.execute(
+        res = self.connection.execute(
             select([model.sequences.c.allele])
-                .where(and_(
+            .where(and_(
                 model.sequences.c.sequence == sequence,
                 model.sequences.c.gene == gene))
         ).fetchone()
+        if res is None:
+            return None
+        return res.allele
 
     def get_st_by_gene_and_allele(self, gene, allele):
-        """Gets a strain by gene and allele."""
-        return self.connection.execute(
+        """Gets all the STs of a gene/allele pair."""
+        seq_types = self.connection.execute(
             select([model.mlst.c.st])
-                .where(and_(
+            .where(and_(
                 model.mlst.c.gene == gene,
                 model.mlst.c.allele == allele))
         ).fetchall()
+        return [seq_t.st for seq_t in seq_types]
 
     def get_sequence_by_gene_and_allele(self, gene, allele):
         """Gets a sequence by gene and allele."""
-        return self.connection.execute(
+        res = self.connection.execute(
             select([model.sequences.c.sequence])
-                .where(and_(
+            .where(and_(
                 model.sequences.c.gene == gene,
                 model.sequences.c.allele == allele))
         ).fetchone()
+        if res is None:
+            return None
+        return res.sequence
 
     def commit(self):
         """Commits the modifications."""
@@ -142,8 +173,7 @@ class ClassicalMLST:
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
-        self.database = DatabaseCLA(file)
-        self.ref = ref
+        self.database = DatabaseCLA(file, ref)
 
         create_logger()
 
@@ -185,7 +215,6 @@ class ClassicalMLST:
         for gene, file in fastas.items():
             alleles[gene] = set()
             for seq in SeqIO.parse(file, 'fasta'):
-
                 try:
                     match = re.search('[0-9]+$', seq.id)
                     allele = int(match.group(0))
@@ -227,7 +256,8 @@ class ClassicalMLST:
 
         try:
             # read coregene
-            coregenes = self.__create_coregene(tmpfile)
+            self.__create_core_genome_file(tmpfile)
+            core_genome = self.database.core_genome
             tmpfile.close()
 
             # BLAT analysis
@@ -239,13 +269,13 @@ class ClassicalMLST:
             seqs = read_genome(genome)
             logging.info("Search allele gene to database")
             # print(genes)
-            allele = {i: [] for i in coregenes}
-            sequence_type = {i: set() for i in coregenes}
-            for coregene in coregenes:
-                if coregene not in genes:
-                    allele.get(coregene).append("")
+            allele = {i: [] for i in core_genome}
+            sequence_type = {i: set() for i in core_genome}
+            for core_gene, core_seq in core_genome.items():
+                if core_gene not in genes:
+                    allele.get(core_gene).append("")
                     continue
-                for gene in genes.get(coregene):
+                for gene in genes.get(core_gene):
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
                         raise Exception("Chromosome ID not found " + gene.chro)
@@ -258,9 +288,7 @@ class ClassicalMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.get_sequence_by_gene_and_allele(
-                            coregene, self.ref)[0]
-                        sequence = gene.get_aligned_sequence(seq, coregene_seq)
+                        sequence = gene.get_aligned_sequence(seq, core_seq)
 
                     sequence = str(sequence)
 
@@ -276,18 +304,18 @@ class ClassicalMLST:
 
                     # write fasta file with coregene
                     if fasta is not None:
-                        fasta.write(">" + coregene + "\n")
+                        fasta.write(">" + core_gene + "\n")
                         fasta.write(sequence + "\n")
 
                     # search allele
-                    res = self.database.get_allele_by_sequence_and_gene(sequence, coregene)
+                    res = self.database.get_allele_by_sequence_and_gene(sequence, core_gene)
                     if res is not None:
-                        allele.get(coregene).append(str(res[0]))
+                        allele.get(core_gene).append(str(res))
                         # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
                         #                (coregene, row[0]))
-                        seq_types = self.database.get_st_by_gene_and_allele(coregene, res[0])
+                        seq_types = self.database.get_st_by_gene_and_allele(core_gene, res)
                         for seq_type in seq_types:
-                            sequence_type.get(coregene).add(seq_type[0])
+                            sequence_type.get(core_gene).add(seq_type)
                     else:
                         allele.get(gene.gene_id()).append("new")
 
@@ -305,11 +333,14 @@ class ClassicalMLST:
                 st_val = list(tmp)
 
             # print result
-            coregenes.sort()
-            output.write("Sample\tST\t" + "\t".join(coregenes) + "\n")
+
+            sorted_genes = [gene for gene in core_genome]
+            sorted_genes.sort()
+
+            output.write("Sample\tST\t" + "\t".join(sorted_genes) + "\n")
             output.write(genome.name + "\t" + ";".join(map(str, st_val)))
-            for coregene in coregenes:
-                output.write("\t" + ";".join(map(str, allele.get(coregene))))
+            for gene in sorted_genes:
+                output.write("\t" + ";".join(map(str, allele.get(gene))))
             output.write("\n")
             logging.info("FINISH")
         finally:
@@ -318,13 +349,10 @@ class ClassicalMLST:
             if os.path.exists(tmpout.name):
                 os.remove(tmpout.name)
 
-    def __create_coregene(self, tmpfile):
-        all_rows = self.database.get_genes_by_allele(self.ref)
-        coregenes = []
-        for row in all_rows:
-            tmpfile.write('>' + row[0] + "\n" + row[1] + "\n")
-            coregenes.append(row[0])
-        return coregenes
+    def __create_core_genome_file(self, tmpfile):
+        core_genome = self.database.core_genome
+        for gene, sequence in core_genome.items():
+            tmpfile.write('>' + gene + "\n" + sequence + "\n")
 
     def commit(self):
         """Commits the modifications."""

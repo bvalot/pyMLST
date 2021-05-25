@@ -18,6 +18,10 @@ class InvalidGeneName(GeneError):
     pass
 
 
+class AlleleSequenceNotFound(PyMLSTError):
+    pass
+
+
 class WrongBaseType(PyMLSTError):
     pass
 
