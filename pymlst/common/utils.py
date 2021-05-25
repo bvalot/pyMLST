@@ -6,9 +6,11 @@ from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, select, insert
+from sqlalchemy.engine import Inspector
 
 from pymlst import config
+from pymlst.common import flag, exceptions
 
 
 def benchmark(func):
@@ -99,6 +101,28 @@ def clean_kwargs(kwargs):
     return kwargs
 
 
+def check_type(conn, mlst_type):
+    inspector = inspect(conn)
+    tables = inspector.get_table_names()
+    if 'mlst_type' not in tables:
+        set_type(conn, mlst_type)
+        return
+    m_t = conn.execute(
+        select(flag.mlst_type.c.name)
+    ).fetchone()
+    if m_t.name != mlst_type:
+        raise exceptions.WrongBaseType(
+            'The base you are attempting to perform '
+            'on belongs to the wrong MLST type')
+
+
+def set_type(conn, mlst_type):
+    flag.metadata.create_all(conn)
+    conn.execute(
+        flag.mlst_type.insert(),
+        name=mlst_type)
+
+
 def get_updated_engine(path, module):
     env_path = config.get_data(os.path.join('alembic', module))
     alembic_cfg = Config()
@@ -111,6 +135,7 @@ def get_updated_engine(path, module):
         engine = create_engine('sqlite:///' + os.path.abspath(path))
 
     with engine.begin() as conn:
+        check_type(conn, module)
         alembic_cfg.attributes['connection'] = conn
         command.upgrade(alembic_cfg, 'head')
 

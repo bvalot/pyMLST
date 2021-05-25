@@ -18,6 +18,8 @@ def cli(genes, alignment, **kwargs):
     """Search potential gene recombinaison from wgMLST database export"""
 
     try:
+
         core.find_recombination(genes, alignment, **utils.clean_kwargs(kwargs))
+
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))

@@ -11,7 +11,7 @@ import requests
 
 import pymlst
 
-from pymlst.common import web
+from pymlst.common import web, exceptions
 from pymlst.common import utils
 
 
@@ -51,15 +51,13 @@ def cli(prompt, mlst, database, species):
                            for locus in os.listdir(tmp_dir + '/locus')])
 
     except requests.exceptions.HTTPError:
-        logging.error('An error occurred while retrieving online data')
-        sys.exit(1)
+        raise click.ClickException('Could not retrieve online data')
     except requests.exceptions.ConnectionError:
-        logging.error('Couldn\'t access to the server, please verify your internet connection')
-        sys.exit(2)
+        raise click.ClickException('Could not access to the server, please verify your internet connection')
     except requests.exceptions.Timeout:
-        logging.error('The server took too long to respond')
-        sys.exit(3)
+        raise click.ClickException('The server took too long to respond')
     except web.StructureError:
-        logging.error('It seems like the structure of the website/API changed '
-                      'since this application was developed.')
-        sys.exit(4)
+        raise click.ClickException('It seems like the structure of the website/API changed '
+                                   'since this application was developed.')
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

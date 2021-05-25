@@ -23,6 +23,8 @@ def cli(distance, **kwargs):
     """Search group os strain at a distance threshold."""
 
     try:
+
         core.find_subgraph(distance, **utils.clean_kwargs(kwargs))
+
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))

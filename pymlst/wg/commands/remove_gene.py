@@ -22,7 +22,9 @@ def cli(genes, database, **kwargs):
     database.close()
 
     try:
+
         with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
             mlst.remove_gene(genes, **utils.clean_kwargs(kwargs))
+
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))

@@ -4,6 +4,7 @@ import os
 import click
 
 import pymlst
+from pymlst.common import exceptions
 
 
 @click.command()
@@ -18,5 +19,10 @@ def cli(database, scheme, alleles):
 
     database.close()
 
-    with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
-        mlst.create(scheme, alleles)
+    try:
+
+        with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
+            mlst.create(scheme, alleles)
+
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

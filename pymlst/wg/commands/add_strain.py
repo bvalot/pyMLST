@@ -27,9 +27,10 @@ def cli(genome, database, **kwargs):
 
     database.close()
 
-    with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+    try:
 
-        try:
+        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
             mlst.add_strain(genome, **utils.clean_kwargs(kwargs))
-        except exceptions.PyMLSTError as err:
-            raise click.ClickException(str(err))
+
+    except exceptions.PyMLSTError as err:
+        raise click.ClickException(str(err))

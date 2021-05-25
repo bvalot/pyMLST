@@ -18,6 +18,10 @@ class InvalidGeneName(GeneError):
     pass
 
 
+class WrongBaseType(PyMLSTError):
+    pass
+
+
 class ReferenceStrainRemoval(PyMLSTError):
     pass
 
