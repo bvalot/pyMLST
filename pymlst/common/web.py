@@ -14,7 +14,7 @@ class StructureError(Exception):
 
 
 def request(query):
-    result = requests.get(query, timeout=300)
+    result = requests.get(query, timeout=600)
     result.raise_for_status()
     return result
 
@@ -108,6 +108,9 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
 
     scheme_choice = process_results(list(schemes.keys()), mlst, prompt_enabled)
 
+    if scheme_choice is None:
+        return None
+
     return schemes[scheme_choice]
 
 
@@ -138,6 +141,10 @@ def retrieve_cgmlst(query, prompt_enabled):
             addresses[name] = link
 
     choice = process_results(list(addresses.keys()), query, prompt_enabled)
+
+    if choice is None:
+        return None
+
     genome_url = addresses[choice]
 
     return genome_url + 'alleles'

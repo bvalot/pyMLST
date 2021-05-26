@@ -27,9 +27,11 @@ def cli(prompt, database, species):
     try:
 
         url = web.retrieve_cgmlst(' '.join(species), prompt)
-        if url == '':
+
+        if url is None:
             logging.info('No choice selected')
             return
+
         logging.info('Downloading the core genome...')
 
         with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:

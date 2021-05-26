@@ -39,6 +39,7 @@ def cli(prompt, mlst, database, species):
         if url is None:
             logging.info('No choice selected')
             return
+
         logging.info('Downloading mlst...')
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
