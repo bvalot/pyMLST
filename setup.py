@@ -47,6 +47,7 @@ setup(
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     version=version,
+    setup_requires=['wheel'],
     install_requires=[
         # Include dependencies here
         'biopython~=1.78',

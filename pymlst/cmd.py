@@ -46,9 +46,13 @@ class PyMlstCommand(click.MultiCommand):
         """Gets a command by name."""
         name_scope = {}
         cmd_file = os.path.join(self.path, name + '.py')
-        with open(cmd_file) as file:
-            code = compile(file.read(), cmd_file, 'exec')
-            eval(code, name_scope, name_scope)
+        try:
+            with open(cmd_file) as file:
+                code = compile(file.read(), cmd_file, 'exec')
+                eval(code, name_scope, name_scope)
+        except FileNotFoundError:
+            raise click.ClickException(
+                'Unknown sub-command \'{}\''.format(name))
         return name_scope['cli']
 
 
