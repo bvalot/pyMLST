@@ -15,7 +15,7 @@ from pymlst.common import web, exceptions
 from pymlst.common import utils
 
 
-@click.command()
+@click.command(name='import')
 @click.option('--prompt/--no-prompt',
               default=True)
 @click.option('--mlst', '-m',

@@ -7,7 +7,7 @@ import pymlst
 from pymlst.common import exceptions
 
 
-@click.command()
+@click.command(name='create_db')
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('scheme',

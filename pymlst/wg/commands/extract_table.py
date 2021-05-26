@@ -9,7 +9,7 @@ from pymlst.common import utils, exceptions
 from pymlst.wg.extractors import TableExtractor, ExportType
 
 
-@click.command()
+@click.command(name='extract_table')
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Export MLST table to (default=stdout)')

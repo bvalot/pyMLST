@@ -8,7 +8,7 @@ import pymlst
 from pymlst.common import utils, exceptions
 
 
-@click.command()
+@click.command(name='search_ST')
 @click.option('--identity', '-i',
               type=click.FLOAT,
               help='Minimum identity to search gene (default=0.9)')

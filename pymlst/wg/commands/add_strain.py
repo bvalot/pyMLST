@@ -8,7 +8,7 @@ import pymlst
 from pymlst.common import utils, exceptions
 
 
-@click.command()
+@click.command(name='add_strain')
 @click.option('--strain', '-s',
               type=click.STRING,
               help='Name of the strain (default:genome name)')

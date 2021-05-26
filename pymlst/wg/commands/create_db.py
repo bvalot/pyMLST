@@ -7,7 +7,7 @@ import pymlst
 from pymlst.common import exceptions
 
 
-@click.command()
+@click.command(name='create_db')
 @click.option('--concatenate', '-c',
               is_flag=True,
               help='Automatically concatenate genes with duplicated sequences')

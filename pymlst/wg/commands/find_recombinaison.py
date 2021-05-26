@@ -6,7 +6,7 @@ from pymlst.common import utils, exceptions
 from pymlst.wg import core
 
 
-@click.command()
+@click.command(name='find_recombinaison')
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output number of variations by genes (default:stdout)')

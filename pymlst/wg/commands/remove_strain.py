@@ -8,7 +8,7 @@ import pymlst
 from pymlst.common import utils, exceptions
 
 
-@click.command()
+@click.command(name='remove_strain')
 @click.option('--list', '-l',
               type=click.File('r'),
               help='File list of strains to removed on the wgMLST database')

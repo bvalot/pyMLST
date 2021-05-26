@@ -11,7 +11,7 @@ import pymlst
 from pymlst.common import utils, web, exceptions
 
 
-@click.command()
+@click.command(name='import')
 @click.option('--prompt/--no-prompt',
               default=True)
 @click.argument('database',
