@@ -15,7 +15,7 @@ from pymlst.common import utils
 class PyMlstCommand(click.MultiCommand):
     """Global PyMLST command."""
 
-    def __init__(self, path):
+    def __init__(self, path, help_msg):
         """Initializes the command."""
         super().__init__(help='Subcommands are loaded from a '
                               'plugin folder dynamically')
@@ -27,6 +27,7 @@ class PyMlstCommand(click.MultiCommand):
                            help='Sets the debug mode ON.')
         self.params.append(opt_version)
         self.params.append(opt_debug)
+        self.help = help_msg
         self.path = path
 
     def list_commands(self, ctx):
@@ -74,6 +75,12 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-py = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'common', 'commands'))
-wg = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'wg', 'commands'))
-cla = PyMlstCommand(os.path.join(os.path.dirname(__file__), 'cla', 'commands'))
+py = PyMlstCommand(
+    os.path.join(os.path.dirname(__file__), 'common', 'commands'),
+    'Common utility commands.')
+wg = PyMlstCommand(
+    os.path.join(os.path.dirname(__file__), 'wg', 'commands'),
+    'Whole/Core genome MLST commands.')
+cla = PyMlstCommand(
+    os.path.join(os.path.dirname(__file__), 'cla', 'commands'),
+    'Classical MLST commands.')

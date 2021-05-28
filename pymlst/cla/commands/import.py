@@ -17,17 +17,22 @@ from pymlst.common import utils
 
 @click.command(name='import')
 @click.option('--prompt/--no-prompt',
-              default=True)
+              default=True,
+              help='Do not prompt if multiple '
+                   'choices are found, fail instead.')
 @click.option('--mlst', '-m',
               type=click.STRING,
-              default='')
+              default='',
+              help='Specify the desired MLST scheme name.')
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
 def cli(prompt, mlst, database, species):
-    """Initialize a database from an online base"""
+    """Create a claMLST DATABASE from an online resource.
+
+    The research can be filtered by adding a SPECIES name."""
 
     database.close()
     utils.create_logger()

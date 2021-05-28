@@ -19,16 +19,13 @@ submit:
 freeze:
 	pip freeze > requirements.txt
 
-lint:
-	$(LINTER) --rcfile=rcfile.rc $(PROJ_SLUG)
-
-test: lint
+test:
 	py.test --cov-report term --cov=$(PROJ_SLUG) tests/
 
 quicktest:
 	py.test --cov-report term --cov=$(PROJ_SLUG) tests/
 
-coverage: lint
+coverage:
 	py.test --cov-report html --cov=$(PROJ_SLUG) tests/
 
 docs: coverage
@@ -36,16 +33,15 @@ docs: coverage
 	mkdir -p docs/source/_templates
 	cd docs && $(MAKE) html
 
-
 answers:
 	cd docs && $(MAKE) html
 	xdg-open docs/build/html/index.html
 
-package: clean docs
+package: clean
 	python setup.py sdist
 
 publish: package
-	twine upload dist/*
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 clean :
 	rm -rf dist \
@@ -54,10 +50,7 @@ clean :
 	coverage erase
 
 venv :
-
 	virtualenv --python python$(PY_VERSION) venv
-
-
 
 install:
 	pip install -r requirements.txt

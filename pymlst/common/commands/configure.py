@@ -8,15 +8,15 @@ from pymlst import config
 @click.command()
 @click.option('--blat', '-b',
               type=click.Path(exists=True, dir_okay=False),
-              help='Blat executable absolute path')
+              help='Blat executable absolute path.')
 @click.option('--mafft', '-m',
               type=click.Path(exists=True, dir_okay=False),
-              help='Mafft executable absolute path')
+              help='Mafft executable absolute path.')
 @click.option('--reset', '-r',
               is_flag=True,
-              help='Reset the configuration')
+              help='Reset the configuration.')
 def cli(blat, mafft, reset):
-    """Configure executables paths"""
+    """Configure executables paths."""
     if reset:
         config.reset_binary_paths()
         click.echo('Resetting the configuration...')

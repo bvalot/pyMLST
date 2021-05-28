@@ -15,7 +15,7 @@ from pymlst.common import exceptions
 @click.argument('alleles',
                 type=click.File('r'), nargs=-1, required=True)
 def cli(database, scheme, alleles):
-    """Create a classical MLST database from a sheme"""
+    """Create a classical MLST DATABASE from a SCHEME csv and ALLELES files."""
 
     database.close()
 

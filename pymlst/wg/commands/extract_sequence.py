@@ -12,25 +12,25 @@ from pymlst.wg.extractors import SequenceExtractor
 @click.command(name='extract_sequence')
 @click.option('--output', '-o',
               type=click.File('w'),
-              help='Output result in fasta format (default:stdout)')
+              help='Output result in fasta format (default:stdout).')
 @click.option('--list', '-l',
               type=click.File('r'),
-              help='List of coregenes to extract (default:all)')
+              help='List of coregenes to extract (default:all).')
 @click.option('--align', '-a',
               is_flag=True,
               help='Report a concatened multi-fasta file '
-              'instead of only gene files (default:No)')
+              'instead of only gene files (default:No).')
 @click.option('--realign', '-r',
               is_flag=True,
-              help='Realign genes with same length (Default:No)')
+              help='Realign genes with same length (Default:No).')
 @click.option('--mincover', '-m',
               type=click.INT,
               help='Minimun number of strain found '
-              'to keep a coregene (default:1)')
+              'to keep a coregene (default:1).')
 @click.argument('database',
                 type=click.File('r'))
 def cli(database, list, **kwargs):
-    """Get sequences from a wgMLST database"""
+    """Extract sequences from a wgMLST DATABASE."""
 
     database.close()
 

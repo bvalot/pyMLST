@@ -18,7 +18,7 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the relevant file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Get the base version from the library.  (We'll find it in the `version.py`
@@ -53,10 +53,10 @@ setup(
         'biopython~=1.78',
         'click~=7.1.2',
         'pytest~=6.2.2',
-        'SQLAlchemy~=1.4.15',
+        'sqlalchemy~=1.4.15',
         'networkx~=2.5',
         'decorator~=4.4.2',
-        'requests~=2.22.0',
+        'requests~=2.23.0',
         'pandas~=1.2.1',
         'numpy~=1.20.0',
         'beautifulsoup4~=4.9.3',
@@ -97,7 +97,7 @@ setup(
 
       # Pick your license.  (It should match "license" above.)
         # noqa
-      '''License :: OSI Approved :: GPLv3 License''',
+      '''License :: OSI Approved :: GNU General Public License v3 (GPLv3)''',
         # noqa
       # Specify the Python versions you support here. In particular, ensure
       # that you indicate whether you support Python 2, Python 3 or both.

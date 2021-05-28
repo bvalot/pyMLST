@@ -10,14 +10,14 @@ from pymlst.common import exceptions
 @click.command(name='create_db')
 @click.option('--concatenate', '-c',
               is_flag=True,
-              help='Automatically concatenate genes with duplicated sequences')
+              help='Automatically concatenate genes with duplicated sequences.')
 @click.option('--remove', '-r',
               is_flag=True,
-              help='Automatically remove genes with duplicated sequences')
+              help='Automatically remove genes with duplicated sequences.')
 @click.argument('coregene', type=click.File('r'))
 @click.argument('database', type=click.File('w'))
 def cli(coregene, database, concatenate, remove):
-    """Create a wgMLST database from a template"""
+    """Create a wgMLST DATABASE from a template COREGENE."""
 
     database.close()
 

@@ -11,19 +11,19 @@ from pymlst.common import utils, exceptions
 @click.command(name='add_strain')
 @click.option('--strain', '-s',
               type=click.STRING,
-              help='Name of the strain (default:genome name)')
+              help='Name of the strain (default:genome name).')
 @click.option('--identity', '-i',
               type=click.FLOAT,
-              help='Minimum identity to search gene (default=0.95)')
+              help='Minimum identity to search gene (default=0.95).')
 @click.option('--coverage', '-c',
               type=click.FLOAT,
-              help='Minimum coverage to search gene (default=0.9)')
+              help='Minimum coverage to search gene (default=0.9).')
 @click.argument('genome',
                 type=click.File("r"))
 @click.argument('database',
                 type=click.File("r"))
 def cli(genome, database, **kwargs):
-    """Add a strain to the wgMLST database"""
+    """Add a strain GENOME to the wgMLST DATABASE."""
 
     database.close()
 

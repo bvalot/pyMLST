@@ -13,14 +13,18 @@ from pymlst.common import utils, web, exceptions
 
 @click.command(name='import')
 @click.option('--prompt/--no-prompt',
-              default=True)
+              default=True,
+              help='Do not prompt if multiple '
+                   'choices are found, fail instead.')
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
 def cli(prompt, database, species):
-    """Create a wgMLST database from an online resource"""
+    """Create a wgMLST DATABASE from an online resource.
+
+    The research can be filtered by adding a SPECIES name."""
 
     utils.create_logger()
 

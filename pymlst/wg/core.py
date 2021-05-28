@@ -625,18 +625,6 @@ class WholeGenomeMLST:
         for gene, sequence in ref_genes.items():
             tmp_file.write('>' + gene + "\n" + sequence + "\n")
 
-    # def commit(self):
-    #     """Commits the modifications."""
-    #     self.database.commit()
-    #
-    # def rollback(self):
-    #     """Rollback the modifications."""
-    #     self.database.rollback()
-    #
-    # def close(self):
-    #     """Closes the database engine."""
-    #     self.database.close()
-
 
 class Extractor(ABC):
     """A simple interface to ease the process of creating new extractors."""

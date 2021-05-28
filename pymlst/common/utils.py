@@ -12,16 +12,6 @@ from pymlst import config
 from pymlst.common import flag, exceptions
 
 
-def benchmark(func):
-    def wrapper(*args, **kwargs):
-        begin = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        print('Execution time (' + func.__name__ + '): ' + str(end - begin) + 's')
-        return result
-    return wrapper
-
-
 def records_to_dict(records):
     seq_dict = {}
     for seq in records:

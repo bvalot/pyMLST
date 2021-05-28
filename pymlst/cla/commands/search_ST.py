@@ -11,22 +11,22 @@ from pymlst.common import utils, exceptions
 @click.command(name='search_ST')
 @click.option('--identity', '-i',
               type=click.FLOAT,
-              help='Minimum identity to search gene (default=0.9)')
+              help='Minimum identity to search gene (default=0.9).')
 @click.option('--coverage', '-c',
               type=click.FLOAT,
-              help='Minimum coverage to search gene (default=0.9)')
+              help='Minimum coverage to search gene (default=0.9).')
 @click.option('--fasta', '-f',
               type=click.File('w'),
-              help='Write fasta file with gene allele')
+              help='Write fasta file with gene allele.')
 @click.option('--output', '-o',
               type=click.File('w'),
-              help='Write ST search result to (default:stdout)')
+              help='Write ST search result to (default:stdout).')
 @click.argument('genome',
                 type=click.File('r'))
 @click.argument('database',
                 type=click.File('r'))
 def cli(genome, database, **kwargs):
-    """Search ST number for an assembly"""
+    """Search ST number for an assembly GENOME using an mlst DATABASE."""
 
     database.close()
 
