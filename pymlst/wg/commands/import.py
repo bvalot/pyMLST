@@ -40,7 +40,7 @@ def cli(prompt, database, species):
 
         with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
 
-            skipped = web.get_coregene_file(url, tmp)
+            skipped = web.get_cgmlst_file(url, tmp)
             tmp.close()
             if len(skipped) > 0:
                 logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))

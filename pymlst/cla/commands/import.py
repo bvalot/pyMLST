@@ -50,7 +50,7 @@ def cli(prompt, mlst, database, species):
         with tempfile.TemporaryDirectory() as tmp_dir, \
                 pymlst.open_cla(os.path.abspath(database.name)) as mlst_db:
 
-            web.get_mlst_files(tmp_dir, url=url)
+            web.get_mlst_files(url, tmp_dir)
 
             mlst_db.create(open(tmp_dir + '/profiles.csv', 'rt'),
                            [open(tmp_dir + '/locus/' + locus, 'r')

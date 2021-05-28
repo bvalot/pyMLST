@@ -8,8 +8,17 @@ import questionary
 from bs4 import BeautifulSoup
 from Bio import SeqIO
 
+from pymlst.common.exceptions import PyMLSTError
 
-class StructureError(Exception):
+PUBMLST_URL = 'https://rest.pubmlst.org/db'
+CGMLST_URL = 'https://www.cgmlst.org/ncs'
+
+
+class PyMLSTWebError(PyMLSTError):
+    pass
+
+
+class StructureError(PyMLSTWebError):
     pass
 
 
@@ -53,20 +62,23 @@ def is_mlst_scheme(url, description):
 def process_results(choices, query, prompt):
     choices_length = len(choices)
     if choices_length == 0:
-        raise Exception('No result found for \'{}\'\n'.format(query))
+        raise PyMLSTWebError('No result found for \'{}\'\n'.format(query))
     if choices_length == 1:
         return choices[0]
     if prompt:
         return display_prompt('({}) Results found'.format(choices_length),
                               choices)
-    raise Exception('More than 1 result found for \'{}\'\n'.format(query))
+    raise PyMLSTWebError('More than 1 result found for \'{}\'\n'.format(query))
 
 
-def retrieve_mlst(query, prompt_enabled, mlst=''):
-    url = 'https://rest.pubmlst.org/db'
+def get_mlst_species(query):
+    """Gets MLST species from pubmlst.org.
 
+    :param query: A sub-string to filter species names.
+    :return: A Dictionary with species name in Key and URL in Value.
+    """
     try:
-        whole_base = request(url).json()
+        whole_base = request(PUBMLST_URL).json()
     except ValueError as error:
         raise StructureError() from error
 
@@ -85,38 +97,67 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
     except KeyError as error:
         raise StructureError() from error
 
-    species_choice = process_results(list(species.keys()), query, prompt_enabled)
+    return species
 
-    if species_choice is None:
-        return None
 
-    schemes_url = species[species_choice] + '/schemes'
+def get_mlst_schemes(species_url, query):
+    """Gets schemes profiles from PubMLST for a given species URL.
+
+    :param species_url: The species URL (see get_mlst_species()).
+    :param query: A sub-string to filter schemes names.
+    :return: A Dictionary with schemes name in Key and URL in Value.
+    """
+    schemes_url = species_url + '/schemes'
     schemes_json = request(schemes_url).json()
 
     schemes = {}
-    mlst_low = mlst.lower()
+    query_low = query.lower()
 
     try:
         for scheme in schemes_json['schemes']:
             if not is_mlst_scheme(scheme['scheme'], scheme['description']):
                 continue
             des = scheme['description'].lower()
-            if mlst_low in des:
+            if query_low in des:
                 schemes[des] = scheme['scheme']
     except KeyError as error:
         raise StructureError() from error
 
-    scheme_choice = process_results(list(schemes.keys()), mlst, prompt_enabled)
+    return schemes
 
+
+def retrieve_mlst(query, prompt_enabled, mlst=''):
+    """Retrieves MLST data, prompts user if necessary and if possible.
+
+    :param query: A sub-string to filter species names.
+    :param prompt_enabled: Whether or not to prompt user for actions.
+                           If disabled and many choices are possible,
+                           will raise an Exception.
+    :param mlst: A sub-string to filter schemes names.
+    :return: A scheme URL.
+    """
+    species = get_mlst_species(query)
+    species_choice = process_results(list(species.keys()), query, prompt_enabled)
+    if species_choice is None:
+        return None
+
+    species_url = species[species_choice]
+
+    schemes = get_mlst_schemes(species_url, mlst)
+    scheme_choice = process_results(list(schemes.keys()), mlst, prompt_enabled)
     if scheme_choice is None:
         return None
 
     return schemes[scheme_choice]
 
 
-def retrieve_cgmlst(query, prompt_enabled):
-    url = 'https://www.cgmlst.org/ncs'
-    page = request(url)
+def get_cgmlst_species(query):
+    """Gets cgMLST species from cgmlst.org.
+
+    :param query: A sub-string to filter species names.
+    :return: A Dictionary with species name in Key and download URL in Value.
+    """
+    page = request(CGMLST_URL)
 
     soup = BeautifulSoup(page.content, 'html.parser')
 
@@ -126,7 +167,7 @@ def retrieve_cgmlst(query, prompt_enabled):
 
     lines = table.find_all('a')
 
-    addresses = {}
+    species = {}
     query_low = query.lower()
 
     for line in lines:
@@ -135,23 +176,41 @@ def retrieve_cgmlst(query, prompt_enabled):
             continue
         name = text.replace('cgMLST', '').strip()
         if query_low in name.lower():
-            link = line.get('href')
-            if link is None:
+            url = line.get('href')
+            if url is None:
                 raise StructureError()
-            addresses[name] = link
+            species[name] = url
 
-    choice = process_results(list(addresses.keys()), query, prompt_enabled)
+    return species
 
+
+def retrieve_cgmlst(query, prompt_enabled):
+    """Retrieves cgMLST data, prompts user if necessary and if possible.
+
+    :param query: A sub-string to filter species names.
+    :param prompt_enabled: Whether or not to prompt user for actions.
+                           If disabled and many choices are possible,
+                           will raise an Exception.
+    :return: A species download URL.
+    """
+    species = get_cgmlst_species(query)
+    choice = process_results(list(species.keys()), query, prompt_enabled)
     if choice is None:
         return None
 
-    genome_url = addresses[choice]
+    species_url = species[choice]
 
-    return genome_url + 'alleles'
+    return species_url
 
 
-def get_coregene_file(url, handle):
+def get_cgmlst_file(url, handle):
+    """Download cgMLST data and use them to initialize a fasta file.
+
+    :param url: The download URL.
+    :param handle: The file handle.
+    """
     with tempfile.TemporaryDirectory() as tmp_dir:
+        url += 'alleles'
         zip_req = request(url)
         zip_tmp = os.path.join(tmp_dir, 'tmp.zip')
         open(zip_tmp, 'wb').write(zip_req.content)
@@ -181,7 +240,12 @@ def clean_csv(csv_content, locus_nb):
     return '\n'.join(lines)
 
 
-def get_mlst_files(directory, url):
+def get_mlst_files(url, directory):
+    """Download MLST data and puts them in the given directory.
+
+    :param url: The scheme URL.
+    :param directory: The directory.
+    """
     mlst_scheme = request(url).json()
 
     # Downloading the locus files in a directory :
