@@ -8,6 +8,7 @@ from enum import Enum
 import networkx as nx
 from Bio import SeqIO
 from decorator import contextmanager
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.functions import count
 
 from sqlalchemy import bindparam, not_, literal
@@ -36,9 +37,11 @@ def open_wg(file=None, ref='ref'):
 
     :yields: A :class:`~pymlst.wg.core.WholeGenomeMLST` object.
     """
-    engine = utils.get_updated_engine(file, 'wg')
-    with engine.begin() as conn:
-        yield WholeGenomeMLST(conn, ref)
+    mlst = WholeGenomeMLST(file, ref)
+    try:
+        yield mlst
+    finally:
+        mlst.close()
 
 
 class DuplicationHandling(Enum):
@@ -53,11 +56,12 @@ class DatabaseWG:
                      see :class:`~pymlst.wg.core.WholeGenomeMLST` instead.
     """
 
-    def __init__(self, connection, ref):
+    def __init__(self, file, ref):
         """
         :param path: The path to the database file to work with.
         """
-        self.__connection = connection
+        engine = utils.get_updated_engine(file, 'wg')
+        self.__connection = engine.connect()
 
         self.__cached_queries = {}
 
@@ -65,6 +69,11 @@ class DatabaseWG:
         self.__separator = ';'
 
         self.__core_genome = self.__load_core_genome()
+
+    @contextmanager
+    def begin(self):
+        with self.__connection.begin():
+            yield
 
     @property
     def ref(self):
@@ -115,7 +124,7 @@ class DatabaseWG:
         if not added:
             if mode is None:
                 raise exceptions.DuplicatedGeneSequence(
-                    '{} sequence is duplicated'.format(gene))
+                    'Duplicated sequence for gene {}'.format(gene))
             if mode == DuplicationHandling.CONCATENATE:
                 self.__concatenate_gene(seq_id, gene)
             elif mode == DuplicationHandling.REMOVE:
@@ -399,6 +408,9 @@ class DatabaseWG:
             sequences[entry[1]] = entry[2]
         return mlst
 
+    def close(self):
+        self.__connection.close()
+
 
 class WholeGenomeMLST:
     """Whole Genome MLST python representation.
@@ -411,12 +423,12 @@ class WholeGenomeMLST:
             db.add_strain(open('strain_2.fasta'))
     """
 
-    def __init__(self, connection, ref):
+    def __init__(self, file, ref):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
-        self.__database = DatabaseWG(connection, ref)
+        self.__database = DatabaseWG(file, ref)
 
         utils.create_logger()
 
@@ -435,40 +447,41 @@ class WholeGenomeMLST:
         having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
-        rc_genes = 0
-        invalid_genes = 0
+        with self.database.begin():
+            rc_genes = 0
+            invalid_genes = 0
 
-        for gene in SeqIO.parse(coregene, 'fasta'):
-            if not utils.validate_sequence(gene.seq):
-                gene.seq = gene.seq.reverse_complement()
-                if utils.validate_sequence(gene.seq):
-                    rc_genes += 1
-                else:
-                    invalid_genes += 1
-                    continue
+            for gene in SeqIO.parse(coregene, 'fasta'):
+                if not utils.validate_sequence(gene.seq):
+                    gene.seq = gene.seq.reverse_complement()
+                    if utils.validate_sequence(gene.seq):
+                        rc_genes += 1
+                    else:
+                        invalid_genes += 1
+                        continue
 
-            if concatenate:
-                mode = DuplicationHandling.CONCATENATE
-            elif remove:
-                mode = DuplicationHandling.REMOVE
-            else:
-                mode = None
-
-            added = self.__database.add_core_genome(gene.id, str(gene.seq), mode)
-
-            if not added:
                 if concatenate:
-                    logging.info("Concatenated gene %s", gene.id)
+                    mode = DuplicationHandling.CONCATENATE
                 elif remove:
-                    logging.info('Gene %s has duplicated sequence, removed', gene.id)
+                    mode = DuplicationHandling.REMOVE
+                else:
+                    mode = None
 
-        if rc_genes:
-            logging.info('Reverse-complemented genes: %s', str(rc_genes))
+                added = self.__database.add_core_genome(gene.id, str(gene.seq), mode)
 
-        if invalid_genes:
-            logging.info('Skipped invalid genes: %s', str(invalid_genes))
+                if not added:
+                    if concatenate:
+                        logging.info("Concatenated gene %s", gene.id)
+                    elif remove:
+                        logging.info('Gene %s has duplicated sequence, removed', gene.id)
 
-        logging.info('Database initialized')
+            if rc_genes:
+                logging.info('Reverse-complemented genes: %s', str(rc_genes))
+
+            if invalid_genes:
+                logging.info('Skipped invalid genes: %s', str(invalid_genes))
+
+            logging.info('Database initialized')
 
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         """Adds a strain to the database.
@@ -487,85 +500,86 @@ class WholeGenomeMLST:
         :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
         :param coverage: Sets the minimum accepted coverage for found sequences.
         """
-        if identity < 0 or identity > 1:
-            raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
+        with self.database.begin():
+            if identity < 0 or identity > 1:
+                raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
 
-        name = strain
-        if name is None:
-            name = genome.name.split('/')[-1]
-        self.__database.check_gene_name(name)
+            name = strain
+            if name is None:
+                name = genome.name.split('/')[-1]
+            self.__database.check_gene_name(name)
 
-        tmpfile, tmpout = blat.blat_tmp()
-        tmpout.close()
+            tmpfile, tmpout = blat.blat_tmp()
+            tmpout.close()
 
-        try:
-            # verify that the strain is not already in the database
-            if self.__database.contains_souche(name):
-                raise exceptions.StrainAlreadyPresent(
-                    'Strain {} already present in the base'.format(name))
+            try:
+                # verify that the strain is not already in the database
+                if self.__database.contains_souche(name):
+                    raise exceptions.StrainAlreadyPresent(
+                        'Strain {} already present in the base'.format(name))
 
-            # read coregene
-            self.__create_core_genome_file(tmpfile)
-            tmpfile.close()
+                # read coregene
+                self.__create_core_genome_file(tmpfile)
+                tmpfile.close()
 
-            # BLAT analysis
-            logging.info("Search coregene with BLAT")
-            genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
-            logging.info("Finish run BLAT, found %s genes", len(genes))
+                # BLAT analysis
+                logging.info("Search coregene with BLAT")
+                genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
+                logging.info("Finish run BLAT, found %s genes", len(genes))
 
-            # add MLST sequence
-            seqs = utils.read_genome(genome)
+                # add MLST sequence
+                seqs = utils.read_genome(genome)
 
-            bad = 0
-            partial = 0
-            partial_filled = 0
+                bad = 0
+                partial = 0
+                partial_filled = 0
 
-            for core_gene in self.__database.core_genome.keys():
+                for core_gene in self.__database.core_genome.keys():
 
-                if core_gene not in genes:
-                    continue
-
-                for gene in genes.get(core_gene):
-
-                    seq = seqs.get(gene.chro, None)
-                    if seq is None:
-                        raise exceptions.ChromosomeNotFound(
-                            'Chromosome {} not found '.format(gene.chro))
-
-                    # Correct coverage
-                    if gene.coverage == 1:
-                        sequence = gene.get_sequence(seq)
-                    else:
-                        coregene_seq = self.__database.core_genome[core_gene]
-                        sequence = gene.get_aligned_sequence(seq, coregene_seq)
-
-                    if sequence and psl.test_cds(sequence):
-                        if gene.coverage != 1:
-                            logging.debug("Gene %s fill: added", gene.gene_id())
-                            partial_filled += 1
-                            partial += 1
-                    else:
-                        if gene.coverage == 1:
-                            logging.debug("Gene %s not correct: removed", gene.gene_id())
-                        else:
-                            logging.debug("Gene %s partial: removed", gene.gene_id())
-                            partial += 1
-                        bad += 1
+                    if core_gene not in genes:
                         continue
 
-                    # Insert data in database
-                    self.__database.add_genome(gene.gene_id(), name, str(sequence))
+                    for gene in genes.get(core_gene):
 
-            logging.info("Added %s new MLST genes to the database", len(genes) - bad)
-            logging.info('Found %s partial genes, filled %s', partial, partial_filled)
-            logging.info('Removed %s genes', bad)
-            logging.info("DONE")
+                        seq = seqs.get(gene.chro, None)
+                        if seq is None:
+                            raise exceptions.ChromosomeNotFound(
+                                'Chromosome {} not found '.format(gene.chro))
 
-        finally:
-            if os.path.exists(tmpfile.name):
-                os.remove(tmpfile.name)
-            if os.path.exists(tmpout.name):
-                os.remove(tmpout.name)
+                        # Correct coverage
+                        if gene.coverage == 1:
+                            sequence = gene.get_sequence(seq)
+                        else:
+                            coregene_seq = self.__database.core_genome[core_gene]
+                            sequence = gene.get_aligned_sequence(seq, coregene_seq)
+
+                        if sequence and psl.test_cds(sequence):
+                            if gene.coverage != 1:
+                                logging.debug("Gene %s fill: added", gene.gene_id())
+                                partial_filled += 1
+                                partial += 1
+                        else:
+                            if gene.coverage == 1:
+                                logging.debug("Gene %s not correct: removed", gene.gene_id())
+                            else:
+                                logging.debug("Gene %s partial: removed", gene.gene_id())
+                                partial += 1
+                            bad += 1
+                            continue
+
+                        # Insert data in database
+                        self.__database.add_genome(gene.gene_id(), name, str(sequence))
+
+                logging.info("Added %s new MLST genes to the database", len(genes) - bad)
+                logging.info('Found %s partial genes, filled %s', partial, partial_filled)
+                logging.info('Removed %s genes', bad)
+                logging.info("DONE")
+
+            finally:
+                if os.path.exists(tmpfile.name):
+                    os.remove(tmpfile.name)
+                if os.path.exists(tmpout.name):
+                    os.remove(tmpout.name)
 
     def remove_gene(self, genes, file=None):
         """Removes genes from the database.
@@ -624,6 +638,9 @@ class WholeGenomeMLST:
         ref_genes = self.__database.core_genome
         for gene, sequence in ref_genes.items():
             tmp_file.write('>' + gene + "\n" + sequence + "\n")
+
+    def close(self):
+        self.database.close()
 
 
 class Extractor(ABC):

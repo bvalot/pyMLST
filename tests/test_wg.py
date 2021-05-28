@@ -5,7 +5,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import in_op as in_
 
 import pymlst
-from pymlst.common import exceptions, utils
+from pymlst.common import exceptions
 from pymlst.wg import model
 from pymlst.wg.core import DatabaseWG, DuplicationHandling
 
@@ -25,9 +25,11 @@ def wg():
 
 @pytest.fixture()
 def db():
-    engine = utils.get_updated_engine(None, 'wg')
-    with engine.begin() as conn:
-        yield DatabaseWG(conn, 'ref')
+    db = DatabaseWG(None, 'ref')
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()

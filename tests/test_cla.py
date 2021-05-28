@@ -4,7 +4,7 @@ from sqlalchemy import select
 import pymlst
 from pymlst.cla import model
 from pymlst.cla.core import DatabaseCLA
-from pymlst.common import exceptions, utils
+from pymlst.common import exceptions
 
 
 @pytest.fixture()
@@ -15,9 +15,11 @@ def cla():
 
 @pytest.fixture()
 def db():
-    engine = utils.get_updated_engine(None, 'cla')
-    with engine.begin() as conn:
-        yield DatabaseCLA(conn, 1)
+    db = DatabaseCLA(None, 1)
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()

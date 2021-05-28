@@ -9,6 +9,7 @@ from Bio import SeqIO
 from decorator import contextmanager
 
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
@@ -31,9 +32,11 @@ def open_cla(file=None, ref=1):
 
     :yields: A :class:`~pymlst.cla.core.ClassicalMLST` object.
     """
-    engine = utils.get_updated_engine(file, 'cla')
-    with engine.begin() as conn:
-        yield ClassicalMLST(conn, ref)
+    mlst = ClassicalMLST(file, ref)
+    try:
+        yield mlst
+    finally:
+        mlst.close()
 
 
 class DatabaseCLA:
@@ -43,15 +46,21 @@ class DatabaseCLA:
                      see :class:`~pymlst.cla.core.ClassicalMLST` instead.
     """
 
-    def __init__(self, connection, ref):
+    def __init__(self, file, ref):
         """
         :param path: The path to the database file to work with.
         """
-        self.__connection = connection
+        engine = utils.get_updated_engine(file, 'cla')
+        self.__connection = engine.connect()
 
         self.__ref = ref
 
         self.__core_genome = self.__load_core_genome()
+
+    @contextmanager
+    def begin(self):
+        with self.__connection.begin():
+            yield
 
     @property
     def ref(self):
@@ -70,9 +79,13 @@ class DatabaseCLA:
 
     def add_sequence(self, sequence, gene, allele):
         """Adds a new sequence associated to a gene and an allele."""
-        self.connection.execute(
-            model.sequences.insert(),
-            sequence=sequence, gene=gene, allele=allele)
+        try:
+            self.connection.execute(
+                model.sequences.insert(),
+                sequence=sequence, gene=gene, allele=allele)
+        except IntegrityError:
+            raise exceptions.DuplicatedGeneSequence(
+                'Duplicated sequence for gene {}'.format(gene))
 
     def add_mlst(self, sequence_typing, gene, allele):
         """Adds a new sequence typing, associated to a gene and an allele."""
@@ -133,6 +146,9 @@ class DatabaseCLA:
             return None
         return res.sequence
 
+    def close(self):
+        self.__connection.close()
+
 
 class ClassicalMLST:
     """Classical MLST python representation.
@@ -146,12 +162,12 @@ class ClassicalMLST:
                 db.search_st(open('genome.fasta'))
         """
 
-    def __init__(self, connection, ref):
+    def __init__(self, file, ref):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
-        self.__database = DatabaseCLA(connection, ref)
+        self.__database = DatabaseCLA(file, ref)
 
         create_logger()
 
@@ -178,48 +194,49 @@ class ClassicalMLST:
             ..., ..., ..., ..., ...
 
         """
-        # Verify sheme list with fasta files
-        header = scheme.readline().rstrip("\n").split("\t")
-        if len(header) != len(alleles) + 1:
-            raise Exception("The number of genes in sheme don't "
-                            "correspond to the number of fasta file\n"
-                            + " ".join(header) + "\n")
-        fastas = {}
-        for file in alleles:
-            name = file.name.split("/")[-1]
-            name = name[:name.rfind(".")]
-            if name not in header:
-                raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
-            fastas[name] = file
+        with self.database.begin():
+            # Verify sheme list with fasta files
+            header = scheme.readline().rstrip("\n").split("\t")
+            if len(header) != len(alleles) + 1:
+                raise Exception("The number of genes in sheme don't "
+                                "correspond to the number of fasta file\n"
+                                + " ".join(header) + "\n")
+            fastas = {}
+            for file in alleles:
+                name = file.name.split("/")[-1]
+                name = name[:name.rfind(".")]
+                if name not in header:
+                    raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
+                fastas[name] = file
 
-        # load sequence allele
-        alleles = {}
-        for gene, file in fastas.items():
-            alleles[gene] = set()
-            for seq in SeqIO.parse(file, 'fasta'):
-                try:
-                    match = re.search('[0-9]+$', seq.id)
-                    allele = int(match.group(0))
-                except Exception as err:
-                    raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
+            # load sequence allele
+            alleles = {}
+            for gene, file in fastas.items():
+                alleles[gene] = set()
+                for seq in SeqIO.parse(file, 'fasta'):
+                    try:
+                        match = re.search('[0-9]+$', seq.id)
+                        allele = int(match.group(0))
+                    except Exception as err:
+                        raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
 
-                self.__database.add_sequence(str(seq.seq).upper(), gene, allele)
-                alleles.get(gene).add(allele)
+                    self.__database.add_sequence(str(seq.seq).upper(), gene, allele)
+                    alleles.get(gene).add(allele)
 
-        # load MLST sheme
-        for line in scheme:
-            line_content = line.rstrip("\n").split("\t")
-            sequence_typing = int(line_content[0])
-            for gene, allele in zip(header[1:], line_content[1:]):
-                if int(allele) not in alleles.get(gene):
-                    logging.info(
-                        "Unable to find the allele number %s"
-                        " for gene %s; replace by 0", str(allele), gene)
-                    self.__database.add_mlst(sequence_typing, gene, 0)
-                else:
-                    self.__database.add_mlst(sequence_typing, gene, int(allele))
+            # load MLST sheme
+            for line in scheme:
+                line_content = line.rstrip("\n").split("\t")
+                sequence_typing = int(line_content[0])
+                for gene, allele in zip(header[1:], line_content[1:]):
+                    if int(allele) not in alleles.get(gene):
+                        logging.info(
+                            "Unable to find the allele number %s"
+                            " for gene %s; replace by 0", str(allele), gene)
+                        self.__database.add_mlst(sequence_typing, gene, 0)
+                    else:
+                        self.__database.add_mlst(sequence_typing, gene, int(allele))
 
-        logging.info('Database initialized')
+            logging.info('Database initialized')
 
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         """Search the **Sequence Type** number of a strain.
@@ -335,3 +352,6 @@ class ClassicalMLST:
         core_genome = self.__database.core_genome
         for gene, sequence in core_genome.items():
             tmpfile.write('>' + gene + "\n" + sequence + "\n")
+
+    def close(self):
+        self.__database.close()
