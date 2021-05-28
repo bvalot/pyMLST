@@ -7,16 +7,12 @@ from enum import Enum
 
 import networkx as nx
 from Bio import SeqIO
-from alembic import command
-from alembic.config import Config
 from decorator import contextmanager
-from pkg_resources import resource_filename, Requirement
 from sqlalchemy.sql.functions import count
 
-from sqlalchemy import create_engine, bindparam, not_, Index, literal
+from sqlalchemy import bindparam, not_, literal
 from sqlalchemy import and_
 from sqlalchemy import func
-from sqlalchemy import MetaData, Table, Column, Integer, Text, ForeignKey
 
 from sqlalchemy.sql import select, exists
 from sqlalchemy.sql import distinct
@@ -40,16 +36,9 @@ def open_wg(file=None, ref='ref'):
 
     :yields: A :class:`~pymlst.wg.core.WholeGenomeMLST` object.
     """
-    mlst = WholeGenomeMLST(file, ref)
-    try:
-        yield mlst
-    except Exception:
-        mlst.rollback()
-        raise
-    else:
-        mlst.commit()
-    finally:
-        mlst.close()
+    engine = utils.get_updated_engine(file, 'wg')
+    with engine.begin() as conn:
+        yield WholeGenomeMLST(conn, ref)
 
 
 class DuplicationHandling(Enum):
@@ -64,14 +53,11 @@ class DatabaseWG:
                      see :class:`~pymlst.wg.core.WholeGenomeMLST` instead.
     """
 
-    def __init__(self, path, ref):
+    def __init__(self, connection, ref):
         """
         :param path: The path to the database file to work with.
         """
-
-        self.__engine = utils.get_updated_engine(path, 'wg')
-        self.__connection = self.__engine.connect()
-        self.__transaction = self.__connection.begin()
+        self.__connection = connection
 
         self.__cached_queries = {}
 
@@ -413,18 +399,6 @@ class DatabaseWG:
             sequences[entry[1]] = entry[2]
         return mlst
 
-    def commit(self):
-        """Commits the modifications."""
-        self.__transaction.commit()
-
-    def rollback(self):
-        """Rollback the modifications."""
-        self.__transaction.rollback()
-
-    def close(self):
-        """Closes the database engine."""
-        self.__engine.dispose()
-
 
 class WholeGenomeMLST:
     """Whole Genome MLST python representation.
@@ -437,14 +411,18 @@ class WholeGenomeMLST:
             db.add_strain(open('strain_2.fasta'))
     """
 
-    def __init__(self, file, ref):
+    def __init__(self, connection, ref):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
-        self.database = DatabaseWG(file, ref)
+        self.__database = DatabaseWG(connection, ref)
 
         utils.create_logger()
+
+    @property
+    def database(self):
+        return self.__database
 
     def create(self, coregene, concatenate=False, remove=False):
         """Creates a whole genome MLST database from a core genome `fasta`_ file.
@@ -476,7 +454,7 @@ class WholeGenomeMLST:
             else:
                 mode = None
 
-            added = self.database.add_core_genome(gene.id, str(gene.seq), mode)
+            added = self.__database.add_core_genome(gene.id, str(gene.seq), mode)
 
             if not added:
                 if concatenate:
@@ -515,14 +493,14 @@ class WholeGenomeMLST:
         name = strain
         if name is None:
             name = genome.name.split('/')[-1]
-        self.database.check_gene_name(name)
+        self.__database.check_gene_name(name)
 
         tmpfile, tmpout = blat.blat_tmp()
         tmpout.close()
 
         try:
             # verify that the strain is not already in the database
-            if self.database.contains_souche(name):
+            if self.__database.contains_souche(name):
                 raise exceptions.StrainAlreadyPresent(
                     'Strain {} already present in the base'.format(name))
 
@@ -542,7 +520,7 @@ class WholeGenomeMLST:
             partial = 0
             partial_filled = 0
 
-            for core_gene in self.database.core_genome.keys():
+            for core_gene in self.__database.core_genome.keys():
 
                 if core_gene not in genes:
                     continue
@@ -558,7 +536,7 @@ class WholeGenomeMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
-                        coregene_seq = self.database.core_genome[core_gene]
+                        coregene_seq = self.__database.core_genome[core_gene]
                         sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
                     if sequence and psl.test_cds(sequence):
@@ -576,7 +554,7 @@ class WholeGenomeMLST:
                         continue
 
                     # Insert data in database
-                    self.database.add_genome(gene.gene_id(), name, str(sequence))
+                    self.__database.add_genome(gene.gene_id(), name, str(sequence))
 
             logging.info("Added %s new MLST genes to the database", len(genes) - bad)
             logging.info('Found %s partial genes, filled %s', partial, partial_filled)
@@ -604,7 +582,7 @@ class WholeGenomeMLST:
         all_genes = set(all_genes)
 
         for gene in all_genes:
-            if self.database.remove_gene(gene):
+            if self.__database.remove_gene(gene):
                 logging.info("%s : OK", gene)
             else:
                 logging.info("%s : Not found", gene)
@@ -615,9 +593,9 @@ class WholeGenomeMLST:
         :param strains: Names of the strains to remove.
         :param file: A file containing a strain name per line.
         """
-        if self.database.ref in strains:
+        if self.__database.ref in strains:
             raise exceptions.ReferenceStrainRemoval(
-                '{} strain can not be removed'.format(self.database.ref))
+                '{} strain can not be removed'.format(self.__database.ref))
 
         # list strains to remove
         all_strains = utils.strip_file(file)
@@ -628,7 +606,7 @@ class WholeGenomeMLST:
         all_strains = set(all_strains)
 
         for strain in all_strains:
-            if self.database.remove_strain(strain):
+            if self.__database.remove_strain(strain):
                 logging.info("%s : OK", strain)
             else:
                 logging.info("%s : Not found", strain)
@@ -640,24 +618,24 @@ class WholeGenomeMLST:
                           the way data should be extracted.
         :param output: The output that will receive extracted data.
         """
-        extractor.extract(self.database, output)
+        extractor.extract(self.__database, output)
 
     def __create_core_genome_file(self, tmp_file):
-        ref_genes = self.database.core_genome
+        ref_genes = self.__database.core_genome
         for gene, sequence in ref_genes.items():
             tmp_file.write('>' + gene + "\n" + sequence + "\n")
 
-    def commit(self):
-        """Commits the modifications."""
-        self.database.commit()
-
-    def rollback(self):
-        """Rollback the modifications."""
-        self.database.rollback()
-
-    def close(self):
-        """Closes the database engine."""
-        self.database.close()
+    # def commit(self):
+    #     """Commits the modifications."""
+    #     self.database.commit()
+    #
+    # def rollback(self):
+    #     """Rollback the modifications."""
+    #     self.database.rollback()
+    #
+    # def close(self):
+    #     """Closes the database engine."""
+    #     self.database.close()
 
 
 class Extractor(ABC):

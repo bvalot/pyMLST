@@ -6,8 +6,7 @@ from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect, select, insert
-from sqlalchemy.engine import Inspector
+from sqlalchemy import create_engine, inspect, select
 
 from pymlst import config
 from pymlst.common import flag, exceptions

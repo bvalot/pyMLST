@@ -31,16 +31,9 @@ def open_cla(file=None, ref=1):
 
     :yields: A :class:`~pymlst.cla.core.ClassicalMLST` object.
     """
-    mlst = ClassicalMLST(file, ref)
-    try:
-        yield mlst
-    except Exception:
-        mlst.rollback()
-        raise
-    else:
-        mlst.commit()
-    finally:
-        mlst.close()
+    engine = utils.get_updated_engine(file, 'cla')
+    with engine.begin() as conn:
+        yield ClassicalMLST(conn, ref)
 
 
 class DatabaseCLA:
@@ -50,14 +43,11 @@ class DatabaseCLA:
                      see :class:`~pymlst.cla.core.ClassicalMLST` instead.
     """
 
-    def __init__(self, path, ref):
+    def __init__(self, connection, ref):
         """
         :param path: The path to the database file to work with.
         """
-
-        self.__engine = utils.get_updated_engine(path, 'cla')
-        self.__connection = self.__engine.connect()
-        self.__transaction = self.__connection.begin()
+        self.__connection = connection
 
         self.__ref = ref
 
@@ -143,18 +133,6 @@ class DatabaseCLA:
             return None
         return res.sequence
 
-    def commit(self):
-        """Commits the modifications."""
-        self.__transaction.commit()
-
-    def rollback(self):
-        """Rollback the modifications."""
-        self.__transaction.rollback()
-
-    def close(self):
-        """Closes the database engine."""
-        self.__engine.dispose()
-
 
 class ClassicalMLST:
     """Classical MLST python representation.
@@ -168,14 +146,18 @@ class ClassicalMLST:
                 db.search_st(open('genome.fasta'))
         """
 
-    def __init__(self, file, ref):
+    def __init__(self, connection, ref):
         """
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
-        self.database = DatabaseCLA(file, ref)
+        self.__database = DatabaseCLA(connection, ref)
 
         create_logger()
+
+    @property
+    def database(self):
+        return self.__database
 
     def create(self, scheme, alleles):
         """Creates a classical MLST database from an MLST profile and a list of alleles.
@@ -221,7 +203,7 @@ class ClassicalMLST:
                 except Exception as err:
                     raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
 
-                self.database.add_sequence(str(seq.seq).upper(), gene, allele)
+                self.__database.add_sequence(str(seq.seq).upper(), gene, allele)
                 alleles.get(gene).add(allele)
 
         # load MLST sheme
@@ -233,9 +215,9 @@ class ClassicalMLST:
                     logging.info(
                         "Unable to find the allele number %s"
                         " for gene %s; replace by 0", str(allele), gene)
-                    self.database.add_mlst(sequence_typing, gene, 0)
+                    self.__database.add_mlst(sequence_typing, gene, 0)
                 else:
-                    self.database.add_mlst(sequence_typing, gene, int(allele))
+                    self.__database.add_mlst(sequence_typing, gene, int(allele))
 
         logging.info('Database initialized')
 
@@ -257,7 +239,7 @@ class ClassicalMLST:
         try:
             # read coregene
             self.__create_core_genome_file(tmpfile)
-            core_genome = self.database.core_genome
+            core_genome = self.__database.core_genome
             tmpfile.close()
 
             # BLAT analysis
@@ -308,12 +290,12 @@ class ClassicalMLST:
                         fasta.write(sequence + "\n")
 
                     # search allele
-                    res = self.database.get_allele_by_sequence_and_gene(sequence, core_gene)
+                    res = self.__database.get_allele_by_sequence_and_gene(sequence, core_gene)
                     if res is not None:
                         allele.get(core_gene).append(str(res))
                         # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
                         #                (coregene, row[0]))
-                        seq_types = self.database.get_st_by_gene_and_allele(core_gene, res)
+                        seq_types = self.__database.get_st_by_gene_and_allele(core_gene, res)
                         for seq_type in seq_types:
                             sequence_type.get(core_gene).add(seq_type)
                     else:
@@ -350,18 +332,6 @@ class ClassicalMLST:
                 os.remove(tmpout.name)
 
     def __create_core_genome_file(self, tmpfile):
-        core_genome = self.database.core_genome
+        core_genome = self.__database.core_genome
         for gene, sequence in core_genome.items():
             tmpfile.write('>' + gene + "\n" + sequence + "\n")
-
-    def commit(self):
-        """Commits the modifications."""
-        self.database.commit()
-
-    def rollback(self):
-        """Rollback the modifications."""
-        self.database.rollback()
-
-    def close(self):
-        """Closes the database engine."""
-        self.database.close()
