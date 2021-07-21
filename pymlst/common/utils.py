@@ -15,7 +15,7 @@ from pymlst.common import flag, exceptions
 def records_to_dict(records):
     seq_dict = {}
     for seq in records:
-        seq_dict[seq.id] = seq
+        seq_dict[seq.id] = str(seq.seq).upper()
     return seq_dict
 
 
@@ -26,7 +26,7 @@ def read_genome(handle):
 
 def write_genome(genome_dict, handle):
     for seq_id, seq in genome_dict.items():
-        handle.write('> ' + seq_id + '\n'
+        handle.write('> ' + str(seq_id) + '\n'
                      + seq + '\n')
 
 

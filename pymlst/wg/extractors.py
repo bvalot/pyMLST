@@ -23,7 +23,6 @@ def add_sequence_strain(seqs, strains, sequences):
             raise exceptions.PyMLSTError(
                 'Repeated genes must be excluded in order to export alignment')
 
-
 class SequenceExtractor(Extractor):
 
     def __init__(self, gene_list=None, align=False, realign=False, mincover=1):
@@ -60,30 +59,28 @@ class SequenceExtractor(Extractor):
             # multialign
             # search duplicate
             duplicated = base.get_duplicated_genes()
-            for dupli in duplicated:
-                logging.info('Duplicated: ', dupli)
+            # for dupli in duplicated:
+            #     logging.info('Duplicated: ', dupli)
 
             sequences = {s: [] for s in strains}
             for index, gene in enumerate(coregene):
-                logging.info("%s/%s | %s     ", index + 1, len(coregene), gene)
                 if gene in duplicated:
-                    logging.info("No: Repeat gene\n")
+                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "No: Repeat gene")
                     continue
                 seqs = base.get_gene_sequences(gene)
                 size = set()
                 for seq in seqs:
                     size.add(len(seq[2]))
                 if len(size) == 1 and self.realign is False:
-                    logging.info("Direct")
                     add_sequence_strain(seqs, strains, sequences)
+                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Direct")
                 else:
-                    logging.info("Align")
                     genes = {str(s[0]): s[2] for s in seqs}
                     corrseqs = mafft.align(genes)
                     for seq in seqs:
-                        seq[2] = corrseqs.get(seq[0])
+                        seq[2] = corrseqs.get(str(seq[0]))
                     add_sequence_strain(seqs, strains, sequences)
-                logging.info("\n")
+                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Align")
 
             # output align result
             for strain in strains:
