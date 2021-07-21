@@ -85,7 +85,7 @@ class SequenceExtractor(Extractor):
             # output align result
             for strain in strains:
                 output.write('>' + strain + "\n")
-                output.write("\n".join(sequences.get(strain)) + "\n")
+                output.write("\n".join(map(str, sequences.get(strain))) + "\n")
 
 
 class TableExtractor(Extractor):

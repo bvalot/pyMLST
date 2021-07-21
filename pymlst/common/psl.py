@@ -40,8 +40,8 @@ class Psl:
 
     def get_sequence(self, seq):
         if self.strand == '+':
-            return seq.seq[self.start:self.end]
-        return seq.seq[self.start:self.end].reverse_complement()
+            return seq[self.start:self.end]
+        return seq[self.start:self.end].reverse_complement()
 
     # def searchCorrect(self):
     #     if int(self.pslelement[11]) != 0:
@@ -102,12 +102,12 @@ class Psl:
 
         if expand_end:
             end = self.end + 36
-            if end > len(seq.seq):
-                end = len(seq.seq)
+            if end > len(seq):
+                end = len(seq)
         else:
             end = self.end
 
-        target = seq.seq[start:end]
+        target = seq[start:end]
         if self.strand != '+':
             target = target.reverse_complement()
 
