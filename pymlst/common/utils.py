@@ -15,7 +15,7 @@ from pymlst.common import flag, exceptions
 def records_to_dict(records):
     seq_dict = {}
     for seq in records:
-        seq_dict[seq.id] = seq.seq
+        seq_dict[seq.id] = seq.seq.upper()
     return seq_dict
 
 

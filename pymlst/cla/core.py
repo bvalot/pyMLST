@@ -85,7 +85,10 @@ class DatabaseCLA:
                 sequence=sequence, gene=gene, allele=allele)
         except IntegrityError:
             raise exceptions.DuplicatedGeneSequence(
-                'Duplicated sequence for gene {}'.format(gene))
+                'Duplicated sequence for gene {} and allele {}'.format(gene, allele))
+        if allele == self.__ref:
+            if gene not in self.__core_genome:
+                self.__core_genome[gene] = sequence
 
     def add_mlst(self, sequence_typing, gene, allele):
         """Adds a new sequence typing, associated to a gene and an allele."""
@@ -97,9 +100,6 @@ class DatabaseCLA:
         self.connection.execute(
             model.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
-        if allele == self.__ref:
-            if gene not in self.__core_genome:
-                self.__core_genome[gene] = sequence
 
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele."""
@@ -220,7 +220,7 @@ class ClassicalMLST:
                     except Exception as err:
                         raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
 
-                    self.__database.add_sequence(str(seq.seq).upper(), gene, allele)
+                    self.__database.add_sequence(str(seq.seq), gene, allele)
                     alleles.get(gene).add(allele)
 
             # load MLST sheme
@@ -231,8 +231,8 @@ class ClassicalMLST:
                     if int(allele) not in alleles.get(gene):
                         logging.info(
                             "Unable to find the allele number %s"
-                            " for gene %s; replace by 0", str(allele), gene)
-                        self.__database.add_mlst(sequence_typing, gene, 0)
+                            " for gene %s; skipped", str(allele), gene)
+                        ##self.__database.add_mlst(sequence_typing, gene, 0)
                     else:
                         self.__database.add_mlst(sequence_typing, gene, int(allele))
 
