@@ -27,7 +27,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('genome',
                 type=click.File('r'))
 
-def cli(database, genome, **kwargs):
+def cli(genome, database, **kwargs):
     """Search ST number for an assembly GENOME using an mlst DATABASE."""
 
     database.close()

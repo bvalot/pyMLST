@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('database', type=click.File('w'))
 @click.argument('coregene', type=click.File('r'))
 
-def cli(database, coregene, concatenate, remove):
+def cli(coregene, database, concatenate, remove):
     """Create a wgMLST DATABASE from a template COREGENE."""
 
     database.close()
