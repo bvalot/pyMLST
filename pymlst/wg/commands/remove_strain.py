@@ -7,8 +7,9 @@ import click
 import pymlst
 from pymlst.common import utils, exceptions
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='remove_strain')
+@click.command(name='remove_strain',context_settings=CONTEXT_SETTINGS)
 @click.option('--list', '-l',
               type=click.File('r'),
               help='File list of strains to removed on the wgMLST database.')

@@ -4,8 +4,9 @@ import click
 
 from pymlst import config
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command()
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--blat', '-b',
               type=click.Path(exists=True, dir_okay=False),
               help='Blat executable absolute path.')
