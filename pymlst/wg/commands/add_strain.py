@@ -7,8 +7,9 @@ import click
 import pymlst
 from pymlst.common import utils, exceptions
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='add_strain')
+@click.command(name='add_strain',context_settings=CONTEXT_SETTINGS)
 @click.option('--strain', '-s',
               type=click.STRING,
               help='Name of the strain (default:genome name).')
@@ -18,10 +19,11 @@ from pymlst.common import utils, exceptions
 @click.option('--coverage', '-c',
               type=click.FLOAT,
               help='Minimum coverage to search gene (default=0.9).')
-@click.argument('genome',
-                type=click.File("r"))
 @click.argument('database',
                 type=click.File("r"))
+@click.argument('genome',
+                type=click.File("r"))
+
 def cli(genome, database, **kwargs):
     """Add a strain GENOME to the wgMLST DATABASE."""
 

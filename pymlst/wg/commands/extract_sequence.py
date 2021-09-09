@@ -8,8 +8,9 @@ import pymlst
 from pymlst.common import utils, exceptions
 from pymlst.wg.extractors import SequenceExtractor
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='extract_sequence')
+@click.command(name='extract_sequence',context_settings=CONTEXT_SETTINGS)
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output result in fasta format (default:stdout).')

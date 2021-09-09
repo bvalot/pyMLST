@@ -7,7 +7,10 @@ import pymlst
 from pymlst.common import exceptions
 
 
-@click.command(name='create_db')
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+@click.command(name='create_db',context_settings=CONTEXT_SETTINGS)
+
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('scheme',

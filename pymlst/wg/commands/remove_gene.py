@@ -7,8 +7,9 @@ import click
 import pymlst
 from pymlst.common import utils, exceptions
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='remove_gene')
+@click.command(name='remove_gene',context_settings=CONTEXT_SETTINGS)
 @click.option('--list', '-l',
               type=click.File('r'),
               help='File list of genes to removed on the wgMLST database.')
@@ -16,7 +17,7 @@ from pymlst.common import utils, exceptions
                 type=click.File('r'), nargs=1)
 @click.argument('genes',
                 type=str, nargs=-1)
-def cli(genes, database, **kwargs):
+def cli(database, genes,  **kwargs):
     """Remove GENES from a wgMLST DATABASE."""
 
     database.close()

@@ -19,6 +19,9 @@ class PyMlstCommand(click.MultiCommand):
         """Initializes the command."""
         super().__init__(help='Subcommands are loaded from a '
                               'plugin folder dynamically')
+        
+        opt_help = dict(help_option_names=['-h', '--help'])
+
         opt_version = Option(['--version', '-v'], is_flag=True, callback=print_version,
                              expose_value=False, is_eager=True,
                              help='Prints PyMLST version.')
@@ -27,6 +30,7 @@ class PyMlstCommand(click.MultiCommand):
                            help='Sets the debug mode ON.')
         self.params.append(opt_version)
         self.params.append(opt_debug)
+        self.context_settings.update(opt_help)
         self.help = help_msg
         self.path = path
 

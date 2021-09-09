@@ -10,8 +10,9 @@ import requests
 import pymlst
 from pymlst.common import utils, web, exceptions
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='import')
+@click.command(name='import',context_settings=CONTEXT_SETTINGS)
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
