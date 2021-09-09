@@ -6,10 +6,10 @@ import click
 
 import pymlst
 from pymlst.common import utils, exceptions
-from pymlst.wg.extractors import TableExtractor, ExportType
+from pymlst.wg.extractors import TableExtractor, ExportType, ExtractorCommand
 
 
-@click.command(name='extract_table')
+@click.command(name='extract_table', cls=ExtractorCommand)
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Export MLST table to (default=stdout).')
@@ -19,19 +19,6 @@ from pymlst.wg.extractors import TableExtractor, ExportType
 @click.option('--count', '-c',
               is_flag=True,
               help='In strain mode, count the number of gene present in the database.')
-@click.option('--mincover', '-m',
-              type=click.INT,
-              help='Minimun number of strain found to keep a gene (default:0).')
-@click.option('--keep', '-k',
-              is_flag=True,
-              help='Keep only gene with different allele (omit missing).')
-@click.option('--duplicate', '-d',
-              is_flag=True,
-              help='Conserve duplicate gene (default remove).')
-@click.option('--inverse', '-V',
-              is_flag=True,
-              help='Keep only gene that do not ' \
-              'meet the filter of mincover or keep options.')
 @click.argument('database', type=click.File('r'))
 def cli(database, **kwargs):
     """Extract an MLST table from a wgMLST DATABASE."""
