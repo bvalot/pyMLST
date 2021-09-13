@@ -6,11 +6,11 @@ import click
 
 import pymlst
 from pymlst.common import utils, exceptions
-from pymlst.wg.extractors import TableExtractor, ExportType, ExtractorCommand
+from pymlst.wg.extractors import TableExtractor, ExportType, TableExtractorCommand
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='extract_table', cls=ExtractorCommand, context_settings=CONTEXT_SETTINGS)
+@click.command(name='extract_table', cls=TableExtractorCommand, context_settings=CONTEXT_SETTINGS)
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Export MLST table to (default=stdout).')

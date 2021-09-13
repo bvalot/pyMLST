@@ -202,19 +202,19 @@ class ExportData:
         self.count = count
         self.duplicate = duplicate
 
-class ExtractorCommand(click.core.Command):
+class TableExtractorCommand(click.core.Command):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.params.insert(0, click.core.Option(('--mincover', '-m'),
-                                                type=click.INT,
-                                                help='Minimun number of strain found to keep a gene (default:0)'))
+            type=click.INT,
+            help='Minimun number of strain found to keep a gene (default:0)'))
         self.params.insert(1, click.core.Option(('--keep', '-k'),
-                                                is_flag=True,
-                                                help='Keep only gene with different allele (omit missing).'))
+            is_flag=True,
+            help='Keep only gene with different allele (omit missing).'))
         self.params.insert(2, click.core.Option(('--duplicate', '-d'),
-                                                is_flag=True,
-                                                help='Conserve duplicate gene (default remove).'))
+            is_flag=True,
+            help='Conserve duplicate gene (default remove).'))
         self.params.insert(3, click.core.Option(('--inverse', '-V'),
-                                                is_flag=True,
-                                                help='Keep only gene that do not ' \
-                                                'meet the filter of mincover or keep options.'))
+            is_flag=True,
+            help='Keep only gene that do not ' \
+                'meet the filter of mincover or keep options.'))

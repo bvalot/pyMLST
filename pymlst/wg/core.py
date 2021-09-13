@@ -2,7 +2,7 @@
 import logging
 import os
 import sys
-from abc import ABC
+from abc import ABC, abstractmethod
 from enum import Enum
 
 import networkx as nx
@@ -645,10 +645,10 @@ class WholeGenomeMLST:
 
 class Extractor(ABC):
     """A simple interface to ease the process of creating new extractors."""
+    @abstractmethod
     def extract(self, base, output):
         """
         :param base: The database to extract data from.
-        :param ref: The name of the reference genome.
         :param output: The output where to write the extraction results.
         """
 
