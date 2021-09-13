@@ -4,6 +4,7 @@ import logging
 import click
 
 from abc import ABC
+import pandas as pd
 
 from pymlst.common import mafft, exceptions
 from pymlst.wg.core import Extractor
@@ -90,25 +91,27 @@ class SequenceExtractor(Extractor):
 
 
 class TableExtractor(Extractor):
-
     def __init__(self,
-                 export='mlst',
-                 count=False,
+                 # export='mlst',
+                 # count=False,
                  mincover=0,
                  keep=False,
                  duplicate=False,
                  inverse=False):
-        self.export = export
-        self.count = count
+        # self.export = export
+        # self.count = count
         self.mincover = mincover
         self.keep = keep
         self.duplicate = duplicate
         self.inverse = inverse
 
+    @abc.abstractmethod
     def extract(self, base, output):
+        pass
+
+    def get_valid_shema(self, base):
         # read samples mlst
         strains = base.get_all_strains()
-
         # Minimun number of strain
         if self.mincover < 0 or self.mincover > len(strains):
             raise exceptions.PyMLSTError(
@@ -116,19 +119,15 @@ class TableExtractor(Extractor):
 
         # allgene
         allgene = base.get_core_genes()
-
         # duplicate gene
         dupli = base.get_duplicated_genes()
-
         # cover without duplication
         count_souches = base.count_souches_per_gene()
-
         # Count distinct gene
         diff = base.count_sequences_per_gene()
 
         # filter coregene that is not sufficient mincover or keep only different or return inverse
         valid_shema = []
-
         # Test different case for validation
         for gene in allgene:
             valid = []
@@ -159,48 +158,7 @@ class TableExtractor(Extractor):
 
         # report
         logging.info("Number of coregene used : %s/%s", len(valid_shema), len(allgene))
-
-        exporter = ExportType.get_type(self.export)
-
-        if exporter is None:
-            raise exceptions.UndefinedExportType(
-                'Unknown export type: {}'.format(self.export))
-
-        data = ExportData(valid_shema, strains, allgene, self.count, self.duplicate)
-        exporter.export(data, base, output)
-
-
-class ExportType(ABC):
-    @classmethod
-    def list_types(cls):
-        importlib.import_module('pymlst.wg.export_types')
-        return [exp.name() for exp in cls.__subclasses__()]
-
-    @classmethod
-    def get_type(cls, type_name):
-        importlib.import_module('pymlst.wg.export_types')
-        for type_cls in cls.__subclasses__():
-            if type_cls.name() is type_name:
-                return type_cls()
-        return None
-
-    @abc.abstractmethod
-    def export(self, data, base, output):
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def name():
-        return 'undefined'
-
-
-class ExportData:
-    def __init__(self, valid_schema, strains, all_genes, count, duplicate):
-        self.valid_schema = valid_schema
-        self.strains = strains
-        self.all_genes = all_genes
-        self.count = count
-        self.duplicate = duplicate
+        return(valid_shema)
 
 class TableExtractorCommand(click.core.Command):
     def __init__(self, *args, **kwargs):
@@ -218,3 +176,72 @@ class TableExtractorCommand(click.core.Command):
             is_flag=True,
             help='Keep only gene that do not ' \
                 'meet the filter of mincover or keep options.'))
+
+class GeneExtractor(TableExtractor):
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        
+    def extract(self, base, output):
+        valid_schema = super().get_valid_shema(base)
+        output.write("\n".join(sorted(valid_schema)) + "\n")
+
+class StatsExtractor(Extractor):
+    def extract(self, base, output):
+        output.write("Strains\t" + str(len(base.get_all_strains())) + "\n")
+        output.write("Coregenes\t" + str(len(base.get_core_genes())) + "\n")
+        output.write("Sequences\t" + str(base.count_sequences()) + "\n")
+
+class StrainExtractor(TableExtractor):
+    def __init__(self, count=False, **kwargs):
+        super().__init__(**kwargs)
+        self.count = count
+        
+    def extract(self, base, output):
+        if self.count is False:
+            output.write("\n".join(base.get_all_strains()) + "\n")
+        else:
+            tmp = base.count_genes_per_souche(super().get_valid_shema(base))
+            for strain in base.get_all_strains():
+                output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
+
+class DistanceExtractor(TableExtractor):    
+    def extract(self, base, output):
+        if self.duplicate:
+            logging.info("WARNINGS : Calculate distance between strains " +
+                         "using duplicate genes could reported bad result.")
+        strains = base.get_all_strains()
+        output.write(str(len(strains)) + "\n")
+        distance = base.get_strains_distances(super().get_valid_shema(base))
+        for strain in strains:
+            output.write(strain + "\t")
+            dist = [str(distance.get(strain, {}).get(s2, 0)) for s2 in strains]
+            output.write("\t".join(dist) + "\n")
+
+class MlstExtractor(TableExtractor):
+    def __init__(self, form="default", **kwargs):
+        super().__init__(**kwargs)
+        self.form = form
+
+    def extract(self, base, output):
+        valid_shema = super().get_valid_shema(base)
+        strains = base.get_all_strains()
+        mlst = base.get_mlst(valid_shema)
+        table = pd.DataFrame(columns=["#GeneId"] + strains)
+        for gene in valid_shema:
+            row = {"#GeneId": gene}
+            mlstg = mlst.get(gene, {})
+            for strain in strains:
+                row[strain] = mlstg.get(strain, None)
+            table = table.append(row, ignore_index=True)
+        table = table.set_index('#GeneId')
+        
+        if self.form == 'grapetree':
+            if self.duplicate:
+                logging.info("WARNINGS : Export grapetree table " +
+                             "using duplicate genes is not recommended.")
+            table = table.fillna(-1)
+            table = table.transpose()
+        else:
+            table = table.fillna("")
+        
+        table.to_csv(output, sep='\t')
