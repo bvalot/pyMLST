@@ -90,6 +90,16 @@ def clean_kwargs(kwargs):
             kwargs.pop(key)
     return kwargs
 
+def get_output(kwargs):
+    """Extract output from kwargs for extractor
+    """
+    if 'output' in kwargs:
+        out_kwargs = {'output': kwargs['output']}
+        kwargs.pop('output')
+    else:
+        out_kwargs = {}
+    return kwargs,out_kwargs
+
 
 def check_type(conn, mlst_type):
     inspector = inspect(conn)

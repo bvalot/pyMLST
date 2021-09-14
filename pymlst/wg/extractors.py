@@ -92,14 +92,10 @@ class SequenceExtractor(Extractor):
 
 class TableExtractor(Extractor):
     def __init__(self,
-                 # export='mlst',
-                 # count=False,
                  mincover=0,
                  keep=False,
                  duplicate=False,
                  inverse=False):
-        # self.export = export
-        # self.count = count
         self.mincover = mincover
         self.keep = keep
         self.duplicate = duplicate
@@ -207,7 +203,7 @@ class StrainExtractor(TableExtractor):
 class DistanceExtractor(TableExtractor):    
     def extract(self, base, output):
         if self.duplicate:
-            logging.info("WARNINGS : Calculate distance between strains " +
+            logging.warning("Calculate distance between strains " +
                          "using duplicate genes could reported bad result.")
         strains = base.get_all_strains()
         output.write(str(len(strains)) + "\n")
@@ -237,7 +233,7 @@ class MlstExtractor(TableExtractor):
         
         if self.form == 'grapetree':
             if self.duplicate:
-                logging.info("WARNINGS : Export grapetree table " +
+                logging.warnings("Export grapetree table " +
                              "using duplicate genes is not recommended.")
             table = table.fillna(-1)
             table = table.transpose()

@@ -18,18 +18,12 @@ def cli(database, **kwargs):
 
     database.close()
 
-    tab_kwargs = utils.clean_kwargs(kwargs)
-
-    if 'output' in tab_kwargs:
-        ext_kwargs = {'output': tab_kwargs['output']}
-        tab_kwargs.pop('output')
-    else:
-        ext_kwargs = {}
+    tab_kwargs,out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 
     try:
 
         with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
-            mlst.extract(GeneExtractor(**tab_kwargs), **ext_kwargs)
+            mlst.extract(GeneExtractor(**tab_kwargs), **out_kwargs)
 
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))
