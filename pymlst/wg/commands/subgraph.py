@@ -1,13 +1,12 @@
-"""find_subgraph CLI command file."""
+"""subgraph CLI command file."""
 
 import click
 
 from pymlst.common import utils, exceptions
 from pymlst.wg import core
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='find_subgraph',context_settings=CONTEXT_SETTINGS)
+@click.command(name='subgraph')
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output group files (default:stdout).')

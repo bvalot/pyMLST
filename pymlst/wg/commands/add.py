@@ -1,4 +1,4 @@
-"""add_strain CLI command file."""
+"""add CLI command file."""
 
 import os
 
@@ -7,9 +7,7 @@ import click
 import pymlst
 from pymlst.common import utils, exceptions
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-@click.command(name='add_strain',context_settings=CONTEXT_SETTINGS)
+@click.command(name='add')
 @click.option('--strain', '-s',
               type=click.STRING,
               help='Name of the strain (default:genome name).')

@@ -82,9 +82,11 @@ def print_version(ctx, param, value):
 py = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'common', 'commands'),
     'Common utility commands.')
+
 wg = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'wg', 'commands'),
     'Whole/Core genome MLST commands.')
+
 cla = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'cla', 'commands'),
     'Classical MLST commands.')

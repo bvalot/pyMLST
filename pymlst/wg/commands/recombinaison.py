@@ -1,13 +1,12 @@
-"""find_recombinaison CLI command file."""
+"""recombinaison CLI command file."""
 
 import click
 
 from pymlst.common import utils, exceptions
 from pymlst.wg import core
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='find_recombinaison',context_settings=CONTEXT_SETTINGS)
+@click.command(name='recombinaison')
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output number of variations by genes (default:stdout).')

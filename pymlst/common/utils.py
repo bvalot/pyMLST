@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from pathlib import Path
 
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
@@ -31,11 +32,11 @@ def write_genome(genome_dict, handle):
 
 
 def strip_file(file):
-    found = []
+    found = []  
     if file is not None:
-        for line in file.readLines():
+        for line in file:
             found.append(line.rstrip('\n'))
-    return []
+    return found
 
 
 def compar_seqs(seqs):

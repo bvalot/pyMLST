@@ -1,4 +1,4 @@
-"""create_db CLI command file."""
+"""create CLI command file."""
 
 import os
 import click
@@ -6,9 +6,7 @@ import click
 import pymlst
 from pymlst.common import exceptions
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-@click.command(name='create_db',context_settings=CONTEXT_SETTINGS)
+@click.command(name='create')
 @click.option('--concatenate', '-c',
               is_flag=True,
               help='Automatically concatenate genes with duplicated sequences.')
