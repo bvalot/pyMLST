@@ -110,3 +110,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+#Configuraiton file
+pymlst.conf
