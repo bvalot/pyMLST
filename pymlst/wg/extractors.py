@@ -25,6 +25,9 @@ def add_sequence_strain(seqs, strains, sequences):
             raise exceptions.PyMLSTError(
                 'Repeated genes must be excluded in order to export alignment')
 
+class MsaExtractor(Extractor):
+    pass
+
 class SequenceExtractor(Extractor):
 
     def __init__(self, gene_list=None, align=False, realign=False, mincover=1):
