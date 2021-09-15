@@ -471,9 +471,9 @@ class WholeGenomeMLST:
 
                 if not added:
                     if concatenate:
-                        logging.info("Concatenated gene %s", gene.id)
+                        logging.debug("Concatenated gene %s", gene.id)
                     elif remove:
-                        logging.info('Gene %s has duplicated sequence, removed', gene.id)
+                        logging.debug('Gene %s has duplicated sequence, removed', gene.id)
 
             if rc_genes:
                 logging.info('Reverse-complemented genes: %s', str(rc_genes))
