@@ -458,6 +458,7 @@ class WholeGenomeMLST:
                         rc_genes += 1
                     else:
                         invalid_genes += 1
+                        logging.debug("Skipped Invalid gene %s", gene.id)
                         continue
 
                 if concatenate:
