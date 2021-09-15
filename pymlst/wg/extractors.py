@@ -6,92 +6,85 @@ import click
 from abc import ABC
 import pandas as pd
 
-from pymlst.common import mafft, exceptions
+from pymlst.common import mafft, exceptions, utils
 from pymlst.wg.core import Extractor
 
 
-def add_sequence_strain(seqs, strains, sequences):
-    """Add a sequence to multi-align, take the first gene in case of repetition"""
-    size = 0
-    if len(seqs) > 0:
-        size = len(seqs[0][2])
-    for strain in strains:
-        seq = [i[2] for i in seqs if strain in i[1]]
-        if len(seq) == 0:
-            sequences.get(strain).append('-' * size)
-        elif len(seq) == 1:
-            sequences.get(strain).append(seq[0])
-        else:
-            raise exceptions.PyMLSTError(
-                'Repeated genes must be excluded in order to export alignment')
-
-class MsaExtractor(Extractor):
-    pass
+def read_gene_list(base, gene_file):
+    if gene_file is None:
+        return base.get_core_genes()
+    else:
+        return utils.strip_file(gene_file)
 
 class SequenceExtractor(Extractor):
 
-    def __init__(self, gene_list=None, align=False, realign=False, mincover=1):
-        self.list = gene_list
-        self.align = align
-        self.realign = realign
-        self.mincover = mincover
+    def __init__(self, list_file=None):
+        self.list_file = list_file
 
     def extract(self, base, output):
-        # Minimun number of strain
-        strains = base.get_all_strains()
-        if self.mincover < 1 or self.mincover > len(strains):
-            raise exceptions.PyMLSTError(
-                'Mincover must be between 1 and number of strains {}'.format(len(strains)))
-
-        #  Coregene
-        coregene = []
-        if self.list is not None:
-            coregene = [l.rstrip("\n") for l in iter(self.list.readline, '')]
-        else:
-            coregene = [gene for gene, nb in base.count_souches_per_gene().items() if nb >= self.mincover]  # TODO : to verify
-
+        coregene = read_gene_list(base, self.list_file)
         logging.info("Number of gene to analyse : %s", len(coregene))
+        for gene in coregene:
+            seqs = base.get_gene_sequences(gene)
+            for seq in seqs:
+                output.write(">" + gene + "|" + str(seq[0]) + " "
+                             + ";".join(seq[1]) + "\n")
+                output.write(seq[2] + "\n")
+        
+        
+class MsaExtractor(Extractor):
 
-        if self.align is False:
-            # no multialign
-            for gene in coregene:
-                seqs = base.get_gene_sequences(gene)
+    def __init__(self, list_file=None, realign=False):
+        self.list_file = list_file
+        self.realign = realign
+
+    def extract(self, base, output):
+        coregene = read_gene_list(base, self.list_file)
+        strains = base.get_all_strains()
+        duplicated = base.get_duplicated_genes()
+
+        sequences = {s: [] for s in strains}
+        for index, gene in enumerate(coregene):
+            if gene in duplicated:
+                logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "No: Repeat gene")
+                continue
+            seqs = base.get_gene_sequences(gene)
+            size = set()
+            for seq in seqs:
+                size.add(len(seq[2]))
+            if len(size) == 1 and self.realign is False:
+                self.add_sequence_strain(seqs, strains, sequences)
+                logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Direct")
+            else:
+                genes = {str(s[0]): s[2] for s in seqs}
+                corrseqs = mafft.align(genes)
                 for seq in seqs:
-                    output.write(">" + gene + "|" + str(seq[0]) + " "
-                                 + ";".join(seq[1]) + "\n")
-                    output.write(seq[2] + "\n")
-        else:
-            # multialign
-            # search duplicate
-            duplicated = base.get_duplicated_genes()
-            # for dupli in duplicated:
-            #     logging.info('Duplicated: ', dupli)
+                    seq[2] = corrseqs.get(str(seq[0]))
+                self.add_sequence_strain(seqs, strains, sequences)
+                logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Align")
 
-            sequences = {s: [] for s in strains}
-            for index, gene in enumerate(coregene):
-                if gene in duplicated:
-                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "No: Repeat gene")
-                    continue
-                seqs = base.get_gene_sequences(gene)
-                size = set()
-                for seq in seqs:
-                    size.add(len(seq[2]))
-                if len(size) == 1 and self.realign is False:
-                    add_sequence_strain(seqs, strains, sequences)
-                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Direct")
-                else:
-                    genes = {str(s[0]): s[2] for s in seqs}
-                    corrseqs = mafft.align(genes)
-                    for seq in seqs:
-                        seq[2] = corrseqs.get(str(seq[0]))
-                    add_sequence_strain(seqs, strains, sequences)
-                    logging.info("%s/%s | %s     %s", index + 1, len(coregene), gene, "Align")
+        # output align result
+        for strain in strains:
+            output.write('>' + strain + "\n")
+            output.write("\n".join(map(str, sequences.get(strain))) + "\n")
 
-            # output align result
-            for strain in strains:
-                output.write('>' + strain + "\n")
-                output.write("\n".join(map(str, sequences.get(strain))) + "\n")
+    def add_sequence_strain(self, seqs, strains, sequences):
+        """Add a sequence to multi-align, take the first gene in case of repetition"""
+        size = 0
+        if len(seqs) > 0:
+            size = len(seqs[0][2])
+        for strain in strains:
+            seq = [i[2] for i in seqs if strain in i[1]]
+            if len(seq) == 0:
+                sequences.get(strain).append('-' * size)
+            elif len(seq) == 1:
+                sequences.get(strain).append(seq[0])
+            else:
+                raise exceptions.PyMLSTError(
+                    'Repeated genes must be excluded in order to export alignment')
 
+
+            
 
 class TableExtractor(Extractor):
     def __init__(self,
