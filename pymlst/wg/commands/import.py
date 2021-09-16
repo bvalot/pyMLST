@@ -12,16 +12,19 @@ from pymlst.common import utils, web, exceptions
 
 
 @click.command(name='import')
+@click.option('--force', '-f',
+              is_flag=True,
+              help='Override alrealdy existing DATABASE')
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
                    'choices are found, fail instead.')
 @click.argument('database',
-                type=click.File('w'))
+                type=click.Path(exists=False))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
-def cli(prompt, database, species):
+def cli(force, prompt, database, species):
     """Create a wgMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
@@ -30,6 +33,12 @@ def cli(prompt, database, species):
 
     try:
 
+        if os.path.exists(database):
+            if force:
+                open(database, "w").close()
+            else:
+                raise exceptions.PyMLSTError("Database alreadly exists, use --force to override it")
+        
         url = web.retrieve_cgmlst(' '.join(species), prompt)
 
         if url is None:
@@ -45,7 +54,7 @@ def cli(prompt, database, species):
             if len(skipped) > 0:
                 logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))
 
-            with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+            with pymlst.open_wg(os.path.abspath(database)) as mlst:
                 mlst.create(tmp.name)
 
     except requests.exceptions.HTTPError:
