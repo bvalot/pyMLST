@@ -11,15 +11,22 @@ from pymlst.wg.core import Extractor
 
 
 def read_gene_list(base, gene_file):
+    core = base.get_core_genes()
     if gene_file is None:
-        return base.get_core_genes()
+        return core
     else:
-        return utils.strip_file(gene_file)
+        select = []
+        for g in utils.strip_file(gene_file):
+            if g in core:
+                select.add(g)
+            else:
+                logging.debug("Gene {} not found in the database".format(g))
+        return select
 
 class SequenceExtractor(Extractor):
 
-    def __init__(self, list_file=None):
-        self.list_file = list_file
+    def __init__(self, file=None):
+        self.list_file = file
 
     def extract(self, base, output):
         coregene = read_gene_list(base, self.list_file)
@@ -34,12 +41,14 @@ class SequenceExtractor(Extractor):
         
 class MsaExtractor(Extractor):
 
-    def __init__(self, list_file=None, realign=False):
-        self.list_file = list_file
+    def __init__(self, file=None, realign=False):
+        self.list_file = file
         self.realign = realign
 
     def extract(self, base, output):
         coregene = read_gene_list(base, self.list_file)
+        if len(coregene) == 0:
+            raise exceptions.PyMLSTError('No valid genes selected, verify your genes list')
         strains = base.get_all_strains()
         duplicated = base.get_duplicated_genes()
 

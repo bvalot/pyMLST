@@ -13,7 +13,7 @@ from pymlst.wg.extractors import SequenceExtractor
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output result in fasta format (default:stdout).')
-@click.option('--list_file', '-l',
+@click.option('--file', '-f',
               type=click.File('r'),
               help='File containing list of coregenes to extract (default:all coregenes).')
 @click.argument('database',
