@@ -10,15 +10,13 @@ from pymlst.wg.extractors import StatsExtractor
 
 @click.command(name='stats')
 
-@click.argument('database', type=click.File('r'))
+@click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
     """Extract stats from a wgMLST DATABASE."""
 
-    database.close()
-    
     try:
 
-        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_wg(os.path.abspath(database)) as mlst:
             mlst.extract(StatsExtractor())
 
     except exceptions.PyMLSTError as err:

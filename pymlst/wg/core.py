@@ -600,7 +600,7 @@ class WholeGenomeMLST:
             if self.__database.remove_gene(gene):
                 logging.info("%s : OK", gene)
             else:
-                logging.info("%s : Not found", gene)
+                logging.warning("%s : Not found", gene)
 
     def remove_strain(self, strains, file=None):
         """Removes entire strains from the database.
@@ -624,7 +624,7 @@ class WholeGenomeMLST:
             if self.__database.remove_strain(strain):
                 logging.info("%s : OK", strain)
             else:
-                logging.info("%s : Not found", strain)
+                logging.warning("%s : Not found", strain)
 
     def extract(self, extractor, output=sys.stdout):
         """Takes an extractor object and writes the extraction result on the given output.

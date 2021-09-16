@@ -18,18 +18,16 @@ from pymlst.common import utils, exceptions
               type=click.FLOAT,
               help='Minimum coverage to search gene (default=0.9).')
 @click.argument('database',
-                type=click.File("r"))
+                type=click.Path(exists=True))
 @click.argument('genome',
                 type=click.File("r"))
 
 def cli(genome, database, **kwargs):
     """Add a strain GENOME to the wgMLST DATABASE."""
 
-    database.close()
-
     try:
 
-        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_wg(os.path.abspath(database)) as mlst:
             mlst.add_strain(genome, **utils.clean_kwargs(kwargs))
 
     except exceptions.PyMLSTError as err:

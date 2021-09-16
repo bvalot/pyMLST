@@ -17,17 +17,15 @@ from pymlst.wg.extractors import SequenceExtractor
               type=click.File('r'),
               help='File containing list of coregenes to extract (default:all coregenes).')
 @click.argument('database',
-                type=click.File('r'))
+                type=click.Path(exists=True))
 def cli(database, **kwargs):
     """Extract sequences from a wgMLST DATABASE."""
-
-    database.close()
 
     seq_kwargs, out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 
     try:
 
-        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_wg(os.path.abspath(database)) as mlst:
             mlst.extract(SequenceExtractor(**seq_kwargs), **out_kwargs)
 
     except exceptions.PyMLSTError as err:

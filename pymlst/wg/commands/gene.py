@@ -12,17 +12,15 @@ from pymlst.wg.extractors import GeneExtractor, TableExtractorCommand
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Export MLST table to (default=stdout).')
-@click.argument('database', type=click.File('r'))
+@click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
     """Extract an genes list from a wgMLST DATABASE."""
-
-    database.close()
 
     tab_kwargs,out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 
     try:
 
-        with pymlst.open_wg(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_wg(os.path.abspath(database)) as mlst:
             mlst.extract(GeneExtractor(**tab_kwargs), **out_kwargs)
 
     except exceptions.PyMLSTError as err:
