@@ -1,0 +1,45 @@
+<tool id="mlst_remove_gene_wrapper" name="Remove gene to database" version="0.1">
+  <description></description>
+  <version_command>$__tool_directory__/mlst_remove_gene.py -v</version_command>
+  <command>
+    $__tool_directory__/mlst_remove_gene.py
+	#if str($genes)
+	  -g '$genes'
+	#end if
+	#if str($lists) != 'None'
+	  -l '$lists'
+	#end if
+	'$database' &amp;> $logfile
+  </command>
+
+  <inputs>
+	<param name="database" type="data"
+		   format="wgmlstsqlite"
+		   label="Sqlite database to stock MLST"
+		   help="Sqlite format" />
+	<param name="lists" type="data"
+		   format="txt" optional="true"
+		   label="List of genes to removed on the wgMLST database"
+		   help="Txt format" />
+     <param name="genes" type="text" value="" optional="true" size="50"
+		   label="List of genes to removed on the wgMLST database"
+		   help="Separated each genes by a space"/>
+  </inputs>
+  <outputs>
+    <data name="logfile" format="txt" label="Remove genes on ${database.name} : log" />
+  </outputs>
+  <tests>
+  </tests>
+  <stdio>
+    <exit_code range="1:" level="fatal" />
+  </stdio>
+  <help>
+**What it does**
+
+Remove strains to an wgMLST database and sequences specificaly associated.
+
+**License and citation**
+
+This Galaxy tool is Copyright © 2018 `B. Valot` and is released under the `GPL3 license`.
+  </help>
+</tool>

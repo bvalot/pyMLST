@@ -1,0 +1,82 @@
+<tool id="mlst_extract_table_wrapper" name="Extract result to database" version="0.1">
+  <description></description>
+  <version_command>$__tool_directory__/mlst_extract_table.py -v</version_command>
+  <command>
+    $__tool_directory__/mlst_extract_table.py
+	-o '$output'
+	-e $export_result.export
+    #if str($mincover)
+      -m $mincover
+    #end if
+    #if $keep
+      -k
+    #end if
+    #if $inverse
+      -V
+    #end if
+    #if $duplicate
+      -d
+    #end if
+    #if $export_result.export == "strain"
+	  #if $export_result.count
+        -c
+	  #end if
+    #end if
+	'$database' 2> /dev/null
+  </command>
+
+  <inputs>
+    <param name="database" type="data"
+		   format="wgmlstsqlite"
+		   label="Sqlite database to stock MLST"
+		   help="Sqlite format" />
+	<conditional name="export_result">
+	  <param name="export" type="select" label="Select the data export">
+		<option value="mlst">MLST table for each strain</option>
+		<option value="distance">Distance matrix between strains on the wgMLST database</option>
+		<option value="strain">List of the strains on the wgMLST database</option>
+		<option value="gene">List of the genes on the wgMLST database</option>
+		<option value="stat">Statistic of the wgMLST database</option>
+      </param>
+	  <when value="strain">
+		<param name="count" type="boolean" checked="false"
+			   label="Report the number of gene found for each strain" />
+	  </when>
+	</conditional>
+	<param name="mincover" type="integer" value="0"
+		   optional="true"
+		   label="Minimun number of strain found to conserved a gene" />
+	<param name="keep" type="boolean" checked="false"
+		   label="Keep only gene with different allele" help="Omit missing" />
+   <param name="duplicate" type="boolean" checked="false"
+		   label="Conserve duplicate gene (default remove)" />
+	<param name="inverse" type="boolean" checked="false"
+		   label="Conserved only gene that not pass filter of mincover or keep options" />
+  </inputs>
+  <outputs>
+    <data name="output" format="txt" label="Extract ${export_result.export} on ${database.name}">
+      <change_format>
+        <when input="export_result.export" value="mlst" format="tabular" />
+        <when input="export_result.export" value="distance" format="txt" />
+        <when input="export_result.export" value="strain" format="tabular" />
+        <when input="export_result.export" value="gene" format="txt" />
+        <when input="export_result.export" value="stat" format="tabular" />
+      </change_format>
+    </data>
+  </outputs>
+  <tests>
+  </tests>
+  <stdio>
+    <exit_code range="1:" level="fatal" />
+  </stdio>
+  <help>
+**What it does**
+
+Extract result from an wgMLST database.
+
+**License and citation**
+
+This Galaxy tool is Copyright © 2018 `B. Valot` and is released under the `GPL3 license`.
+
+  </help>
+</tool>

@@ -1,0 +1,40 @@
+<tool id="mlst_remove_strain_wrapper" name="Remove strain to database" version="0.1">
+  <description></description>
+  <version_command>$__tool_directory__/mlst_remove_strain.py -v</version_command>
+  <command>
+    $__tool_directory__/mlst_remove_strain.py '$database' '$strains' &amp;> $logfile
+  </command>
+
+  <inputs>
+	<param name="database" type="data"
+		   format="wgmlstsqlite"
+		   label="Sqlite database to stock MLST"
+		   help="Sqlite format" />
+     <param name="strains" type="text" value="" optional="false" size="50"
+		   label="Name of strains to removed from database"
+		   help="Separated each strains by a space and quote strain with space"/>
+  </inputs>
+  <outputs>
+    <data name="logfile" format="txt" label="Remove strain on ${database.name} : log" />
+  </outputs>
+  <tests>
+  </tests>
+  <stdio>
+    <exit_code range="1:" level="fatal" />
+  </stdio>
+  <help>
+**What it does**
+
+Remove strain to an wgMLST database and sequences specificaly associated.
+
+**Examples**
+
+Strain 1
+
+b6h-42
+
+**License and citation**
+
+This Galaxy tool is Copyright © 2018 `B. Valot` and is released under the `GPL3 license`.
+  </help>
+</tool>

@@ -1,0 +1,64 @@
+<tool id="mlst_extract_sequence_wrapper" name="Export multiple fasta from a database" version="0.1">
+  <description></description>
+  <requirements>
+	<requirement type="package" version="7.3">mafft</requirement>
+	<requirement type="python-module" version="1.68">biopython</requirement>
+  </requirements>
+  <version_command>$__tool_directory__/mlst_extract_sequence.py -v</version_command>
+  <command>
+    $__tool_directory__/mlst_extract_sequence.py
+	--align
+	-o $output
+    #if $genes
+      -l '$genes'
+    #end if
+    #if str($mincover)
+      -m $mincover
+    #end if
+    #if $realign
+      -r
+    #end if
+	'$database' &amp;> $logfile
+  </command>
+
+  <inputs>
+    <param name="database" type="data"
+		   format="wgmlstsqlite"
+		   label="Sqlite database containing wgMLST"
+		   help="Sqlite format" />
+    <param name="genes" type="data"
+		   format="txt"
+		   label="List of genes to export"
+		   help="txt format"
+		   optional="true" />
+	<param name="realign" type="boolean" checked="false"
+		   label="Realign gene with same length (Default:No)" />
+    <param name="mincover" type="integer" value="1" optional="true"
+		   label="Minimun number of strain found to keep a coregene" />
+  </inputs>
+  <outputs>
+    <data name="logfile" format="txt" label="MultipleFasta on ${database.name} : log" />
+	<data name="output" format="fasta" label="MultipleFasta on ${database.name} : Fasta" />
+  </outputs>
+  <tests>
+  </tests>
+  <stdio>
+    <exit_code range="1:" level="fatal" />
+  </stdio>
+  <help>
+**What it does**
+
+Export multiple alignement sequence from an wgMLST database.
+The result can be used for downstream analysis of phylogeny.
+
+**License and citation**
+
+This Galaxy tool is Copyright © 2019 `B. Valot` and is released under the `GPL3 license`.
+
+This tool uses `MAFFT`_, which is licensed separately. Please cite |Katoh2013|_.
+
+.. _MAFFT: https://mafft.cbrc.jp/alignment/software/
+.. |Katoh2013| replace:: Katoh, Standley (2013). MAFFT multiple sequence alignment software version 7: improvements in performance and usability. Molecular Biology and Evolution 30:772-780.
+.. _Katoh2013: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3603318/ 
+  </help>
+</tool>
