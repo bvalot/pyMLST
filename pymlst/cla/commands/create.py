@@ -1,4 +1,4 @@
-"""create_db CLI command file."""
+"""create CLI command file."""
 
 import os
 import click
@@ -7,7 +7,7 @@ import pymlst
 from pymlst.common import exceptions
 
 
-@click.command(name='create_db')
+@click.command(name='create')
 
 @click.argument('database',
                 type=click.File('w'))

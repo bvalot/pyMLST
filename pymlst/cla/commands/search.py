@@ -1,4 +1,4 @@
-"""search_ST CLI command file."""
+"""search CLI command file."""
 
 import os
 
@@ -8,7 +8,7 @@ import pymlst
 from pymlst.common import utils, exceptions
 
 
-@click.command(name='search_ST')
+@click.command(name='search')
 @click.option('--identity', '-i',
               type=click.FLOAT,
               help='Minimum identity to search gene (default=0.9).')
