@@ -14,9 +14,8 @@ import pymlst
 from pymlst.common import web, exceptions
 from pymlst.common import utils
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='import',context_settings=CONTEXT_SETTINGS)
+@click.command(name='import')
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
@@ -26,16 +25,17 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               default='',
               help='Specify the desired MLST scheme name.')
 @click.argument('database',
-                type=click.File('w'))
+                type=click.Path(exists=True))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
+
+
 def cli(prompt, mlst, database, species):
     """Create a claMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
 
-    database.close()
     utils.create_logger()
 
     try:
@@ -49,7 +49,7 @@ def cli(prompt, mlst, database, species):
         logging.info('Downloading mlst...')
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
-                pymlst.open_cla(os.path.abspath(database.name)) as mlst_db:
+                pymlst.open_cla(os.path.abspath(database)) as mlst_db:
 
             web.get_mlst_files(url, tmp_dir)
 

@@ -7,24 +7,23 @@ import pymlst
 from pymlst.common import exceptions
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-@click.command(name='create_db',context_settings=CONTEXT_SETTINGS)
+@click.command(name='create_db')
 
 @click.argument('database',
                 type=click.File('w'))
 @click.argument('scheme',
-                type=click.File('r'))
+                type=click.Path(exists=True))
 @click.argument('alleles',
                 type=click.File('r'), nargs=-1, required=True)
+
+
 def cli(database, scheme, alleles):
     """Create a classical MLST DATABASE from a SCHEME csv and ALLELES files."""
 
-    database.close()
 
     try:
 
-        with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_cla(os.path.abspath(database)) as mlst:
             mlst.create(scheme, alleles)
 
     except exceptions.PyMLSTError as err:

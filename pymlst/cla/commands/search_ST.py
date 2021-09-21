@@ -7,9 +7,8 @@ import click
 import pymlst
 from pymlst.common import utils, exceptions
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.command(name='search_ST',context_settings=CONTEXT_SETTINGS)
+@click.command(name='search_ST')
 @click.option('--identity', '-i',
               type=click.FLOAT,
               help='Minimum identity to search gene (default=0.9).')
@@ -23,18 +22,18 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               type=click.File('w'),
               help='Write ST search result to (default:stdout).')
 @click.argument('database',
-                type=click.File('r'))
+                type=click.Path(exists=True))
 @click.argument('genome',
                 type=click.File('r'))
+
 
 def cli(genome, database, **kwargs):
     """Search ST number for an assembly GENOME using an mlst DATABASE."""
 
-    database.close()
 
     try:
 
-        with pymlst.open_cla(os.path.abspath(database.name)) as mlst:
+        with pymlst.open_cla(os.path.abspath(database)) as mlst:
             mlst.search_st(genome, **utils.clean_kwargs(kwargs))
 
     except exceptions.PyMLSTError as err:
