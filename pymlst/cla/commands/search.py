@@ -23,18 +23,16 @@ from pymlst.common import utils, exceptions
               help='Write ST search result to (default:stdout).')
 @click.argument('database',
                 type=click.Path(exists=True))
-@click.argument('genome',
-                type=click.File('r'))
+@click.argument('genomes',
+                type=click.File('r'), nargs=-1)
 
 
-def cli(genome, database, **kwargs):
+def cli(genomes, database, **kwargs):
     """Search ST number for an assembly GENOME using an mlst DATABASE."""
-
-
+    
     try:
-
         with pymlst.open_cla(os.path.abspath(database)) as mlst:
-            mlst.search_st(genome, **utils.clean_kwargs(kwargs))
-
+            mlst.multi_search(genomes, **utils.clean_kwargs(kwargs))
+                
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))

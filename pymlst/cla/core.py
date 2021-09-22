@@ -1,11 +1,13 @@
 """Core classes and functions to work with Classical MLST data."""
 
+from io import TextIOWrapper
 import logging
 import os
 import re
 import sys
 
 from Bio import SeqIO
+from alembic.command import heads
 from decorator import contextmanager
 
 from sqlalchemy import and_
@@ -159,7 +161,7 @@ class ClassicalMLST:
                 db.create(open('scheme.txt'), [open('gene1.fasta'),
                                                open('gene2.fasta'),
                                                open('gene3.fasta')])
-                db.search_st(open('genome.fasta'))
+                db.multi_search(open('genome.fasta'))
         """
 
     def __init__(self, file, ref):
@@ -238,7 +240,7 @@ class ClassicalMLST:
 
             logging.info('Database initialized')
 
-    def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+    def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None):
         """Search the **Sequence Type** number of a strain.
 
         :param genome: The strain genome we want to add as a `fasta`_ file.
@@ -246,8 +248,8 @@ class ClassicalMLST:
                          for sequences research (in percent).
         :param coverage: Sets the minimum accepted coverage for found sequences.
         :param fasta: A file where to export genes alleles results in a fasta format.
-        :param output: An output for the sequence type research results.
         """
+
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
 
@@ -259,8 +261,13 @@ class ClassicalMLST:
             core_genome = self.__database.core_genome
             tmpfile.close()
 
+            sorted_genes = [gene for gene in core_genome]
+            sorted_genes.sort()
+            genome_name = os.path.basename(genome.name).split('.')[0]
+
             # BLAT analysis
-            logging.info("Search coregene with BLAT")
+            #logging.info("Search coregene with BLAT")
+            logging.info("Search coregene with BLAT for %s", str(genome_name))
             genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
             logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
@@ -303,7 +310,7 @@ class ClassicalMLST:
 
                     # write fasta file with coregene
                     if fasta is not None:
-                        fasta.write(">" + core_gene + "\n")
+                        fasta.write(">" + genome_name + "|" + core_gene + "\n" )
                         fasta.write(sequence + "\n")
 
                     # search allele
@@ -330,23 +337,29 @@ class ClassicalMLST:
                         else:
                             tmp = tmp.intersection(st_value)
                 st_val = list(tmp)
-
-            # print result
-
-            sorted_genes = [gene for gene in core_genome]
-            sorted_genes.sort()
-
-            output.write("Sample\tST\t" + "\t".join(sorted_genes) + "\n")
-            output.write(genome.name + "\t" + ";".join(map(str, st_val)))
-            for gene in sorted_genes:
-                output.write("\t" + ";".join(map(str, allele.get(gene))))
-            output.write("\n")
-            logging.info("FINISH")
+                
+            return ST_result(genome_name, st_val, allele)
+        
         finally:
             if os.path.exists(tmpfile.name):
                 os.remove(tmpfile.name)
             if os.path.exists(tmpout.name):
                 os.remove(tmpout.name)
+                
+                
+    def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+        
+        """Search the **Sequence Type** number of strain(s)    
+        :param genomes: Tuple of one or multiple strain given as input
+        :param output: An output for the sequence type research results.
+        """
+        header = True
+        for genome in genomes:
+            res = self.search_st(genome, identity, coverage, fasta)
+            res.write(output, header)
+            if header:
+                header=False
+        logging.info("FINISH")       
 
     def __create_core_genome_file(self, tmpfile):
         core_genome = self.__database.core_genome
@@ -355,3 +368,35 @@ class ClassicalMLST:
 
     def close(self):
         self.__database.close()
+
+
+class ST_result:
+    """ Writing the results of the ST research"""
+    
+    def __init__(self,genome_name, st_val, alleles):
+        """
+        :param genome_name: Name of the genome retrieved from the path provided by the user
+        :param st_val:  ST values identified for each genome by search_st
+        :param alleles: Alleles of the strain recovered in the core genome
+        """
+        self.name = genome_name
+        self.st = st_val
+        self.alleles = alleles
+        
+    def write(self,output=sys.stdout, header=True):
+        """Writing the results in output file"""
+        genes = self.sort_genes()
+        if header:
+            output.write("Sample\tST\t" + "\t".join(genes) + "\n")
+        towrite = [self.name]
+        towrite.append(self.__str_list(self.st))
+        towrite.extend([self.__str_list(self.alleles.get(g, "")) for g in genes])
+        output.write("\t".join(towrite) + "\n")
+    
+    def sort_genes(self):
+        genes =  list(self.alleles.keys())
+        genes.sort()
+        return genes
+        
+    def __str_list(self,l):
+        return ";".join(map(str, l))
