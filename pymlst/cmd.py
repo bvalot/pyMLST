@@ -25,11 +25,7 @@ class PyMlstCommand(click.MultiCommand):
         opt_version = Option(['--version', '-v'], is_flag=True, callback=print_version,
                              expose_value=False, is_eager=True,
                              help='Prints PyMLST version.')
-        opt_debug = Option(['--debug', '-d'], is_flag=True, callback=set_debug,
-                           expose_value=False, is_eager=False,
-                           help='Sets the debug mode ON.')
         self.params.append(opt_version)
-        self.params.append(opt_debug)
         self.context_settings.update(opt_help)
         self.help = help_msg
         self.path = path
@@ -59,14 +55,6 @@ class PyMlstCommand(click.MultiCommand):
             raise click.ClickException(
                 'Unknown sub-command \'{}\''.format(name))
         return name_scope['cli']
-
-
-def set_debug(ctx, param, value):
-    """Raises the logging verbosity to give more information to the script user."""
-    del param
-    if not value or ctx.resilient_parsing:
-        return
-    utils.create_logger(verbose=True)
 
 
 def print_version(ctx, param, value):

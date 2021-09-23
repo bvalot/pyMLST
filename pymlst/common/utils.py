@@ -64,11 +64,16 @@ def validate_sequence(sequence):
         return True
 
 
-def create_logger(verbose=False):
-    if verbose:
+def create_logger():
+    log = config.get_logging_level()
+    if log == "DEBUG":
         level = logging.DEBUG
-    else:
+    elif log == "INFO":
         level = logging.INFO
+    elif log == "WARNING":
+        level = logging.WARNING
+    else:
+        level = logging.ERROR
     logging.basicConfig(
         level=level,
         format='[%(levelname)s: %(asctime)s] %(message)s')
