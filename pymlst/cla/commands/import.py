@@ -16,6 +16,9 @@ from pymlst.common import utils
 
 
 @click.command(name='import')
+@click.option('--force', '-f',
+              is_flag=True,
+              help='Override alrealdy existing DATABASE')
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
@@ -31,7 +34,7 @@ from pymlst.common import utils
                 nargs=-1)
 
 
-def cli(prompt, mlst, database, species):
+def cli(force, prompt, mlst, database, species):
     """Create a claMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
@@ -39,6 +42,12 @@ def cli(prompt, mlst, database, species):
     utils.create_logger()
 
     try:
+
+        if os.path.exists(database):
+            if force:
+                open(database, "w").close()
+            else:
+                raise exceptions.PyMLSTError("Database alreadly exists, use --force to override it")
 
         url = web.retrieve_mlst(' '.join(species), prompt, mlst)
 

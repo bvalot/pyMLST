@@ -65,10 +65,10 @@ def process_results(choices, query, prompt):
     if choices_length == 0:
         raise PyMLSTWebError('No result found for \'{}\'\n'.format(query))
     if choices_length == 1:
-        logging.info("One species found : {}".format(choices[0]))
+        logging.info("One element found : {}".format(choices[0]))
         return choices[0]
     if prompt:
-        logging.info("{} species found, please choose one:".format(str(len(choices))))       
+        logging.info("{} elements found, please choose one:".format(str(len(choices))))       
         return display_prompt('({}) Results found'.format(choices_length),
                               choices)
     raise PyMLSTWebError('More than 1 result found for \'{}\'\n'.format(query))

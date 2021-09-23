@@ -94,11 +94,11 @@ class DatabaseCLA:
 
     def add_mlst(self, sequence_typing, gene, allele):
         """Adds a new sequence typing, associated to a gene and an allele."""
-        sequence = self.get_sequence_by_gene_and_allele(gene, allele)
-        if sequence is None:
-            raise exceptions.AlleleSequenceNotFound(
-                'No sequence found for allele {} of gene {}'
-                .format(allele, gene))
+        # sequence = self.get_sequence_by_gene_and_allele(gene, allele)
+        # if sequence is None:
+        #     raise exceptions.AlleleSequenceNotFound(
+        #         'No sequence found for allele {} of gene {}'
+        #         .format(allele, gene))
         self.connection.execute(
             model.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
@@ -204,18 +204,19 @@ class ClassicalMLST:
                                 "correspond to the number of fasta file\n"
                                 + " ".join(header) + "\n")
             fastas = {}
-            for file in alleles:
-                name = file.name.split("/")[-1]
+            for fi in alleles:
+                name = fi.name.split("/")[-1]
                 name = name[:name.rfind(".")]
                 if name not in header:
                     raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
-                fastas[name] = file
+                fastas[name] = fi
 
             # load sequence allele
             alleles = {}
-            for gene, file in fastas.items():
+            for gene, fi in fastas.items():
+                logging.debug("Read sequence from %s", fi.name)
                 alleles[gene] = set()
-                for seq in SeqIO.parse(file, 'fasta'):
+                for seq in SeqIO.parse(fi, 'fasta'):
                     try:
                         match = re.search('[0-9]+$', seq.id)
                         allele = int(match.group(0))
@@ -226,12 +227,13 @@ class ClassicalMLST:
                     alleles.get(gene).add(allele)
 
             # load MLST sheme
+            logging.debug("Load schema %s", scheme.name)
             for line in scheme:
                 line_content = line.rstrip("\n").split("\t")
                 sequence_typing = int(line_content[0])
                 for gene, allele in zip(header[1:], line_content[1:]):
                     if int(allele) not in alleles.get(gene):
-                        logging.info(
+                        logging.warning(
                             "Unable to find the allele number %s"
                             " for gene %s; skipped", str(allele), gene)
                         ##self.__database.add_mlst(sequence_typing, gene, 0)
