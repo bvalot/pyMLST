@@ -5,7 +5,7 @@
 This file is used to create the package we'll publish to PyPI.
 
 .. currentmodule:: setup.py
-.. moduleauthor:: benoit_valot <benoit.valot@univ-fcomte.fr>
+.. moduleauthor:: Benoit Valot <benoit.valot@univ-fcomte.fr>
 """
 
 import importlib.util
@@ -44,6 +44,7 @@ setup(
     name='PyMLST',
     description="python Mlst Local Search Tool",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     version=version,
@@ -70,17 +71,17 @@ setup(
     wgMLST=pymlst.cmd:wg
     claMLST=pymlst.cmd:cla
     """,
-    python_requires=">=0.0.1",
+    python_requires=">=3.7.0",
     license='GPLv3',  # noqa
-    author='benoit_valot',
+    author='Benoit Valot',
     author_email='benoit.valot@univ-fcomte.fr',
     # Use the URL to the github repo.
-    url='http://chrono-galaxy:3000/augustin/PyMLSTPackage.git',
+    url='https://github.com/bvalot/pyMLST.git',
     download_url=(
-        f'http://chrono-galaxy:3000/augustin/'
-        f'pymlst/archive/{version}.tar.gz'
+        f'https://github.com/bvalot/pyMLST/releases/tag/{version}.tar.gz'
     ),
     keywords=[
+        'cgMLST', 'MLST', 'bacterial genome'
         # Add package keywords here.
     ],
     # See https://PyPI.python.org/PyPI?%3Aaction=list_classifiers
@@ -89,7 +90,7 @@ setup(
       #   3 - Alpha
       #   4 - Beta
       #   5 - Production/Stable
-      'Development Status :: 3 - Alpha',
+      'Development Status :: 5 - Production/Stable',
 
       # Indicate who your project is intended for.
       'Intended Audience :: Developers',
@@ -101,7 +102,7 @@ setup(
         # noqa
       # Specify the Python versions you support here. In particular, ensure
       # that you indicate whether you support Python 2, Python 3 or both.
-      'Programming Language :: Python :: 3.6',
+      'Programming Language :: Python :: 3.7',
     ],
     include_package_data=True
 )

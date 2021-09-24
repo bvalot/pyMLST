@@ -84,10 +84,10 @@ def test_add_mlst(db):
     assert len(db.core_genome) == 0
 
 
-def test_add_mlst_no_sequence(db):
-    db.add_sequence('AAA', 'g1', 1)
-    with pytest.raises(exceptions.AlleleSequenceNotFound):
-        db.add_mlst(5, 'g1', 2)
+# def test_add_mlst_no_sequence(db):
+#     db.add_sequence('AAA', 'g1', 1)
+#     with pytest.raises(exceptions.AlleleSequenceNotFound):
+#         db.add_mlst(5, 'g1', 2)
 
 
 def test_add_mlst_reference(db):
