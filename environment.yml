@@ -1,0 +1,3 @@
+name: pymlst
+dependencies:
+  - python=3.6

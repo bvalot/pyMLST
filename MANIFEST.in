@@ -1,0 +1,7 @@
+include pymlst/data/alembic/alembic.ini
+include pymlst/data/alembic/wg/env.py
+include pymlst/data/alembic/wg/script.py.mako
+include pymlst/data/alembic/wg/versions/*.py
+include pymlst/data/alembic/cla/env.py
+include pymlst/data/alembic/cla/script.py.mako
+include pymlst/data/alembic/cla/versions/*.py
