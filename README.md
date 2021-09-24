@@ -15,6 +15,15 @@ In comparaison to other tools, it uses a local sqlite database to store allele s
 This allows to iteratively enlarge the collection of strains to compare. 
 The entry is a draft genome produced by an assembler, but also other genomes store in sequence database.
 
+## New version
+This V2 version of pyMLST offers:
+
+- An automatic import database mechanism to initiated cgMLST and MLST databases.
+- A new process to fill incomplet genes using MAFFT alignment.
+- A more complete command line interface with a sub-command system.
+- A configuration file for defined PATH to external tools.
+- An easy installation with pypi repository.
+
 
 ## Installation
 ### From pypi repository
@@ -45,17 +54,19 @@ You need to compile source or obtaine executable at:
 
 ### Configuration
 
-Configure the executables locations :
+Configure the executables locations and log level :
 
 ```
 pyMLST configure --help
 Usage: pyMLST configure [OPTIONS]
 
-  Configure executables paths.
+  Configure executables paths and log level.
 
 Options:
   -b, --blat FILE   Blat executable absolute path.
   -m, --mafft FILE  Mafft executable absolute path.
+  -l, --log [DEBUG|INFO|WARNING|ERROR]
+                    Level of logging, default=INFO  
   -r, --reset       Reset the configuration.
   --help            Show this message and exit.
 ```
@@ -72,7 +83,6 @@ Usage: wgMLST [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -v, --version  Prints PyMLST version.
-  -d, --debug    Sets the debug mode ON.
 
 Commands:
   add            Add a strain GENOME to the wgMLST DATABASE.
@@ -233,7 +243,6 @@ Usage: claMLST [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -v, --version  Prints PyMLST version.
-  -d, --debug    Sets the debug mode ON.
   --help         Show this message and exit.
 
 Commands:
@@ -297,3 +306,11 @@ Options:
   -f, --fasta FILENAME   Write fasta file with gene allele
   -o, --output FILENAME  Write ST search result to (default:stdout)
 ```
+
+# Publications
+PyMLST v1 have been already use to analyse most of clinical bacteria:
+
+ - [*Escherichia coli* and *Klebsiella pneumoniae*](https://doi.org/10.1016/j.cmi.2021.07.022)
+ - *Acinetobacter baumanii* (in review)
+ - [*Pseudomonas aeruginosa*](https://doi.org/10.1016/j.jhin.2020.06.013)
+ - [*Proteus mirabilis*](https://doi.org/10.1093/jac/dkz472)
