@@ -162,7 +162,7 @@ When the database is complete, you can export results for futher analysis.
 
 - **Distance:**
 A matrix of cgMLST distance can be compute from the database and defined as the number of different alleles between each pair of two strains, omitting the missing data.
-The genes used to compute this distance can be filtered withe the different options (-m, -k, -d and -V). 
+The genes used to compute this distance can be filtered with the different options (-m, -k, -d and -V). 
 
 ```
 wgMLST distance --help
