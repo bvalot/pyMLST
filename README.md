@@ -187,7 +187,7 @@ Options:
 The MLST profiles can be also exported. An formatted version compatible with grapetree can be defined.
 
 ```
-wgMLST distance --help
+wgMLST mslt --help
 Usage: wgMLST mlst [OPTIONS] DATABASE
 
   Extract an MLST table from a wgMLST DATABASE.
