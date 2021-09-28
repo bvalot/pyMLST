@@ -18,6 +18,10 @@ Whole Genome MLST
     :members:
     :member-order: bysource
 
+.. automodule:: pymlst.wg.extractors
+    :members:
+    :member-order: bysource
+
 Classical MLST
 -----------------
 
