@@ -69,7 +69,13 @@ def print_version(ctx, param, value):
 
 py = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'common', 'commands'),
-    'Common utility commands.')
+    '''
+    \b
+    Common utility commands.
+    
+    Two pipelines are available:
+      claMLST     for classical MLST analysis
+      wgMLST      for Whole/Core genome MLST analysis''')
 
 wg = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'wg', 'commands'),
