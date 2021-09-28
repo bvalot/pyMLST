@@ -1,3 +1,4 @@
+"""Set of methods to extract different types of results from wgMLST"""
 import abc
 import importlib
 import logging
@@ -24,8 +25,12 @@ def read_gene_list(base, gene_file):
         return select
 
 class SequenceExtractor(Extractor):
+    """ Extract coregenes sequences into fasta file."""
 
     def __init__(self, file=None):
+        """    
+        :param file: Path of the file containing the coregens to extract 
+        """
         self.list_file = file
 
     def extract(self, base, output):
@@ -40,8 +45,14 @@ class SequenceExtractor(Extractor):
         
         
 class MsaExtractor(Extractor):
+    """ Extract sequence and/or to compute Multiple Sequence Alignment (MSA). """
 
     def __init__(self, file=None, realign=False):
+        """
+        :param file: Path of the file containing the coregens to extract
+        :param realign: Realign genes with same length 
+        """
+                
         self.list_file = file
         self.realign = realign
 
@@ -96,6 +107,7 @@ class MsaExtractor(Extractor):
             
 
 class TableExtractor(Extractor):
+    """ Extraction of cgMLST distance matrix, MLST profiles, Genes and Strains list from a wgMLST database.  """
     def __init__(self,
                  mincover=0,
                  keep=False,
@@ -162,6 +174,7 @@ class TableExtractor(Extractor):
         return(valid_shema)
 
 class TableExtractorCommand(click.core.Command):
+    """ Options supported by :class:`~pymlst.wg.extractors.TableExtractor`. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.params.insert(0, click.core.Option(('--mincover', '-m'),
@@ -179,6 +192,7 @@ class TableExtractorCommand(click.core.Command):
                 'meet the filter of mincover or keep options.'))
 
 class GeneExtractor(TableExtractor):
+    """ Extract an genes list from a wgMLST database. """
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         
@@ -187,12 +201,14 @@ class GeneExtractor(TableExtractor):
         output.write("\n".join(sorted(valid_schema)) + "\n")
 
 class StatsExtractor(Extractor):
+    """ Extract stats, number of strains, coregenes and sequences from a wgMLST database. """
     def extract(self, base, output):
         output.write("Strains\t" + str(len(base.get_all_strains())) + "\n")
         output.write("Coregenes\t" + str(len(base.get_core_genes())) + "\n")
         output.write("Sequences\t" + str(base.count_sequences()) + "\n")
 
 class StrainExtractor(TableExtractor):
+    """ Extract an strain list from a wgMLST database. """
     def __init__(self, count=False, **kwargs):
         super().__init__(**kwargs)
         self.count = count
@@ -205,7 +221,8 @@ class StrainExtractor(TableExtractor):
             for strain in base.get_all_strains():
                 output.write(strain + "\t" + str(tmp.get(strain)) + "\n")
 
-class DistanceExtractor(TableExtractor):    
+class DistanceExtractor(TableExtractor):
+    """ Extract an distance matrix from a wgMLST database."""    
     def extract(self, base, output):
         if self.duplicate:
             logging.warning("Calculate distance between strains " +
@@ -219,6 +236,7 @@ class DistanceExtractor(TableExtractor):
             output.write("\t".join(dist) + "\n")
 
 class MlstExtractor(TableExtractor):
+    """ Extract an MLST table from a wgMLST database. """
     def __init__(self, form="default", **kwargs):
         super().__init__(**kwargs)
         self.form = form

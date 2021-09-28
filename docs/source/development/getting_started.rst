@@ -15,12 +15,12 @@ Get the Source
 ==============
 
 The source code for the `PyMLST` project lives at
-`github <https://github.com/Zagarwin/PyMLST>`_.  
+`github <https://github.com/bvalot/pyMLST.git>`_.  
 You can use `git clone` to get it.
 
 .. code-block:: bash
 
-   git clone https://github.com/patdaburu/bnrml
+   git clone https://github.com/bvalot/pyMLST.git
 
 Create the Virtual Environment
 ==============================
