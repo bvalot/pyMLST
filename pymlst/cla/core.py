@@ -351,9 +351,13 @@ class ClassicalMLST:
                 
     def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         
-        """Search the **Sequence Type** number of strain(s)    
-        :param genomes: Tuple of one or multiple strain given as input
+        """Search the **Sequence Type** number of one or multi strain(s).
+            
+        :param genomes: Tuple of one or multiple strain genome given as input
         :param output: An output for the sequence type research results.
+        :param identity: Sets the minimum identity used by `BLAT`_
+                         for sequences research (in percent).
+        :param coverage: Sets the minimum accepted coverage for found sequences.
         """
         header = True
         for genome in genomes:
