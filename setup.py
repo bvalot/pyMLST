@@ -78,7 +78,7 @@ setup(
     # Use the URL to the github repo.
     url='https://github.com/bvalot/pyMLST.git',
     download_url=(
-        f'https://github.com/bvalot/pyMLST/releases/tag/{version}.tar.gz'
+        f'https://github.com/bvalot/pyMLST/archive/refs/tags/{version}.tar.gz'
     ),
     keywords=[
         'cgMLST', 'MLST', 'bacterial genome'
