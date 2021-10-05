@@ -33,6 +33,9 @@ class ReferenceStrainRemoval(PyMLSTError):
 class BadIdentityRange(PyMLSTError):
     pass
 
+class BadCoverageRange(PyMLSTError):
+    pass
+
 
 class BinaryNotFound(PyMLSTError):
     pass

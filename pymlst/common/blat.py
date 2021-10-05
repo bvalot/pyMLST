@@ -18,7 +18,6 @@ from pymlst.common import exceptions
 
 def run_blat(genome, tmpfile, tmpout, identity, coverage):
     """Run Blat and return Psl Object"""
-
     path = config.get_binary_path('blat')
     if path is None:
         raise exceptions.BinaryNotFound('BLAT binary was not found')
@@ -29,7 +28,7 @@ def run_blat(genome, tmpfile, tmpout, identity, coverage):
 
     output, error = proc.communicate()
     for line in BytesIO(output).readlines():
-        logging.info(line.decode().rstrip())
+        logging.debug(line.decode().rstrip())
     have_error = False
     for line in BytesIO(error).readlines():
         have_error = True

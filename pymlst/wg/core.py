@@ -19,7 +19,7 @@ from sqlalchemy.sql import select, exists
 from sqlalchemy.sql import distinct
 from sqlalchemy.sql.operators import in_op as in_
 
-from pymlst.common import blat, psl
+from pymlst.common import blat, psl, kma
 from pymlst.common import utils, exceptions
 from pymlst.wg import model
 
@@ -141,9 +141,15 @@ class DatabaseWG:
 
     def __add_mlst(self, souche, gene, seqid):
         """Adds an MLST gene bound to an existing sequence."""
-        self.connection.execute(
-            model.mlst.insert(),
-            souche=souche, gene=gene, seqid=seqid)
+        existing = self.connection.execute(
+            select([model.mlst.c.id])
+            .where(model.mlst.c.souche == souche, model.mlst.c.gene == gene, \
+                   model.mlst.c.seqid == seqid)
+        ).fetchone()
+        if existing is None:
+            self.connection.execute(
+                model.mlst.insert()\
+                .values(souche=souche, gene=gene, seqid=seqid))
 
     def __add_sequence(self, sequence):
         """Adds a sequence if it doesn't already exist."""
@@ -429,7 +435,7 @@ class WholeGenomeMLST:
         :param ref: The name that will be given to the reference strain in the database.
         """
         self.__database = DatabaseWG(file, ref)
-
+        self.__file = file
         utils.create_logger()
 
     @property
@@ -485,7 +491,7 @@ class WholeGenomeMLST:
             logging.info('Database initialized')
 
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
-        """Adds a strain to the database.
+        """Adds a genome strain to the database.
 
         How it works:
 
@@ -504,6 +510,8 @@ class WholeGenomeMLST:
         with self.database.begin():
             if identity < 0 or identity > 1:
                 raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
+            if coverage <0 or coverage > 1:
+                raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
 
             name = strain
             if name is None:
@@ -582,6 +590,86 @@ class WholeGenomeMLST:
                 if os.path.exists(tmpout.name):
                     os.remove(tmpout.name)
 
+    def add_reads(self, fastqs, strain=None, identity=0.95, coverage=0.90, \
+                  reads=10):
+        """
+        Adds raw reads of a strain to the database.
+
+        How it works:
+
+        1. A `KMA`_ research is performed on reads (fastq) of the strain to find
+           sub-sequences matching the core genes.
+        2. The identified sub-sequences are extracted and added to our database where
+           they are associated to a **sequence ID**.
+        3. An MLST entry is created, referencing the sequence,
+           the gene it belongs to, and the strain it was found in.
+
+        :param fastqs: The reads we want to add as a list of `fastq`_ file.
+        :param strain: The name that will be given to the new strain in the database.
+        :param identity: Sets the minimum identity used by `BWA`_ for sequences research (in percent).
+        :param coverage: Sets the minimum accepted coverage for found sequences.
+        :param reads: Sets the minimum number of reads coverage to conserved an results 
+        """
+        with self.database.begin():
+            if identity < 0 or identity > 1:
+                raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
+            if coverage <0 or coverage > 1:
+                raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
+
+            ##indexing
+            if kma.is_database_indexing(self.__file) is False:
+                with kma.index_tmpfile() as tmpfile:
+                    coregene = self.__create_core_genome_file(tmpfile)
+                    tmpfile.flush()
+                    kma.index_database(self.__file, tmpfile)
+
+            ##Strain name
+            name = strain
+            if name is None:
+                name = fastqs[0].name.split('/')[-1]
+            self.__database.check_gene_name(name)
+        
+            ##run kma
+            kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
+            core_genes = self.__database.core_genome
+            
+            valid = 0
+            minus = 0
+            frame = 0
+            for res in kma_res:
+                seq = seqs.get(res)
+                if seq is None:
+                    raise PyMLSTError("%s not found in the fasta files", res)
+
+                ## test minus
+                b = (seq.count('a') + seq.count('t') + seq.count('c') + \
+                     seq.count('g'))
+                if b != 0:
+                    minus +=1
+                    logging.debug("%s Remove incertain", res)
+                    continue
+
+                ## test CDS
+                try:
+                    seq.translate(cds=True, table=11)
+                except:
+                    frame += 1
+                    logging.debug("%s Remove bad CDS", res)
+                    continue
+ 
+                ##add sequence and MLST
+                gene = res.split("_")[0]
+                if gene not in core_genes:
+                    logging.warnings("Gene %s not present in database", gene)
+                    continue
+                valid +=1
+                self.__database.add_genome(gene, name, str(seq))
+                
+            logging.info("Add %s new MLST genes to database", str(valid))
+            logging.info("Remove %s genes with uncertain bases", str(minus))
+            logging.info("Remove %s genes with bad CDS", str(frame))  
+
+            
     def remove_gene(self, genes, file=None):
         """Removes genes from the database.
 
@@ -601,6 +689,10 @@ class WholeGenomeMLST:
                 logging.info("%s : OK", gene)
             else:
                 logging.warning("%s : Not found", gene)
+
+        ##delete kma indexing as gene have been modified
+        if kma.is_database_indexing(self.__file):
+            kma.delete_indexing(self.__file)
 
     def remove_strain(self, strains, file=None):
         """Removes entire strains from the database.
