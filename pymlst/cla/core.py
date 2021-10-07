@@ -17,7 +17,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import distinct
 
 from pymlst.cla import model
-from pymlst.common import blat, utils, exceptions
+from pymlst.common import blat, kma,  utils, exceptions
 from pymlst.common.utils import read_genome, create_logger
 
 
@@ -148,6 +148,13 @@ class DatabaseCLA:
             return None
         return res.sequence
 
+    def get_all_sequences(self):
+        """Get all sequences allele"""
+        seqs = self.connection.execute(
+            select([model.sequences.c.allele, model.sequences.c.gene, model.sequences.c.sequence])
+        ).fetchall()
+        return {seq.gene+"_"+str(seq.allele):seq.sequence for seq in seqs}
+
     def close(self):
         self.__connection.close()
 
@@ -170,7 +177,7 @@ class ClassicalMLST:
         :param ref: The name that will be given to the reference strain in the database.
         """
         self.__database = DatabaseCLA(file, ref)
-
+        self.__file = file
         create_logger()
 
     @property
@@ -248,12 +255,14 @@ class ClassicalMLST:
         :param genome: The strain genome we want to add as a `fasta`_ file.
         :param identity: Sets the minimum identity used by `BLAT`_
                          for sequences research (in percent).
-        :param coverage: Sets the minimum accepted coverage for found sequences.
+        :param coverage: Sets the minimum accepted gene coverage for found sequences.
         :param fasta: A file where to export genes alleles results in a fasta format.
         """
 
         if identity < 0 or identity > 1:
             raise Exception("Identity must be between 0 to 1")
+        if coverage <0 or coverage > 1:
+            raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
 
         tmpfile, tmpout = blat.blat_tmp()
 
@@ -296,19 +305,10 @@ class ClassicalMLST:
                     if gene.coverage == 1:
                         sequence = gene.get_sequence(seq)
                     else:
+                        logging.debug("Align incomplet gene : %s", core_gene)
                         sequence = gene.get_aligned_sequence(seq, core_seq)
 
                     sequence = str(sequence)
-
-                    # get sequence
-                    # sequence = str(gene.get_sequence(seq)).upper()
-
-                    # verify complet sequence
-                    # if not (sequence and len(sequence) == (gene.end - gene.start)):
-                    #     print('Len Seq: {} and gene : {} \n -> {}'.format(len(sequence), gene.end - gene.start, sequence))
-                    #     logging.info("Gene %s removed", gene.gene_id())
-                    #     #continue
-                    # print('OK: {}'.format(sequence))
 
                     # write fasta file with coregene
                     if fasta is not None:
@@ -329,16 +329,17 @@ class ClassicalMLST:
 
             # if only know allele or not found
             # Seach st
-            st_val = []
-            if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
-                tmp = None
-                for st_value in sequence_type.values():
-                    if st_value:
-                        if tmp is None:
-                            tmp = st_value
-                        else:
-                            tmp = tmp.intersection(st_value)
-                st_val = list(tmp)
+            # st_val = []
+            # if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
+            #     tmp = None
+            #     for st_value in sequence_type.values():
+            #         if st_value:
+            #             if tmp is None:
+            #                 tmp = st_value
+            #             else:
+            #                 tmp = tmp.intersection(st_value)
+            #     st_val = list(tmp)
+            st_val = self.__determined_ST(allele, sequence_type)
                 
             return ST_result(genome_name, st_val, allele)
         
@@ -361,17 +362,105 @@ class ClassicalMLST:
         """
         header = True
         for genome in genomes:
+            logging.info("Search ST from files: %s", genome.name) 
             res = self.search_st(genome, identity, coverage, fasta)
             res.write(output, header)
             if header:
                 header=False
-        logging.info("FINISH")       
+            logging.info("FINISH")
+
+    def search_read(self, fastqs, identity=0.9, coverage=0.95, reads=10, fasta=None):
+        """Search the **Sequence Type** from raw reads of one strain.
+
+        :param fastq: List of fastq files containing raw reads
+        :param identity: Sets the minimum identity used by `KMA`_
+                         for sequences research (in percent).
+        :param coverage: Sets the minimum accepted gene coverage for found sequences.
+        :param read: Sets the minimum reads coverage to conserve an mapping 
+        :param fasta: A file where to export genes alleles results in a fasta format.
+        """
+        if identity < 0 or identity > 1:
+            raise Exception("Identity must be between 0 to 1")
+        if coverage <0 or coverage > 1:
+            raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
+        
+        ##indexing
+        if kma.is_database_indexing(self.__file) is False:
+            with kma.index_tmpfile() as tmpfile:
+                self.__create_all_core_genome_file(tmpfile)
+                tmpfile.flush()
+                kma.index_database(self.__file, tmpfile)
+                
+        ##run kma
+        kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
+        core_genome = self.__database.core_genome
+        
+        logging.info("Search allele gene to database")
+        genome_name = os.path.basename(fastqs[0].name).split('.')[0]
+        allele = {i: [] for i in core_genome}
+        sequence_type = {i: set() for i in core_genome}
+        for res in kma_res:
+            logging.debug("Looking for kma result of gene %s", res)
+            sequence = seqs.get(res)
+            if sequence is None:
+                raise PyMLSTError("%s not found in the fasta files", res)
+
+            ## test minus
+            b = (sequence.count('a') + sequence.count('t') + sequence.count('c') + \
+                 sequence.count('g'))
+            if b != 0:
+                logging.debug("%s Remove incertain", res)
+                continue
+            
+            ##add sequence and MLST
+            gene = res.split("_")[0]
+            if gene not in core_genome:
+                logging.warnings("Gene %s not present in database", gene)
+                continue
+            alle = self.__database.get_allele_by_sequence_and_gene(str(sequence), gene)
+        
+            # write fasta file with coregene
+            if fasta is not None:
+                fasta.write(">" + genome_name + "|" + gene + "\n" )
+                fasta.write(sequence + "\n")
+
+            if alle is not None:
+                allele.get(gene).append(str(alle))
+                # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
+                #                (coregene, row[0]))
+                seq_types = self.__database.get_st_by_gene_and_allele(gene, alle)
+                for seq_type in seq_types:
+                    sequence_type.get(gene).add(seq_type)
+            else:
+                allele.get(gene).append("new")
+        
+        st_val = self.__determined_ST(allele, sequence_type)
+        return ST_result(genome_name, st_val, allele)   
+            
 
     def __create_core_genome_file(self, tmpfile):
         core_genome = self.__database.core_genome
         for gene, sequence in core_genome.items():
             tmpfile.write('>' + gene + "\n" + sequence + "\n")
 
+    def __create_all_core_genome_file(self, tmpfile):
+        for gene, sequence in self.__database.get_all_sequences().items():
+            tmpfile.write('>' + gene + "\n" + sequence + "\n")
+
+    def __determined_ST(self, allele, sequence_type):
+        # Seach st
+        st_val = []
+        if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
+            tmp = None
+            for st_value in sequence_type.values():
+                if st_value:
+                    if tmp is None:
+                        tmp = st_value
+                    else:
+                        tmp = tmp.intersection(st_value)
+            st_val = list(tmp)
+        return st_val
+        
     def close(self):
         self.__database.close()
 
