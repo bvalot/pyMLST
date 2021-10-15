@@ -260,7 +260,7 @@ class ClassicalMLST:
         """
 
         if identity < 0 or identity > 1:
-            raise Exception("Identity must be between 0 to 1")
+            raise exceptions.BadIdentityRange("Identity must be between 0 to 1")
         if coverage <0 or coverage > 1:
             raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
 
@@ -351,18 +351,18 @@ class ClassicalMLST:
                 
                 
     def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
-        
-        """Search the **Sequence Type** number of one or multi strain(s).
+        """Search the **Sequence Type** number of one or multi strain(s) from an assembly genome.
             
         :param genomes: Tuple of one or multiple strain genome given as input
         :param output: An output for the sequence type research results.
         :param identity: Sets the minimum identity used by `BLAT`_
                          for sequences research (in percent).
+        :param fasta: A file where to export genes alleles results in a fasta format.
         :param coverage: Sets the minimum accepted coverage for found sequences.
         """
         header = True
         for genome in genomes:
-            logging.info("Search ST from files: %s", genome.name) 
+            logging.info("Search ST from files: %s", os.path.basename(genome.name)) 
             res = self.search_st(genome, identity, coverage, fasta)
             res.write(output, header)
             if header:
@@ -376,11 +376,11 @@ class ClassicalMLST:
         :param identity: Sets the minimum identity used by `KMA`_
                          for sequences research (in percent).
         :param coverage: Sets the minimum accepted gene coverage for found sequences.
-        :param read: Sets the minimum reads coverage to conserve an mapping 
+        :param reads: Sets the minimum reads coverage to conserve an mapping 
         :param fasta: A file where to export genes alleles results in a fasta format.
         """
         if identity < 0 or identity > 1:
-            raise Exception("Identity must be between 0 to 1")
+            raise exceptions.BadIdentityRange("Identity must be between 0 to 1")
         if coverage <0 or coverage > 1:
             raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
         
@@ -436,7 +436,41 @@ class ClassicalMLST:
         
         st_val = self.__determined_ST(allele, sequence_type)
         return ST_result(genome_name, st_val, allele)   
+
+    def multi_read(self, fastqs, identity=0.90, coverage=0.95, fasta=None, reads=10, paired=True, output=sys.stdout):
+        
+        """Search the **Sequence Type** number of one or multi strain(s) from raw reads.
             
+        :param fastqs: Tuple of one or multiple strain raw reads given as input
+        :param output: An output for the sequence type research results.
+        :param identity: Sets the minimum identity used by `KMA`_
+                         for sequences research (in percent).
+        :param reads: Sets the minimum reads coverage to conserve an mapping
+        :param paired: Defined if the raxw reads are by paired or single
+        :param fasta: A file where to export genes alleles results in a fasta format.
+        :param coverage: Sets the minimum accepted coverage for found sequences.
+        
+        """
+        header = True
+        if paired:
+            if len(fastq)%2 != 0:
+                raise exceptions.PyMLSTError("Fastq paired files are not a multiple of 2")
+            for fastq in zip(fastqs[::2],fastqs[1::2]):
+                logging.info("Search ST from files: %s - %s", os.path.basename(fastq[0].name), \
+                             os.path.basename(fastq[1].name)) 
+                res = self.search_st([fastq], identity, coverage, fasta, reads)
+                res.write(output, header)
+                if header:
+                    header=False
+                logging.info("FINISH")
+        else:
+            for fastq in fastqs:
+                logging.info("Search ST from files: %s", os.path.basename(fastq.name)) 
+                res = self.search_st([fastq], identity, coverage, fasta, reads)
+                res.write(output, header)
+                if header:
+                    header=False
+                logging.info("FINISH")    
 
     def __create_core_genome_file(self, tmpfile):
         core_genome = self.__database.core_genome
