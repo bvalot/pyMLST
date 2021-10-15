@@ -19,7 +19,7 @@ def read_gene_list(base, gene_file):
         select = []
         for g in utils.strip_file(gene_file):
             if g in core:
-                select.add(g)
+                select.append(g)
             else:
                 logging.debug("Gene {} not found in the database".format(g))
         return select
