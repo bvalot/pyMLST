@@ -28,7 +28,7 @@ from pymlst.common import utils
               default='',
               help='Specify the desired MLST scheme name.')
 @click.argument('database',
-                type=click.Path(exists=True))
+                type=click.Path(exists=False))
 @click.argument('species',
                 type=click.STRING,
                 nargs=-1)
