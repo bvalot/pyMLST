@@ -422,7 +422,7 @@ class ClassicalMLST:
             # write fasta file with coregene
             if fasta is not None:
                 fasta.write(">" + genome_name + "|" + gene + "\n" )
-                fasta.write(sequence + "\n")
+                fasta.write(str(sequence) + "\n")
 
             if alle is not None:
                 allele.get(gene).append(str(alle))
@@ -437,7 +437,7 @@ class ClassicalMLST:
         st_val = self.__determined_ST(allele, sequence_type)
         return ST_result(genome_name, st_val, allele)   
 
-    def multi_read(self, fastqs, identity=0.90, coverage=0.95, fasta=None, reads=10, paired=True, output=sys.stdout):
+    def multi_read(self, fastqs, identity=0.90, coverage=0.95, reads=10, paired=True, fasta=None, output=sys.stdout):
         
         """Search the **Sequence Type** number of one or multi strain(s) from raw reads.
             
@@ -453,12 +453,12 @@ class ClassicalMLST:
         """
         header = True
         if paired:
-            if len(fastq)%2 != 0:
+            if len(fastqs)%2 != 0:
                 raise exceptions.PyMLSTError("Fastq paired files are not a multiple of 2")
             for fastq in zip(fastqs[::2],fastqs[1::2]):
                 logging.info("Search ST from files: %s - %s", os.path.basename(fastq[0].name), \
                              os.path.basename(fastq[1].name)) 
-                res = self.search_st([fastq], identity, coverage, fasta, reads)
+                res = self.search_read(fastq, identity, coverage, reads, fasta)
                 res.write(output, header)
                 if header:
                     header=False
@@ -466,7 +466,7 @@ class ClassicalMLST:
         else:
             for fastq in fastqs:
                 logging.info("Search ST from files: %s", os.path.basename(fastq.name)) 
-                res = self.search_st([fastq], identity, coverage, fasta, reads)
+                res = self.search_read([fastq], identity, coverage, reads, fasta)
                 res.write(output, header)
                 if header:
                     header=False
