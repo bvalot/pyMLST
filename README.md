@@ -16,7 +16,11 @@ This allows to iteratively enlarge the collection of strains to compare.
 The entry is a draft genome produced by an assembler, but also other genomes store in sequence database.
 
 ## New version
-This V2 version of pyMLST offers:
+V2.1:
+
+- Use raw reads (FASTQ) directly with the kma integration (search2 and add2 command)
+
+V2.0:
 
 - An automatic import database mechanism to initiated cgMLST and MLST databases.
 - A new process to fill incomplet genes using MAFFT alignment.
@@ -43,7 +47,8 @@ make build
 
 ### Dependancy
 
-PyMLST uses 2 external tools to run alignment:
+PyMLST uses 3 external tools to run alignment:
+
 - Mafft (>=7.307)
 ```
 sudo apt install mafft 
@@ -51,6 +56,10 @@ sudo apt install mafft
 - Blat (v35).
 You need to compile source or obtaine executable at:
 [https://genome.ucsc.edu/FAQ/FAQblat.html](https://genome.ucsc.edu/FAQ/FAQblat.html)
+- kma (>=1.3)
+You need to compile source from:
+[https://bitbucket.org/genomicepidemiology/kma/src/master/](https://bitbucket.org/genomicepidemiology/kma/src/master/)
+
 
 ### Configuration
 
@@ -64,6 +73,7 @@ Usage: pyMLST configure [OPTIONS]
 
 Options:
   -b, --blat FILE   Blat executable absolute path.
+  -k, --kma FILE    Kma executable absolute path.
   -m, --mafft FILE  Mafft executable absolute path.
   -l, --log [DEBUG|INFO|WARNING|ERROR]
                     Level of logging, default=INFO  
@@ -154,6 +164,21 @@ Options:
   -s, --strain TEXT     Name of the strain (default:genome name)
   -i, --identity FLOAT  Minimum identity to search gene (default=0.95)
   -c, --coverage FLOAT  Minimum coverage to search gene (default=0.9)
+```
+
+Alternatively, you can also add strain from raw reads direcly with single or paired FASTQS(.gz) files. 
+
+```
+wgMLST add2 --help
+Usage: wgMLST add2 [OPTIONS] DATABASE [FASTQS]...
+
+  Add a strain from FASTQS(.gz) reads to the wgMLST DATABASE.
+
+Options:
+  -s, --strain TEXT     Name of the strain (default:genome name).
+  -i, --identity FLOAT  Minimum identity to search gene (default=0.95).
+  -c, --coverage FLOAT  Minimum coverage to search gene (default=0.9).
+  -r, --reads INTEGER   Minimum reads coverage to search a gene (default=10).
 ```
 
 ### Export results
@@ -305,6 +330,23 @@ Options:
   -c, --coverage FLOAT   Minimum coverage to search gene (default=0.9)
   -f, --fasta FILENAME   Write fasta file with gene allele
   -o, --output FILENAME  Write ST search result to (default:stdout)
+```
+
+Alternatively, you can also search ST from raw reads direcly with single or paired FASTQS(.gz) files.
+
+```
+claMLST search2 --help
+Usage: claMLST search2 [OPTIONS] DATABASE [FASTQS]...
+
+  Search ST number from FASTQS(.gz) raw reads using an mlst DATABASE.
+
+Options:
+  -i, --identity FLOAT   Minimum identity to search gene (default=0.9).
+  -c, --coverage FLOAT   Minimum coverage to search gene (default=0.95).
+  -r, --reads INTEGER    Minimum reads coverage to search gene (default=10).
+  --paired / --single    Defined type of fastqs files.
+  -f, --fasta FILENAME   Write fasta file with gene allele.
+  -o, --output FILENAME  Write ST search result to (default:stdout).
 ```
 
 # Publications
