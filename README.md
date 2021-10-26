@@ -13,7 +13,7 @@ the combination of allele determines the sequence type (ST) of the strain.
 pyMLST have been developped to performed this task. 
 In comparaison to other tools, it uses a local sqlite database to store allele sequences and mlst profiles. 
 This allows to iteratively enlarge the collection of strains to compare. 
-The entry is a draft genome produced by an assembler, but also other genomes store in sequence database.
+The entry is a draft genome produced by an assembler or the direct raw data, but also other genomes store in sequence database.
 
 ## New version
 V2.1:
