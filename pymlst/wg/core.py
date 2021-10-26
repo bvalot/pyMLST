@@ -453,6 +453,9 @@ class WholeGenomeMLST:
         having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
+        ##remove old indexing
+        kma.delete_indexing(self.__file)
+        
         with self.database.begin():
             rc_genes = 0
             invalid_genes = 0

@@ -155,6 +155,37 @@ class DatabaseCLA:
         ).fetchall()
         return {seq.gene+"_"+str(seq.allele):seq.sequence for seq in seqs}
 
+    def remove_allele(self, gene, allele):
+        """Remove an particular allele for the gene"""
+        res1 = self.connection.execute(
+            select([model.sequences.c.id])
+            .where(and_(model.sequences.c.gene == gene,
+                        model.sequences.c.allele == allele))
+            ).fetchone()
+        if res1 is None:
+            logging.warning("No sequence found for the gene %s with the allele %s", gene, str(allele))
+            return(False)
+        else:
+            self.connection.execute(
+                model.sequences.delete()
+                .where(model.sequences.c.id == res1.id))
+            logging.debug("Delete sequence id %s", str(res1.id))
+                
+        ##Get ST number with this allele and remove its
+        res2 =  self.connection.execute(
+            select([model.mlst.c.st])
+            .where(and_(
+                model.mlst.c.gene == gene,
+                model.mlst.c.allele == allele))
+        ).fetchall()
+        for res in res2:
+            continue
+            self.connection.execute(
+                model.mlst.delete()
+                .where(model.mlst.c.st == res.st))
+        logging.info("Remove %s ST containing this allele", str(len(res2)))
+        return(True)
+    
     def close(self):
         self.__connection.close()
 
@@ -203,6 +234,9 @@ class ClassicalMLST:
             ..., ..., ..., ..., ...
 
         """
+        ##remove old indexing
+        kma.delete_indexing(self.__file)
+        
         with self.database.begin():
             # Verify sheme list with fasta files
             header = scheme.readline().rstrip("\n").split("\t")
@@ -470,7 +504,17 @@ class ClassicalMLST:
                 res.write(output, header)
                 if header:
                     header=False
-                logging.info("FINISH")    
+                logging.info("FINISH")
+
+    def remove_allele(self, gene, allele):
+        """Remove some problematic allele o claMLST database
+
+        :param gene: Gene name on the database, ignoring case
+        :param allele: integer allele number of this gene
+        """
+        if self.__database.remove_allele(gene, allele):
+            kma.delete_indexing(self.__file)
+        
 
     def __create_core_genome_file(self, tmpfile):
         core_genome = self.__database.core_genome
