@@ -148,6 +148,14 @@ class DatabaseCLA:
             return None
         return res.sequence
 
+    def get_all_sequences_by_gene(self, gene):
+        """Get all the sequences from a particular gene"""
+        seqs = self.connection.execute(
+            select([model.sequences.c.allele, model.sequences.c.sequence])
+            .where(model.sequences.c.gene == gene)
+        ).fetchall()
+        return {seq.sequence:seq.allele for seq in seqs}     
+
     def get_all_sequences(self):
         """Get all sequences allele"""
         seqs = self.connection.execute(
@@ -460,13 +468,24 @@ class ClassicalMLST:
 
             if alle is not None:
                 allele.get(gene).append(str(alle))
-                # cursor.execute('''SELECT st FROM mlst WHERE gene=? and allele=?''',
-                #                (coregene, row[0]))
                 seq_types = self.__database.get_st_by_gene_and_allele(gene, alle)
                 for seq_type in seq_types:
                     sequence_type.get(gene).add(seq_type)
             else:
-                allele.get(gene).append("new")
+                ##search substring sequence
+                sequence_gene = self.__database.get_all_sequences_by_gene(gene)
+                find = False
+                for s in sequence_gene.keys() :
+                    if s.find(str(sequence))!=-1:
+                        find = True
+                        alle = sequence_gene.get(s)
+                        logging.debug("Find subsequence of gene %s with the allele %s", gene, str(alle))
+                        allele.get(gene).append(str(alle))
+                        seq_types = self.__database.get_st_by_gene_and_allele(gene, alle)
+                        for seq_type in seq_types:
+                            sequence_type.get(gene).add(seq_type)
+                if find is False:
+                    allele.get(gene).append("new")
         
         st_val = self.__determined_ST(allele, sequence_type)
         return ST_result(genome_name, st_val, allele)   
