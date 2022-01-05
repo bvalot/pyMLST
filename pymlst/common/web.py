@@ -9,6 +9,9 @@ import questionary
 from bs4 import BeautifulSoup
 from Bio import SeqIO
 
+import urllib3
+urllib3.disable_warnings()
+
 from pymlst.common.exceptions import PyMLSTError
 
 PUBMLST_URL = 'https://rest.pubmlst.org/db'
@@ -24,7 +27,7 @@ class StructureError(PyMLSTWebError):
 
 
 def request(query):
-    result = requests.get(query, timeout=600)
+    result = requests.get(query, timeout=600, verify=False)
     result.raise_for_status()
     return result
 
