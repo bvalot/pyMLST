@@ -239,6 +239,8 @@ Options:
   -o, --output FILENAME  Output result in fasta format (default:stdout).
   -f, --file FILENAME    File containing list of coregenes to extract
                          (default:all coregenes).
+  --reference            Return sequence of the reference instead of strains
+                         alleles
 ```
 
 - **MSA**:

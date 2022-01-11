@@ -24,26 +24,33 @@ def read_gene_list(base, gene_file):
                 logging.debug("Gene {} not found in the database".format(g))
         return select
 
+
 class SequenceExtractor(Extractor):
     """ Extract coregenes sequences into fasta file."""
 
-    def __init__(self, file=None):
+    def __init__(self, file=None, reference=False):
         """    
         :param file: Path of the file containing the coregens to extract 
         """
         self.list_file = file
+        self.reference = reference
 
     def extract(self, base, output):
         coregene = read_gene_list(base, self.list_file)
         logging.info("Number of gene to analyse : %s", len(coregene))
         for gene in coregene:
-            seqs = base.get_gene_sequences(gene)
-            for seq in seqs:
-                output.write(">" + gene + "|" + str(seq[0]) + " "
-                             + ";".join(seq[1]) + "\n")
-                output.write(seq[2] + "\n")
-        
-        
+            if self.reference:
+                seq = base.get_gene_sequence_reference(gene)
+                output.write(">" + gene + "|reference" + "\n")
+                output.write(seq + "\n")                
+            else:
+                seqs = base.get_gene_sequences(gene)
+                for seq in seqs:
+                    output.write(">" + gene + "|" + str(seq[0]) + " "
+                                 + ";".join(seq[1]) + "\n")
+                    output.write(seq[2] + "\n")
+
+                    
 class MsaExtractor(Extractor):
     """ Extract sequence and/or to compute Multiple Sequence Alignment (MSA). """
 

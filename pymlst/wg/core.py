@@ -284,6 +284,9 @@ class DatabaseWG:
             seqs.append([seq[0], tmp, seq[2]])
         return seqs
 
+    def get_gene_sequence_reference(self, gene):
+        return(self.__core_genome.get(gene, []))
+    
     def get_duplicated_genes(self):
         """Gets the genes that are duplicated."""
         m_alias = model.mlst.alias()
