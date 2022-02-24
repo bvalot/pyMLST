@@ -320,15 +320,19 @@ class ClassicalMLST:
 
             # BLAT analysis
             #logging.info("Search coregene with BLAT")
+            allele = {i: [] for i in core_genome}
             logging.info("Search coregene with BLAT for %s", str(genome_name))
-            genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
+            try:
+                genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
+            except exceptions.CoreGenomePathNotFound:
+                logging.warning("No gene found for the strain %s", genome_name)
+                return ST_result(genome_name, [], allele)
             logging.info("Finish run BLAT, found %s genes", str(len(genes)))
 
             # Search sequence MLST
             seqs = read_genome(genome)
             logging.info("Search allele gene to database")
             # print(genes)
-            allele = {i: [] for i in core_genome}
             sequence_type = {i: set() for i in core_genome}
             for core_gene, core_seq in core_genome.items():
                 if core_gene not in genes:
@@ -434,12 +438,16 @@ class ClassicalMLST:
                 kma.index_database(self.__file, tmpfile)
                 
         ##run kma
-        kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
+        genome_name = os.path.basename(fastqs[0].name).split('.')[0]
         core_genome = self.__database.core_genome
+        allele = {i: [] for i in core_genome}
+        try:
+            kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
+        except exceptions.CoreGenomePathNotFound:
+            logging.warning("No gene found for the strain %s", genome_name)
+            return ST_result(genome_name, [], allele)
         
         logging.info("Search allele gene to database")
-        genome_name = os.path.basename(fastqs[0].name).split('.')[0]
-        allele = {i: [] for i in core_genome}
         sequence_type = {i: set() for i in core_genome}
         for res in kma_res:
             logging.debug("Looking for kma result of gene %s", res)
@@ -510,7 +518,7 @@ class ClassicalMLST:
                 raise exceptions.PyMLSTError("Fastq paired files are not a multiple of 2")
             for fastq in zip(fastqs[::2],fastqs[1::2]):
                 logging.info("Search ST from files: %s - %s", os.path.basename(fastq[0].name), \
-                             os.path.basename(fastq[1].name)) 
+                             os.path.basename(fastq[1].name))
                 res = self.search_read(fastq, identity, coverage, reads, fasta)
                 res.write(output, header)
                 if header:

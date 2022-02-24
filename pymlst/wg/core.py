@@ -1,4 +1,4 @@
-"""Core classes and functions to work with Whole Genome MLST data."""
+""""Core classes and functions to work with Whole Genome MLST data."""
 import logging
 import os
 import sys
@@ -110,13 +110,13 @@ class DatabaseWG:
             genes[row.gene] = row.sequence
         return genes
 
-    def check_gene_name(self, name):
+    def check_name(self, name):
         if self.__separator in name:
             raise exceptions.InvalidGeneName(
                 '{} contains {} symbol'.format(name, self.__separator))
 
     def add_core_genome(self, gene, sequence, mode=None):
-        self.check_gene_name(gene)
+        self.check_name(gene)
         if gene in self.__core_genome:
             raise exceptions.DuplicatedGeneName(
                 '{} is duplicated'.format(gene))
@@ -135,7 +135,6 @@ class DatabaseWG:
         return True
 
     def add_genome(self, gene, strain, sequence):
-        self.check_gene_name(gene)
         _, seq_id = self.__add_sequence(sequence)
         self.__add_mlst(strain, gene, seq_id)
 
@@ -522,7 +521,7 @@ class WholeGenomeMLST:
             name = strain
             if name is None:
                 name = genome.name.split('/')[-1]
-            self.__database.check_gene_name(name)
+            self.__database.check_name(name)
 
             tmpfile, tmpout = blat.blat_tmp()
             tmpout.close()
@@ -633,7 +632,7 @@ class WholeGenomeMLST:
             name = strain
             if name is None:
                 name = fastqs[0].name.split('/')[-1]
-            self.__database.check_gene_name(name)
+            self.__database.check_name(name)
         
             ##run kma
             kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
