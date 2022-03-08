@@ -15,8 +15,8 @@ from pymlst.wg import core
               help='Minimum distance to conserve '
                    'for extraction of group (default:50).')
 @click.option('--export', '-e',
-              type=click.STRING,
-              help='Export type (default:group).')
+              type=click.Choice(['list', 'count', 'group'], case_sensitive=False),
+              help='Export type (default:list).')
 @click.argument('distance',
                 type=click.File('r'))
 def cli(distance, **kwargs):

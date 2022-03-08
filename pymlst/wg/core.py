@@ -751,7 +751,7 @@ class Extractor(ABC):
         """
 
 
-def find_recombination(genes, alignment, output):
+def find_recombination(genes, alignment, output=sys.stdout):
     """Counts the number of versions of each gene.
 
     :param genes: List of genes (output of :class:`~pymlst.wg.extractors.TableExtractor`
@@ -793,12 +793,14 @@ def find_recombination(genes, alignment, output):
             raise exceptions.PyMLSTError(
                 'The following genes are not aligned: {}'.format(genes[i]))
 
+    output.write("Gene\tMutation\tLenght\tmutation per 100 base\n")
     for i, seqs in enumerate(sequences):
         compared = utils.compar_seqs(seqs)
-        output.write(genes[i] + "\t" + str(compared) + "\t" + str(len(seqs[0])) + "\n")
+        output.write(genes[i] + "\t" + str(compared) + "\t" + str(len(seqs[0])) + \
+                     "\t" + str(compared/len(seqs[0])*100) + "\n")
 
 
-def find_subgraph(distance, threshold=50, output=sys.stdout, export='group'):
+def find_subgraph(distance, threshold=50, output=sys.stdout, export='list'):
     """Searches groups of strains separated by a distance threshold.
 
     :param threshold: Minimum distance to maintain for groups extraction.
