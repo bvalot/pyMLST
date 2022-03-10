@@ -114,6 +114,8 @@ class DatabaseWG:
         if self.__separator in name:
             raise exceptions.InvalidGeneName(
                 '{} contains {} symbol'.format(name, self.__separator))
+        if "-" in name:
+            logging.warning("Strain name '{}' contain '-', that could make some problems for further analysis".format(name))
 
     def add_core_genome(self, gene, sequence, mode=None):
         self.check_name(gene)
@@ -789,7 +791,7 @@ def find_recombination(genes, alignment, output=sys.stdout):
     # check sequences are correctly align
     for i, seqs in enumerate(sequences):
         if len({len(s) for s in seqs}) > 1:
-            print({len(s) for s in seqs})
+            logging.error({len(s) for s in seqs})
             raise exceptions.PyMLSTError(
                 'The following genes are not aligned: {}'.format(genes[i]))
 
