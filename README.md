@@ -29,7 +29,13 @@ V2.0:
 - An easy installation with pypi repository.
 
 
-## Installation
+## Automatic Installation
+
+```
+conda install -c bioconda pymlst
+```
+
+## Manual Installation
 ### From pypi repository
 
 ```
