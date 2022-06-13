@@ -145,3 +145,7 @@ def get_updated_engine(path, module):
         command.upgrade(alembic_cfg, 'head')
 
     return engine
+
+def clean_geneid(geneid):
+    """Remove '_' on geneid to be compatible with kma search"""
+    return(geneid.replace("_", "-"))

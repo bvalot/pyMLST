@@ -110,12 +110,13 @@ class DatabaseWG:
             genes[row.gene] = row.sequence
         return genes
 
-    def check_name(self, name):
+    def check_name(self, name, strain=False):
         if self.__separator in name:
             raise exceptions.InvalidGeneName(
                 '{} contains {} symbol'.format(name, self.__separator))
-        if "-" in name:
-            logging.warning("Strain name '{}' contain '-', that could make some problems for further analysis".format(name))
+        if strain:
+            if "-" in name:
+                logging.warning("Strain name '{}' contain '-', that could make some problems for further analysis".format(name))
 
     def add_core_genome(self, gene, sequence, mode=None):
         self.check_name(gene)
@@ -481,7 +482,9 @@ class WholeGenomeMLST:
                 else:
                     mode = None
 
-                added = self.__database.add_core_genome(gene.id, str(gene.seq), mode)
+                ##clean geneid
+                geneid = utils.clean_geneid(gene.id)
+                added = self.__database.add_core_genome(geneid, str(gene.seq), mode)
 
                 if not added:
                     if concatenate:
@@ -523,7 +526,7 @@ class WholeGenomeMLST:
             name = strain
             if name is None:
                 name = genome.name.split('/')[-1]
-            self.__database.check_name(name)
+            self.__database.check_name(name, strain=True)
 
             tmpfile, tmpout = blat.blat_tmp()
             tmpout.close()
@@ -667,7 +670,7 @@ class WholeGenomeMLST:
                 ##add sequence and MLST
                 gene = res.split("_")[0]
                 if gene not in core_genes:
-                    logging.warnings("Gene %s not present in database", gene)
+                    logging.warning("Gene %s not present in database", gene)
                     continue
                 valid +=1
                 self.__database.add_genome(gene, name, str(seq))
