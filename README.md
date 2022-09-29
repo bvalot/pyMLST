@@ -144,7 +144,7 @@ You can obtained scheme for:
 
 ```
 wgMLST create --help
-Usage: wgMLST create [OPTIONS] COREGENE DATABASE
+Usage: wgMLST create [OPTIONS] DATABASE COREGENE
 
   Create a wgMLST DATABASE from a template COREGENE.
 
@@ -162,7 +162,7 @@ You can also add reference genome for comparison.
 
 ```
 wgMLST add --help
-Usage: wgMLST add [OPTIONS] GENOME DATABASE
+Usage: wgMLST add [OPTIONS] DATABASE GENOME
 
   Add a strain GENOME to the wgMLST DATABASE.
 
