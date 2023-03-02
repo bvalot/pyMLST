@@ -51,19 +51,19 @@ setup(
     setup_requires=['wheel'],
     install_requires=[
         # Include dependencies here
-        'biopython~=1.78',
-        'click~=7.1.2',
-        'pytest~=6.2.2',
-        'sqlalchemy~=1.4.15',
-        'networkx~=2.5',
-        'decorator~=4.4.2',
-        'requests~=2.23.0',
-        'pandas~=1.2.1',
-        'numpy~=1.20.0',
-        'beautifulsoup4~=4.9.3',
-        'questionary~=1.9.0',
-        'setuptools~=44.0.0',
-        'alembic~=1.6.2'
+        'biopython>=1.78',
+        'click>=7.1',
+        'pytest>=6.2',
+        'sqlalchemy>=1.4,<2',
+        'networkx>=2.5',
+        'decorator>=4.4',
+        'requests>=2.23',
+        'pandas>=1.2',
+        'numpy>=1.20.0',
+        'beautifulsoup4>=4.9',
+        'questionary>=1.9',
+        'setuptools>=44.0',
+        'alembic>=1.6'
     ],
     entry_points="""
     [console_scripts]
