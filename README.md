@@ -32,7 +32,7 @@ V2.0:
 ## Automatic Installation
 
 ```
-conda install -c bioconda pymlst
+conda install -c bioconda -c conda-forge pymlst
 ```
 
 ## Manual Installation
