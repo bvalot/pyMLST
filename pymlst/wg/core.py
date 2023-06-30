@@ -498,6 +498,10 @@ class WholeGenomeMLST:
             if invalid_genes:
                 logging.info('Skipped invalid genes: %s', str(invalid_genes))
 
+            if len(self.__database.get_core_genes()) == 0:
+                raise exceptions.InvalidGeneName("No valid gene found\n" + \
+                    "You probably load genome instead of genes")
+
             logging.info('Database initialized')
 
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):

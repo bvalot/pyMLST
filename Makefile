@@ -2,7 +2,7 @@
 .PHONY: build publish package coverage test lint docs venv
 PROJ_SLUG = pymlst
 CLI_NAME = pymlst
-PY_VERSION = 3.8
+PY_VERSION = 3.9
 LINTER = pylint
 
 

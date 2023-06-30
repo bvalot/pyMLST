@@ -37,4 +37,4 @@ def cli(database, force, **kwargs):
         raise click.UsageError('{}, use -c or -r options to manage it'
                                .format(str(err)))
     except exceptions.PyMLSTError as err:
-        raise click.UsageError(str(err))
+        raise click.ClickException(str(err))

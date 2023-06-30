@@ -1,6 +1,7 @@
 biopython>=1.78
 click>=7.1
 pytest>=6.2
+pytest-cov>=2.10
 sqlalchemy>=1.4,<2
 networkx>=2.5
 decorator>=4.4

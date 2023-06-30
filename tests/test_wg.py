@@ -151,7 +151,7 @@ def test_add_core_genome_gene_exist(db):
 
 def test_add_genome_with_invalid_gene_name(db):
     with pytest.raises(exceptions.InvalidGeneName):
-        db.add_genome('g1;', 'A', 'AAA')
+        db.add_core_genome('g1;', 'AAA')
 
 
 def test_get_core_genome(db):

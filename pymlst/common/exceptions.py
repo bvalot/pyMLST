@@ -59,3 +59,6 @@ class NothingToRemove(PyMLSTError):
 
 class UndefinedExportType(PyMLSTError):
     pass
+
+class EmptyDatabase(PyMLSTError):
+    pass

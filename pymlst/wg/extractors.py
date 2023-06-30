@@ -253,12 +253,14 @@ class MlstExtractor(TableExtractor):
         strains = base.get_all_strains()
         mlst = base.get_mlst(valid_shema)
         table = pd.DataFrame(columns=["#GeneId"] + strains)
+        rows = []
         for gene in valid_shema:
             row = {"#GeneId": gene}
             mlstg = mlst.get(gene, {})
             for strain in strains:
                 row[strain] = mlstg.get(strain, None)
-            table = table.append(row, ignore_index=True)
+            rows.append(row)
+        table = pd.concat([table, pd.DataFrame.from_dict(rows)], ignore_index=True)
         table = table.set_index('#GeneId')
         
         if self.form == 'grapetree':
