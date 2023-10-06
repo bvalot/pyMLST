@@ -298,22 +298,28 @@ def test_get_strains_distances(db_many):
     distances = db_many.get_strains_distances(['g1', 'g2', 'g3', 'g4', 'g5'])
     assert distances == {
         'A': {
+            'A': 0,
             'B': 3,
             'C': 2,
             'D': 1,
         },
         'B': {
             'A': 3,
+            'B': 0,
             'C': 2,
+            'D': 0,
         },
         'C': {
             'A': 2,
             'B': 2,
+            'C': 0,
             'D': 1,
         },
         'D': {
             'A': 1,
+            'B': 0,
             'C': 1,
+            'D': 0,
         },
     }
 

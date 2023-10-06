@@ -369,32 +369,52 @@ class DatabaseWG:
         are different (different seqids so different sequences).
         The compared genes are restricted to the ones given in the valid_schema.
         """
-        alias_1 = model.mlst.alias()
-        alias_2 = model.mlst.alias()
+        # alias_1 = model.mlst.alias()
+        # alias_2 = model.mlst.alias()
 
-        result = self.connection.execute(
-            select(
-                [alias_1.c.souche, alias_2.c.souche, count(distinct(alias_1.c.gene))])
-            .select_from(
-                alias_1.join(
-                    alias_2,
-                    and_(
-                        alias_1.c.seqid != alias_2.c.seqid,
-                        alias_1.c.souche != alias_2.c.souche,
-                        alias_1.c.gene == alias_2.c.gene)))
-            .where(
-                and_(
-                    in_(alias_1.c.gene, valid_schema),
-                    alias_1.c.souche != self.__ref,
-                    alias_2.c.souche != self.__ref))
-            .group_by(alias_1.c.souche, alias_2.c.souche)
-        ).fetchall()
+        # result = self.connection.execute(
+        #     select(
+        #         [alias_1.c.souche, alias_2.c.souche, count(distinct(alias_1.c.gene))])
+        #     .select_from(
+        #         alias_1.join(
+        #             alias_2,
+        #             and_(
+        #                 alias_1.c.seqid != alias_2.c.seqid,
+        #                 alias_1.c.souche != alias_2.c.souche,
+        #                 alias_1.c.gene == alias_2.c.gene)))
+        #     .where(
+        #         and_(
+        #             in_(alias_1.c.gene, valid_schema),
+        #             alias_1.c.souche != self.__ref,
+        #             alias_2.c.souche != self.__ref))
+        #     .group_by(alias_1.c.souche, alias_2.c.souche)
+        # ).fetchall()
 
+        # distance = {}
+        # for entry in result:
+        #     dist = distance.setdefault(entry[0], {})
+        #     dist[entry[1]] = entry[2]
+
+        mlst = self.get_mlst(valid_schema)
+        strains = self.get_all_strains()
+        
+        logging.info("Start distance calculation. This can take while")
         distance = {}
-        for entry in result:
-            dist = distance.setdefault(entry[0], {})
-            dist[entry[1]] = entry[2]
-
+        
+        for i,s1 in enumerate(strains):
+            dist = distance.setdefault(s1, {})
+            for s2 in strains:
+                count = 0
+                if s1==s2:
+                    dist[s2] = 0
+                    continue
+                for k in mlst.values():
+                    if s1 in k and s2 in k:
+                        if k.get(s1) != k.get(s2):
+                            count +=1
+                dist[s2] = count
+            logging.info("Strains %s on "+str(len(strains)), str(i))
+        
         return distance
 
     def get_mlst(self, valid_schema):
