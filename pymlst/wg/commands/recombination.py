@@ -1,4 +1,4 @@
-"""recombinaison CLI command file."""
+"""recombination CLI command file."""
 
 import click
 
@@ -6,7 +6,7 @@ from pymlst.common import utils, exceptions
 from pymlst.wg import core
 
 
-@click.command(name='recombinaison')
+@click.command(name='recombination')
 @click.option('--output', '-o',
               type=click.File('w'),
               help='Output number of variations by genes (default:stdout).')
@@ -15,7 +15,7 @@ from pymlst.wg import core
 @click.argument('alignment',
                 type=click.File('r'))
 def cli(genes, alignment, **kwargs):
-    """Search potential gene re-combinations from wgMLST database export."""
+    """Search potential gene recombinations from wgMLST database export."""
 
     try:
 
