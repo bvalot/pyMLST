@@ -14,7 +14,7 @@ from pymlst.wg.extractors import DistanceExtractor, TableExtractorCommand
               help='Export distance to (default=stdout).')
 @click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Extract an distance matrix from a wgMLST DATABASE."""
+    """Extracts a distance matrix from a wgMLST DATABASE."""
 
     tab_kwargs,out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 

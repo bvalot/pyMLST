@@ -15,7 +15,7 @@ from pymlst.wg import core
 @click.argument('alignment',
                 type=click.File('r'))
 def cli(genes, alignment, **kwargs):
-    """Search potential gene recombinations from wgMLST database export."""
+    """Searches potential gene recombinations from wgMLST database export."""
 
     try:
 

@@ -26,7 +26,7 @@ from pymlst.common import utils, exceptions
                 type=click.File("r"))
 
 def cli(fastqs, database, **kwargs):
-    """Add a strain from FASTQS(.gz) reads to the wgMLST DATABASE."""
+    """Adds a strain from FASTQS(.gz) reads to the wgMLST DATABASE."""
 
     try:
 

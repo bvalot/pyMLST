@@ -18,11 +18,11 @@ from pymlst.wg.extractors import MsaExtractor
               help='file containing list of coregenes to extract (default:all coregenes).')
 @click.option('--realign', '-r',
               is_flag=True,
-              help='Realign genes with same length (Default:No).')
+              help='Realigns genes with same length (Default:No).')
 @click.argument('database',
                 type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Compute Multiple Sequence Alignment from a wgMLST DATABASE."""
+    """Computes Multiple Sequence Alignment from a wgMLST DATABASE."""
 
     seq_kwargs, out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 

@@ -55,6 +55,9 @@ venv :
 install:
 	pip install -r requirements.txt
 
+install_docs:
+	pip install -r docs/source/requirements.txt
+
 licenses:
 	pip-licenses --with-url --format=rst \
 	--ignore-packages $(shell cat .pip-lic-ignore | awk '{$$1=$$1};1')

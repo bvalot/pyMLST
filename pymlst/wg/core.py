@@ -30,7 +30,7 @@ def open_wg(file=None, ref='ref'):
        :class:`~pymlst.wg.core.WholeGenomeMLST` object.
 
     Context managers allow you to instantiate objects using the ``with`` keyword,
-    this way you don't have to manage exceptions and the committing/closing processes yourself.
+    eliminating the need to manage exceptions and commit/close processes yourself.
 
     :param file: The path to the database file to work with.
     :param ref: The name that will be given to the reference strain in the database.
@@ -232,7 +232,7 @@ class DatabaseWG:
         return True
 
     def __get_gene_sequences_ids(self, gene):
-        """Gets the IDs of the sequences associated with a specific gene."""
+        """Return the IDs of the sequences associated with a specific gene."""
         rows = self.connection.execute(
             select([model.mlst.c.seqid])
             .where(model.mlst.c.gene == gene)
@@ -240,7 +240,7 @@ class DatabaseWG:
         return {row.seqid for row in rows}
 
     def __get_strain_sequences_ids(self, strain):
-        """Gets the IDs of the sequences associated with a specific strain."""
+        """Return the IDs of the sequences associated with a specific strain."""
         rows = self.connection.execute(
             select([model.mlst.c.seqid])
             .where(model.mlst.c.souche == strain)
@@ -257,7 +257,7 @@ class DatabaseWG:
         ).scalar() is True  # -> True or False (Otherwise returns True or None)
 
     def get_gene_sequences(self, gene):
-        """Gets all the sequences for a specific gene and
+        """Return all the sequences for a specific gene and
         lists the strains that are referencing them."""
         query = self.__get_cached_query(
             'get_gene_sequences',
@@ -290,7 +290,7 @@ class DatabaseWG:
         return(self.__core_genome.get(gene, []))
     
     def get_duplicated_genes(self):
-        """Gets the genes that are duplicated."""
+        """Return the genes that are duplicated."""
         m_alias = model.mlst.alias()
 
         exist_sub = select([model.mlst]) \
@@ -311,7 +311,7 @@ class DatabaseWG:
         return {row[0] for row in res}
 
     def get_all_strains(self):
-        """Gets all distinct strains."""
+        """Return all distinct strains."""
         res = self.connection.execute(
             select([distinct(model.mlst.c.souche)]).
             where(model.mlst.c.souche != self.__ref)
@@ -319,7 +319,7 @@ class DatabaseWG:
         return [r[0] for r in res]
 
     def get_core_genes(self):
-        """Gets all distinct genes."""
+        """Return all distinct genes."""
         res = self.connection.execute(
             select([distinct(model.mlst.c.gene)]).
             where(model.mlst.c.souche == self.__ref)
@@ -327,7 +327,7 @@ class DatabaseWG:
         return [r[0] for r in res]
 
     def count_sequences_per_gene(self):
-        """Gets the number of distinct sequences per gene."""
+        """Return the number of distinct sequences per gene."""
         res = self.connection.execute(
             select([model.mlst.c.gene, count(distinct(model.mlst.c.seqid))])
             .where(model.mlst.c.souche != self.__ref)
@@ -336,7 +336,7 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_souches_per_gene(self):
-        """Gets the number of distinct stains per gene."""
+        """Return the number of distinct stains per gene."""
         res = self.connection.execute(
             select([model.mlst.c.gene, count(distinct(model.mlst.c.souche))])
             .where(model.mlst.c.souche != self.__ref)
@@ -345,7 +345,7 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_genes_per_souche(self, valid_shema):
-        """Gets the number of distinct genes per strain.
+        """Return the number of distinct genes per strain.
 
         The counted genes are restricted to the ones given in the valid_schema."""
         res = self.connection.execute(
@@ -356,14 +356,14 @@ class DatabaseWG:
         return {r[0]: r[1] for r in res}
 
     def count_sequences(self):
-        """Gets the number of distinct."""
+        """Return the number of distinct."""
         return self.connection.execute(
                select([count(distinct(model.mlst.c.seqid))])
                .where(model.mlst.c.souche != self.__ref)
         ).fetchone()[0]
 
     def get_strains_distances(self, valid_schema):
-        """Gets the strains distances.
+        """Return the distances between strains.
 
         For all the possible pairs of strains, counts how many of their genes
         are different (different seqids so different sequences).
@@ -418,11 +418,11 @@ class DatabaseWG:
         return distance
 
     def get_mlst(self, valid_schema):
-        """Gets the the genes MLST.
+        """Return the the genes MLST.
 
-        Returns a dictionary associating to each gene, all the strains
-        that are referencing them and their sequences ids.
-        The returned genes are restricted to the ones given in the valid_schema.
+        Returns a dictionary associated with each gene, all the strains that
+        reference it, and their sequence ids. The genes returned are restricted
+        to those given in the valid_schema.
         """
         result = self.connection.execute(
             select([model.mlst.c.gene, model.mlst.c.souche,

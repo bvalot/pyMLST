@@ -18,7 +18,7 @@ from pymlst.common import utils, exceptions
 
 
 def cli(database, **kwargs):
-    """Remove ALLELE sequence from the GENE on a mlst DATABASE."""
+    """Removes ALLELE sequence from the GENE on a mlst DATABASE."""
     
     try:
         with pymlst.open_cla(os.path.abspath(database)) as mlst:

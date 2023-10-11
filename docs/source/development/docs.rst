@@ -1,8 +1,5 @@
 .. _docs:
 
-.. toctree::
-    :glob:
-
 **************************
 Building the Documentation
 **************************
@@ -17,28 +14,36 @@ from `reStructuredTex <http://docutils.sourceforge.net/rst.html>`_.
 Ubuntu/Debian
 -------------
 
-This project started on `Ubuntu Linux 18.04 <http://releases.ubuntu.com/18.04/>`_.
-That doesn't mean you can't use another distribution, or even another operating
-system, but you may need to perform some additional setup steps to get your
-builds working.  (If you do get it working under another system, please consider
-adding an article to let others know how you did it!)
+This project started with `Debian 11 <https://www.debian.org/distrib/>`_.
+This does not mean that you cannot use another distribution, or even
+another operating system, but you may need to perform additional setup
+steps to make your builds work.
 
 Prerequisites
 ^^^^^^^^^^^^^
 
+You need to install sphinx dependancy using the :ref:`Makefile <make>`
+file.
+
+.. code-block:: bash
+
+	make install_docs
+
+
 The project uses the Sphinx
 `LatexBuilder <http://www.sphinx-doc.org/en/master/usage/builders/index.html#sphinx.builders.latex.LaTeXBuilder>`_
 to generate a `PDF <https://acrobat.adobe.com/us/en/acrobat/about-adobe-pdf.html>`_
-document.  If you're using Ubuntu (or Debian) you'll need to install
+document.  If you are using Debian you will need to install
 `texlive <https://www.tug.org/texlive/>`_ and
 `latexmk <https://mg.readthedocs.io/latexmk.html>`_.
 
 .. code-block:: bash
-
+	
     sudo apt-get install texlive-latex-recommended \
         texlive-latex-extra \
         texlive-fonts-recommended \
         latexmk
+
 
 make
 ----

@@ -17,7 +17,7 @@ from pymlst.wg.extractors import StrainExtractor, TableExtractorCommand
               help='Export strain list to (default=stdout).')
 @click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Extract an strains list from a wgMLST DATABASE."""
+    """Extracts a list of strains from a wgMLST DATABASE."""
 
     tab_kwargs,out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 

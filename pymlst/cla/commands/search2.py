@@ -19,13 +19,13 @@ from pymlst.common import utils, exceptions
               type=click.INT,
               help='Minimum reads coverage to search gene (default=10).')
 @click.option('--paired/--single', default=True, 
-              help= "Defined type of fastqs files.")
+              help= "Defines type of fastqs files.")
 @click.option('--fasta', '-f',
               type=click.File('w'),
-              help='Write fasta file with gene allele.')
+              help='Writes fasta file with gene allele.')
 @click.option('--output', '-o',
               type=click.File('w'),
-              help='Write ST search result to (default:stdout).')
+              help='Writes ST search result to (default:stdout).')
 @click.argument('database',
                 type=click.Path(exists=True))
 @click.argument('fastqs',
@@ -33,7 +33,7 @@ from pymlst.common import utils, exceptions
 
 
 def cli(fastqs, database, **kwargs):
-    """Search ST number from FASTQS(.gz) raw reads using an mlst DATABASE."""
+    """Searches ST number from FASTQS(.gz) raw reads using an mlst DATABASE."""
     
     try:
         with pymlst.open_cla(os.path.abspath(database)) as mlst:

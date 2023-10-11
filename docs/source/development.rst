@@ -1,21 +1,17 @@
 .. _development:
 
+***********
 Development
-===========
+***********
+
+This section describes how to configure your environment for
+development, details the make file option, and how to build
+documentation.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Table of contents:
 
    development/getting_started
    development/make
-   development/publishing
    development/docs
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

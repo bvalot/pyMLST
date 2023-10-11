@@ -14,7 +14,7 @@ from pymlst.wg.extractors import GeneExtractor, TableExtractorCommand
               help='Export GENE list to (default=stdout).')
 @click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Extract an genes list from a wgMLST DATABASE."""
+    """Extracts a list of genes from a wgMLST DATABASE."""
 
     tab_kwargs,out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 

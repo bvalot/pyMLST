@@ -30,14 +30,16 @@ You can create a virtual environment and install the project's dependencies usin
 .. code-block:: bash
 
     make venv
-    make install
     source venv/bin/activate
+	make install
+
 
 Try It Out
 ==========
 
-One way to test out the environment is to run the tests.  You can do this with the `make test`
-target.
+We recommend that you test your environment by running appropriate
+tests.
+You can do this with the `make test` target.
 
 .. code-block:: bash
 

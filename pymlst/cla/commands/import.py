@@ -18,7 +18,7 @@ from pymlst.common import utils
 @click.command(name='import')
 @click.option('--force', '-f',
               is_flag=True,
-              help='Override alrealdy existing DATABASE')
+              help='Overwrites alrealdy existing DATABASE')
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
@@ -26,7 +26,7 @@ from pymlst.common import utils
 @click.option('--mlst', '-m',
               type=click.STRING,
               default='',
-              help='Specify the desired MLST scheme name.')
+              help='Specifies the desired MLST scheme name.')
 @click.argument('database',
                 type=click.Path(exists=False))
 @click.argument('species',
@@ -35,7 +35,7 @@ from pymlst.common import utils
 
 
 def cli(force, prompt, mlst, database, species):
-    """Create a claMLST DATABASE from an online resource.
+    """Creates a claMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
 

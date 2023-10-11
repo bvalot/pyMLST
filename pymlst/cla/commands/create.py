@@ -10,7 +10,7 @@ from pymlst.common import exceptions
 @click.command(name='create')
 @click.option('--force', '-f',
               is_flag=True,
-              help='Override alrealdy existing DATABASE')
+              help='Overwrites alrealdy existing DATABASE')
 @click.argument('database',
                 type=click.Path(exists=False))
 @click.argument('scheme',
@@ -20,7 +20,7 @@ from pymlst.common import exceptions
 
 
 def cli(force, database, scheme, alleles):
-    """Create a classical MLST DATABASE from a SCHEME csv and ALLELES files."""
+    """Creates a classical MLST DATABASE from a SCHEME csv and ALLELES files."""
 
     try:
 

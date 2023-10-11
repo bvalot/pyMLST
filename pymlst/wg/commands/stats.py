@@ -12,7 +12,7 @@ from pymlst.wg.extractors import StatsExtractor
 
 @click.argument('database', type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Extract stats from a wgMLST DATABASE."""
+    """Extracts stats from a wgMLST DATABASE."""
 
     try:
 

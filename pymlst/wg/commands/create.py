@@ -9,18 +9,18 @@ from pymlst.common import exceptions, utils
 @click.command(name='create')
 @click.option('--force', '-f',
               is_flag=True,
-              help='Override alrealdy existing DATABASE')
+              help='Overwrite alrealdy existing DATABASE')
 @click.option('--concatenate', '-c',
               is_flag=True,
-              help='Automatically concatenate GENES with duplicated sequences.')
+              help='Automatically concatenates GENES with duplicated sequences.')
 @click.option('--remove', '-r',
               is_flag=True,
-              help='Automatically remove GENES with duplicated sequences.')
+              help='Automatically removes GENES with duplicated sequences.')
 @click.argument('database', type=click.Path(exists=False))
 @click.argument('coregene', type=click.File('r'))
 
 def cli(database, force, **kwargs):
-    """Create a wgMLST DATABASE from a template COREGENE."""
+    """Creates a wgMLST DATABASE from a template COREGENE."""
        
     try:
 

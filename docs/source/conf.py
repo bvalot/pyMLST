@@ -82,8 +82,8 @@ master_doc = "index"
 
 # General information about the project.
 project = "pymlst"
-copyright = "2019, Zagarwin"
-author = "benoit_valot"
+copyright = "2019, Zagarwin; 2023, Bvalot"
+author = "Benoit Valot"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -125,11 +125,9 @@ todo_include_todos = False
   # noqa
 # fmt: on
 html_theme = "sphinx_rtd_theme"
+html_logo = "logo.png"
 
 html_theme_options = {
-    "logo": "logo.png",
-    "github_user": "Zagarwin",
-    "github_repo": "PyMLST",
 }
 # fmt: off
   # noqa
@@ -146,15 +144,15 @@ html_static_path = ["_static"]
 #
 # This is required for the alabaster theme
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
-html_sidebars = {
-    "**": [
-        "about.html",
-        "navigation.html",
-        "relations.html",  # needs 'show_related': True theme option to display
-        "searchbox.html",
-        "donate.html",
-    ]
-}
+# html_sidebars = {
+#     "**": [
+#         "about.html",
+#         "navigation.html",
+#         "relations.html",  # needs 'show_related': True theme option to display
+#         "searchbox.html",
+#         "donate.html",
+#     ]
+# }
 
 # -- Options for HTMLHelp output ------------------------------------------
 
@@ -185,8 +183,8 @@ latex_documents = [
     (
         master_doc,
         "pymlst.tex",
-        "pymlst Documentation",
-        "Zagarwin",
+        "pyMLST Documentation",
+        author,
         "manual",
     )
 ]
@@ -199,7 +197,7 @@ man_pages = [
     (
         master_doc,
         "pymlst",
-        "pymlst Documentation",
+        "pyMLST Documentation",
         [author],
         1,
     )
@@ -214,10 +212,10 @@ texinfo_documents = [
     (
         master_doc,
         "pymlst",
-        "pymlst Documentation",
+        "pyMLST Documentation",
         author,
-        "pymlst",
-        "One line description of project.",
-        "Miscellaneous",
+        "cg/wgMLST analysis using pyMLST",
+        "O",
+        "bioinformatic",
     )
 ]

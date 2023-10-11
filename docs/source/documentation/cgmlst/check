@@ -1,0 +1,25 @@
+.. _cgmlst_add:
+
+.. toctree::
+    :glob:
+
+===========================
+Add strains to the database
+===========================
+
+Next, you need to add your strain iteratively to the database.
+A draft genome can be used (we recommend to use Spades for assembly).
+You can also add reference genome for comparison.
+
+
+Get the Source
+==============
+
+The source code for the `PyMLST` project lives at
+`github <https://github.com/bvalot/pyMLST.git>`_.  
+You can use `git clone` to get it.
+
+.. code-block:: bash
+
+   git clone https://github.com/bvalot/pyMLST.git
+

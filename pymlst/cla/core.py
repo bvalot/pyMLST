@@ -27,7 +27,7 @@ def open_cla(file=None, ref=1):
        :class:`~pymlst.cla.core.ClassicalMLST` object.
 
     Context managers allow you to instantiate objects using the ``with`` keyword,
-    this way you don't have to manage exceptions and the committing/closing processes yourself.
+    eliminating the need to manage exceptions and commit/close processes yourself.
 
     :param file: The path to the database file to work with.
     :param ref: The name that will be given to the reference strain in the database.
@@ -397,9 +397,9 @@ class ClassicalMLST:
                 
                 
     def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
-        """Search the **Sequence Type** number of one or multi strain(s) from an assembly genome.
+        """Searches the **Sequence Type** number of one or multi strain(s) from an assembly genome.
             
-        :param genomes: Tuple of one or multiple strain genome given as input
+        :param genomes: Tuple of one or more strain genomes given as input
         :param output: An output for the sequence type research results.
         :param identity: Sets the minimum identity used by `BLAT`_
                          for sequences research (in percent).
@@ -416,7 +416,7 @@ class ClassicalMLST:
             logging.info("FINISH")
 
     def search_read(self, fastqs, identity=0.9, coverage=0.95, reads=10, fasta=None):
-        """Search the **Sequence Type** from raw reads of one strain.
+        """Searches the **Sequence Type** from raw reads of one strain.
 
         :param fastq: List of fastq files containing raw reads
         :param identity: Sets the minimum identity used by `KMA`_
@@ -502,7 +502,7 @@ class ClassicalMLST:
         
         """Search the **Sequence Type** number of one or multi strain(s) from raw reads.
             
-        :param fastqs: Tuple of one or multiple strain raw reads given as input
+        :param fastqs: Tuple of one or more strain raw reads given as input
         :param output: An output for the sequence type research results.
         :param identity: Sets the minimum identity used by `KMA`_
                          for sequences research (in percent).
@@ -534,10 +534,10 @@ class ClassicalMLST:
                 logging.info("FINISH")
 
     def remove_allele(self, gene, allele):
-        """Remove some problematic allele o claMLST database
+        """Removes some problematic allele out of the claMLST database
 
         :param gene: Gene name on the database, ignoring case
-        :param allele: integer allele number of this gene
+        :param allele: Integer allele number of this gene
         """
         if self.__database.remove_allele(gene, allele):
             kma.delete_indexing(self.__file)
@@ -571,7 +571,7 @@ class ClassicalMLST:
 
 
 class ST_result:
-    """ Writing the results of the ST research"""
+    """ Writes the results of the ST research"""
     
     def __init__(self,genome_name, st_val, alleles):
         """
@@ -584,7 +584,7 @@ class ST_result:
         self.alleles = alleles
         
     def write(self,output=sys.stdout, header=True):
-        """Writing the results in output file"""
+        """Writes the results in output file"""
         genes = self.sort_genes()
         if header:
             output.write("Sample\tST\t" + "\t".join(genes) + "\n")

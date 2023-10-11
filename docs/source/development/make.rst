@@ -1,8 +1,5 @@
 .. _make:
 
-.. toctree::
-    :glob:
-
 .. _using-the-makefile:
 
 Using the `Makefile`
@@ -21,26 +18,26 @@ This section contains a brief description of the targets defined in the
 ``clean``
 ^^^^^^^^^
 
-Remove generated packages, documentation, temporary files, *etc*.
+Removes generated packages, documentation, temporary files, *etc*.
 
 .. _make_lint:
 
 ``lint``
 ^^^^^^^^
 
-Run `pylint <https://www.pylint.org/>`_ against the project files.
+Runs `pylint <https://www.pylint.org/>`_ against the project files.
 
 .. _make_test:
 
 ``test``
 ^^^^^^^^
 
-Run the unit tests.
+Runs the unit tests.
 
 ``quicktest``
 ^^^^^^^^^^^^^
 
-Run the unit tests without performing pre-test validations (like
+Runs the unit tests without performing pre-test validations (like
 :ref:`linting <make_lint>`).
 
 .. _make_docs:
@@ -48,7 +45,7 @@ Run the unit tests without performing pre-test validations (like
 ``docs``
 ^^^^^^^^
 
-Build the documentation for production.
+Builds the documentation for production.
 
 .. note::
 
@@ -68,39 +65,44 @@ Build the documentation for production.
 ``answers``
 ^^^^^^^^^^^
 
-Perform a quick build of the documentation and open it in your browser.
+Performs a quick build of the documentation and open it in your browser.
 
 ``package``
 ^^^^^^^^^^^
 
-Build the package for publishing.
+Builds the package for publishing.
 
 .. _make-publish:
 
 ``publish``
 ^^^^^^^^^^^
 
-Publish the package to your repository.
+Publishes the package to your repository.
 
 ``build``
 ^^^^^^^^^
 
-Install the current project locally so that you may run the command-line application.
+Installs the current project locally so that you may run the command-line application.
 
 ``venv``
 ^^^^^^^^
 
-Create a virtual environment.
+Creates a virtual environment.
 
 ``install``
 ^^^^^^^^^^^
 
-Install (or update) project dependencies.
+Installs (or updates) project dependencies.
+
+``install_docs``
+^^^^^^^^^^^^^^^^
+
+Installs (or updates) documentation dependencies.
 
 ``licenses``
 ^^^^^^^^^^^^
 
-Generate a report of the projects dependencies and respective licenses.
+Generates a report of the projects dependencies and respective licenses.
 
 .. note::
 

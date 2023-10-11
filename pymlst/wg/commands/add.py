@@ -23,7 +23,7 @@ from pymlst.common import utils, exceptions
                 type=click.File("r"))
 
 def cli(genome, database, **kwargs):
-    """Add a strain GENOME to the wgMLST DATABASE."""
+    """Adds a strain GENOME to the wgMLST DATABASE."""
 
     try:
 

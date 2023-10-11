@@ -20,7 +20,7 @@ from pymlst.wg import core
 @click.argument('distance',
                 type=click.File('r'))
 def cli(distance, **kwargs):
-    """Search group of strains at a DISTANCE threshold."""
+    """Searches group of strains at a DISTANCE threshold."""
 
     try:
 

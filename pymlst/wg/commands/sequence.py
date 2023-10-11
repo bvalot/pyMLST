@@ -18,11 +18,11 @@ from pymlst.wg.extractors import SequenceExtractor
               help='File containing list of coregenes to extract (default:all coregenes).')
 @click.option('--reference',
               is_flag=True,
-              help='Return sequence of the reference instead of strains allele')
+              help='Return sequence of the reference instead of strains alleles')
 @click.argument('database',
                 type=click.Path(exists=True))
 def cli(database, **kwargs):
-    """Extract sequences from a wgMLST DATABASE."""
+    """Extracts sequences from a wgMLST DATABASE."""
 
     seq_kwargs, out_kwargs = utils.get_output(utils.clean_kwargs(kwargs))
 

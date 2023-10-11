@@ -22,7 +22,7 @@ from pymlst.common import utils, exceptions
 
 
 def cli(database, strains, genes_or_strains, **kwargs):
-    """Remove STRAINS or GENES from a wgMLST DATABASE."""
+    """Removes STRAINS or GENES from a wgMLST DATABASE."""
 
     utils.create_logger()
 

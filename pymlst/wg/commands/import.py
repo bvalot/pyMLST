@@ -14,7 +14,7 @@ from pymlst.common import utils, web, exceptions
 @click.command(name='import')
 @click.option('--force', '-f',
               is_flag=True,
-              help='Override alrealdy existing DATABASE')
+              help='Overwrite alrealdy existing DATABASE')
 @click.option('--prompt/--no-prompt',
               default=True,
               help='Do not prompt if multiple '
@@ -25,7 +25,7 @@ from pymlst.common import utils, web, exceptions
                 type=click.STRING,
                 nargs=-1)
 def cli(force, prompt, database, species):
-    """Create a wgMLST DATABASE from an online resource.
+    """Creates a wgMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
 

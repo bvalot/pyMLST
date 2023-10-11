@@ -17,10 +17,10 @@ from pymlst.common import utils, exceptions
               help='Minimum coverage to search gene (default=0.9).')
 @click.option('--fasta', '-f',
               type=click.File('w'),
-              help='Write fasta file with gene allele.')
+              help='Writes fasta file with gene allele.')
 @click.option('--output', '-o',
               type=click.File('w'),
-              help='Write ST search result to (default:stdout).')
+              help='Writes ST search result to (default:stdout).')
 @click.argument('database',
                 type=click.Path(exists=True))
 @click.argument('genomes',
@@ -28,7 +28,7 @@ from pymlst.common import utils, exceptions
 
 
 def cli(genomes, database, **kwargs):
-    """Search ST number for an assembly GENOME using an mlst DATABASE."""
+    """Searches ST number for an assembly GENOME using an mlst DATABASE."""
     
     try:
         with pymlst.open_cla(os.path.abspath(database)) as mlst:
