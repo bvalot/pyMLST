@@ -28,7 +28,7 @@ V2.0:
 
 
 ## Documentation
-The details of installation, workflow and running parameters could be found on the [*documentation*](https://doi.org/10.1093/jac/dkz472).
+The details of installation, workflow and running parameters could be found on the [*documentation*](https://pymlst.readthedocs.io/en/latest/).
 
 
 ## Publications
