@@ -1,5 +1,6 @@
 # pyMLST
 ![pyMLST](docs/source/logo.png "A Python Mlst Local Search Tool")
+
 A Python Mlst Local Search Tool.
 
 ## Purpose
