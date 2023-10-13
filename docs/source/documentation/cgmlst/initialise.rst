@@ -64,11 +64,25 @@ sequences in nucleotide format).
    gene must be include on the scheme file.
 
 
-You can obtained these schemes for:
+You can get scheme for:
 
-* Core genome analysis in publications.
+:cgMLST:
 
-* Whole genome analysis by using annoted genes of a publish genome close to your strains.
+* Using a scheme from a scientific publication and not available on
+  `cgmlst.org <https://www.cgmlst.org/>`_.
+	 
+* Using the annotation of the genes from the reference genome of
+  the species. After adding your strains to the database, you can
+  filter to core genome by removing genes absent from least 95% of
+  the strains (see :ref:`validate <m_option_check>`)
+	 
+:wgMLST:
+
+* Using gene annotations from a genome close to your strains
+
+* Using pangenome results from analysis of your strains with
+  e.g. `Roary <https://sanger-pathogens.github.io/Roary/>`_.
+	
 	   
 
 .. code-block:: bash
