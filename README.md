@@ -1,3 +1,7 @@
+[![PyPI version](https://badge.fury.io/py/PyMLST.svg)](https://pypi.org/project/PyMLST/)
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/pymlst/README.html)
+[![Documentation Status](https://readthedocs.org/projects/pymlst/badge/?version=latest)](https://pymlst.readthedocs.io/en/latest/?badge=latest)
+
 # pyMLST
 ![pyMLST](docs/source/logo.png "A Python Mlst Local Search Tool")
 
