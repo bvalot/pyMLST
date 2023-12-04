@@ -71,7 +71,7 @@ can be defined.
 
 .. code-block:: bash
 				
-   wgMLST mslt --help
+   wgMLST mlst --help
    Usage: wgMLST mlst [OPTIONS] DATABASE
 
    Extracts an MLST table from a wgMLST DATABASE.
