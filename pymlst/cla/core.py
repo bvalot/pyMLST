@@ -272,7 +272,9 @@ class ClassicalMLST:
                     except Exception as err:
                         raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
 
-                    self.__database.add_sequence(str(seq.seq), gene, allele)
+                    self.__database.add_sequence(str(seq.seq), \
+                                                 utils.clean_geneid(gene), \
+                                                 allele)
                     alleles.get(gene).add(allele)
 
             # load MLST sheme
@@ -287,7 +289,9 @@ class ClassicalMLST:
                             " for gene %s; skipped", str(allele), gene)
                         ##self.__database.add_mlst(sequence_typing, gene, 0)
                     else:
-                        self.__database.add_mlst(sequence_typing, gene, int(allele))
+                        self.__database.add_mlst(sequence_typing, \
+                                                 utils.clean_geneid(gene), \
+                                                 int(allele))
 
             logging.info('Database initialized')
 
@@ -465,7 +469,7 @@ class ClassicalMLST:
             ##add sequence and MLST
             gene = res.split("_")[0]
             if gene not in core_genome:
-                logging.warnings("Gene %s not present in database", gene)
+                logging.warning("Gene %s not present in database", gene)
                 continue
             alle = self.__database.get_allele_by_sequence_and_gene(str(sequence), gene)
         
