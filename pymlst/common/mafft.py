@@ -1,8 +1,9 @@
 import tempfile
-from io import StringIO
+import logging
+import sys
+import subprocess
 
 from Bio import AlignIO
-from Bio.Align.Applications import MafftCommandline
 
 from pymlst import config
 from pymlst.common import utils, exceptions
@@ -15,12 +16,16 @@ def align(genes):
     with tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta') as tmp:
         utils.write_genome(genes, tmp)
         tmp.flush()
-        mafft_cmd = MafftCommandline(path, input=tmp.name, quiet=True)
-        stdout, _ = mafft_cmd()
-        records = AlignIO.parse(StringIO(stdout), "fasta")
+        p = subprocess.Popen([path, "--auto", tmp.name], \
+                             stdout=subprocess.PIPE, \
+                             stderr=subprocess.PIPE, \
+                             encoding=sys.stdout.encoding)
+        records = AlignIO.parse(p.stdout, "fasta")
         try:
             alignments = next(records)
         except StopIteration:
+            logging.error("MAFFT doesn't finish correctly\n" + \
+                          p.stderr.read())
             return {}
         return utils.records_to_dict(alignments)
 
