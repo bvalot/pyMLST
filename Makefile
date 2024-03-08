@@ -52,6 +52,9 @@ clean :
 venv :
 	virtualenv --python python$(PY_VERSION) venv
 
+venv_docs :
+	virtualenv --python python$(PY_VERSION) venv_docs
+
 install:
 	pip install -r requirements.txt
 

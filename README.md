@@ -36,9 +36,17 @@ The details of installation, workflow and running parameters could be found on t
 
 
 ## Publications
+If you use pyMLST, please cite the following paper:
+
+Bignenet A. et al., Introduction and benchmarking of pyMLST:
+open-source software for assessing bacterial clonality using core
+genome MLST. 2023 Microbials Genomics, 9(11), 1126.
+doi: [10.1099/mgen.0.001126](https://doi.org/10.1099/mgen.0.001126)
+
+
 PyMLST v1 have been already use to analyse most of clinical bacteria:
 
  - [*Escherichia coli* and *Klebsiella pneumoniae*](https://doi.org/10.1016/j.cmi.2021.07.022)
- - *Acinetobacter baumanii* (in review)
+ - [*Acinetobacter baumanii*](https://doi.org/10.1038/s41598-023-49268-x)
  - [*Pseudomonas aeruginosa*](https://doi.org/10.1016/j.jhin.2020.06.013)
  - [*Proteus mirabilis*](https://doi.org/10.1093/jac/dkz472)

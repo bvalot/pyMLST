@@ -55,3 +55,14 @@ Documentation
 
    development
    api
+
+
+Citation
+========
+
+If you use pyMLST, please cite the following paper:
+
+Bignenet A. et al., Introduction and benchmarking of pyMLST:
+open-source software for assessing bacterial clonality using core
+genome MLST. 2023 Microbials Genomics, 9(11), 1126.
+doi: `10.1099/mgen.0.001126 <https://doi.org/10.1099/mgen.0.001126>`_
