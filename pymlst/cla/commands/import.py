@@ -27,6 +27,12 @@ from pymlst.common import utils
               type=click.STRING,
               default='',
               help='Specifies the desired MLST scheme name.')
+@click.option('--repository', '-r', default='pubmlst', 
+              type=click.Choice(['pubmlst','pasteur'], case_sensitive=False),
+              help='Choose the online repository to use')
+# @click.option('--pubmlst/--pasteur',
+#               default=True, show_default="pubmlst", 
+#               help= "Choose the online repository")
 @click.argument('database',
                 type=click.Path(exists=False))
 @click.argument('species',
@@ -34,7 +40,7 @@ from pymlst.common import utils
                 nargs=-1)
 
 
-def cli(force, prompt, mlst, database, species):
+def cli(force, prompt, mlst, repository, database, species):
     """Creates a claMLST DATABASE from an online resource.
 
     The research can be filtered by adding a SPECIES name."""
@@ -49,7 +55,7 @@ def cli(force, prompt, mlst, database, species):
             else:
                 raise exceptions.PyMLSTError("Database alreadly exists, use --force to override it")
 
-        url = web.retrieve_mlst(' '.join(species), prompt, mlst)
+        url = web.retrieve_mlst(' '.join(species), prompt, mlst, repository)
 
         if url is None:
             logging.info('No choice selected')

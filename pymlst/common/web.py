@@ -15,6 +15,7 @@ urllib3.disable_warnings()
 from pymlst.common.exceptions import PyMLSTError
 
 PUBMLST_URL = 'https://rest.pubmlst.org/db'
+PASTEUR_URL = 'https://bigsdb.pasteur.fr/api/db'
 CGMLST_URL = 'https://www.cgmlst.org/ncs'
 
 
@@ -77,18 +78,20 @@ def process_results(choices, query, prompt):
     raise PyMLSTWebError('More than 1 result found for \'{}\'\n'.format(query))
 
 
-def get_mlst_species(query):
+def get_mlst_species(query, repo_url):
     """Gets MLST species from pubmlst.org.
 
     :param query: A sub-string to filter species names.
+    :param repo_url: An online repository url
     :return: A Dictionary with species name in Key and URL in Value.
     """
     try:
-        whole_base = request(PUBMLST_URL).json()
+        whole_base = request(repo_url).json()
     except ValueError as error:
         raise StructureError() from error
 
     species = {}
+    species_all = {}
     query_low = query.lower()
 
     try:
@@ -97,13 +100,18 @@ def get_mlst_species(query):
                 continue
             for database in record['databases']:
                 des = database['description'].replace('sequence/profile definitions', '').lower()
-                if query_low in des:
-                    if database['name'].endswith('seqdef'):
+                if database['name'].endswith('seqdef'):
+                    if query_low in des:
                         species[des] = database['href']
+                    for sub_query in query_low.split(' '):
+                        if sub_query in des:
+                            species_all[des] = database['href']
     except KeyError as error:
         raise StructureError() from error
-
-    return species
+    if len(species) > 0:
+        return species
+    logging.info("No elements found for {}, search for each individual term".format(query))
+    return species_all
 
 
 def get_mlst_schemes(species_url, query):
@@ -132,7 +140,7 @@ def get_mlst_schemes(species_url, query):
     return schemes
 
 
-def retrieve_mlst(query, prompt_enabled, mlst=''):
+def retrieve_mlst(query, prompt_enabled, mlst='', repository='pubmlst'):
     """Retrieves MLST data, prompts user if necessary and if possible.
 
     :param query: A sub-string to filter species names.
@@ -140,9 +148,17 @@ def retrieve_mlst(query, prompt_enabled, mlst=''):
                            If disabled and many choices are possible,
                            will raise an Exception.
     :param mlst: A sub-string to filter schemes names.
+    :param repository: Defined the online repository [PUBMLST,PASTEUR]
     :return: A scheme URL.
     """
-    species = get_mlst_species(query)
+    if repository.upper()=="PUBMLST":
+        species = get_mlst_species(query, PUBMLST_URL)
+    elif repository.upper()=="PASTEUR":
+        species = get_mlst_species(query, PASTEUR_URL)
+        if mlst=='':
+            mlst='mlst'
+    else:
+        raise Exception("Only PUBMLST or PASTEUR repository are defined")
     species_choice = process_results(list(species.keys()), query, prompt_enabled)
     if species_choice is None:
         return None
@@ -263,8 +279,9 @@ def get_mlst_files(url, directory):
         loci_file_name = os.path.join(locus_dir, name + '.fasta')
         open(loci_file_name, 'wb').write(loci_fasta.content)
 
-    # Downloading the profiles CSV + removing last header column :
+    # Downloading the profiles CSV :
     profiles_url = url + '/profiles_csv'
     profiles = request(profiles_url)
-    with open(os.path.join(directory, 'profiles.csv'), 'wt') as profiles_dir:
-        profiles_dir.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))
+    open(os.path.join(directory, 'profiles.csv'), 'wt').write(profiles.text)
+    # with open(os.path.join(directory, 'profiles.csv'), 'wt') as profiles_dir:
+    #     profiles_dir.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))

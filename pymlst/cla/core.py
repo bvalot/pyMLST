@@ -248,7 +248,7 @@ class ClassicalMLST:
         with self.database.begin():
             # Verify sheme list with fasta files
             header = scheme.readline().rstrip("\n").split("\t")
-            if len(header) != len(alleles) + 1:
+            if len(header) < len(alleles) + 1:
                 raise Exception("The number of genes in sheme don't "
                                 "correspond to the number of fasta file\n"
                                 + " ".join(header) + "\n")
@@ -282,7 +282,8 @@ class ClassicalMLST:
             for line in scheme:
                 line_content = line.rstrip("\n").split("\t")
                 sequence_typing = int(line_content[0])
-                for gene, allele in zip(header[1:], line_content[1:]):
+                for gene, allele in zip(header[1:len(fastas)+1], \
+                                        line_content[1:len(fastas)+1]):
                     if int(allele) not in alleles.get(gene):
                         logging.warning(
                             "Unable to find the allele number %s"
