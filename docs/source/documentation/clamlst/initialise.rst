@@ -16,7 +16,7 @@ Import from pubMLST
 ===================
 
 You can automatically import a MLST resource from `pubmlst
-<https://pubmlst.org/data/>`_.
+<https://pubmlst.org/data/>`_ or `pasteur <https://bigsdb.pasteur.fr/>`_.
 
 .. code-block:: bash
 
@@ -32,6 +32,8 @@ You can automatically import a MLST resource from `pubmlst
 				           fail instead.
    -f, --force        	   Overwrites alrealdy existing DATABASE
    -m, --mlst TEXT         Specifies the desired MLST scheme name.
+   -r, --repository        Choose the online repository to use [pubmlst|pasteur]
+
 
 
 Create from other resource
