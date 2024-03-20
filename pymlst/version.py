@@ -8,5 +8,5 @@ This module contains project version information.
 .. moduleauthor:: benoit_valot <benoit.valot@univ-fcomte.fr>
 """
 
-__version__ = "2.1.5"  #: the working version
+__version__ = "2.1.6"  #: the working version
 __release__ = "2.1.0"  #: the release version
