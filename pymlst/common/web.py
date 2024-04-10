@@ -269,6 +269,7 @@ def get_mlst_files(url, directory):
     :param directory: The directory.
     """
     mlst_scheme = request(url).json()
+    logging.info("Database version : {}".format(mlst_scheme.get('last_added', "Not found")))
 
     # Downloading the locus files in a directory :
     locus_dir = os.path.join(directory, 'locus')
