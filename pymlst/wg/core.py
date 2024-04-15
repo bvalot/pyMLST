@@ -459,9 +459,9 @@ class WholeGenomeMLST:
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
+        utils.create_logger()
         self.__database = DatabaseWG(file, ref)
         self.__file = file
-        utils.create_logger()
 
     @property
     def database(self):

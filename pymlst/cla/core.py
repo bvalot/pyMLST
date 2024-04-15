@@ -215,9 +215,9 @@ class ClassicalMLST:
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
+        utils.create_logger()
         self.__database = DatabaseCLA(file, ref)
         self.__file = file
-        create_logger()
 
     @property
     def database(self):
