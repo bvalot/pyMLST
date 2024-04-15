@@ -51,10 +51,5 @@ def upgrade():
 
 
 def downgrade():
-    engine = op.get_bind()
-    inspector = sa.inspect(engine)
-    tables = inspector.get_table_names()
-    
-    # Remove mlst_type
-    if 'mlst_type' in tables:
-        op.drop_table('mlst_type')
+    ##remove mlst_type table
+    op.drop_table('mlst_type')
