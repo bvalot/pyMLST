@@ -249,7 +249,7 @@ class ClassicalMLST:
             # Verify sheme list with fasta files
             header = scheme.readline().rstrip("\n").split("\t")
             if len(header) < len(alleles) + 1:
-                raise Exception("The number of genes in sheme don't "
+                raise exceptions.BadInputForCreate("The number of genes in sheme don't "
                                 "correspond to the number of fasta file\n"
                                 + " ".join(header) + "\n")
             fastas = {}
@@ -257,7 +257,8 @@ class ClassicalMLST:
                 name = fi.name.split("/")[-1]
                 name = name[:name.rfind(".")]
                 if name not in header:
-                    raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
+                    raise exceptions.BadInputForCreate("Gene " + name + " not found in sheme\n" + \
+                                                       " ".join(header))
                 fastas[name] = fi
 
             # load sequence allele
@@ -270,8 +271,8 @@ class ClassicalMLST:
                         match = re.search('[0-9]+$', seq.id)
                         allele = int(match.group(0))
                     except Exception as err:
-                        raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
-
+                        raise exceptions.BadInputForCreate("Unable to obtain allele number for the sequence: " + \
+                                                           seq.id) from err
                     self.__database.add_sequence(str(seq.seq), \
                                                  utils.clean_geneid(gene), \
                                                  allele)
@@ -346,7 +347,7 @@ class ClassicalMLST:
                 for gene in genes.get(core_gene):
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
-                        raise Exception("Chromosome ID not found " + gene.chro)
+                        raise exceptions.ChromosomeNotFound("Chromosome ID not found " + gene.chro)
 
                     # verify coverage and correct
                     # if gene.coverage != 1:

@@ -62,3 +62,6 @@ class UndefinedExportType(PyMLSTError):
 
 class EmptyDatabase(PyMLSTError):
     pass
+
+class BadInputForCreate(PyMLSTError):
+    pass
