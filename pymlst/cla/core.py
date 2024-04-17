@@ -204,7 +204,7 @@ class ClassicalMLST:
         Example of usage::
 
             open_cla('database.db') as db:
-                db.create(open('scheme.txt'), [open('gene1.fasta'),
+                db.create(open('profile.txt'), [open('gene1.fasta'),
                                                open('gene2.fasta'),
                                                open('gene3.fasta')])
                 db.multi_search(open('genome.fasta'))
@@ -215,23 +215,23 @@ class ClassicalMLST:
         :param file: The path to the database file to work with.
         :param ref: The name that will be given to the reference strain in the database.
         """
+        utils.create_logger()
         self.__database = DatabaseCLA(file, ref)
         self.__file = file
-        create_logger()
 
     @property
     def database(self):
         return self.__database
 
-    def create(self, scheme, alleles):
+    def create(self, profile, alleles):
         """Creates a classical MLST database from an MLST profile and a list of alleles.
 
-        :param scheme: The MLST profile
+        :param profile: The MLST profile
         :param alleles: A list of alleles files.
 
-        The MLST profile should be a **CSV** file respecting the following format:
+        The MLST profile should be a **TXT** file respecting the following format:
 
-        .. csv-table:: MLST Profile CSV
+        .. csv-table:: MLST Profile TXT
             :header: "ST", "gene1", "gene2", "gene3", "..."
             :widths: 5, 5, 5, 5, 5
 
@@ -247,9 +247,9 @@ class ClassicalMLST:
         
         with self.database.begin():
             # Verify sheme list with fasta files
-            header = scheme.readline().rstrip("\n").split("\t")
+            header = profile.readline().rstrip("\n").split("\t")
             if len(header) < len(alleles) + 1:
-                raise Exception("The number of genes in sheme don't "
+                raise exceptions.BadInputForCreate("The number of genes in profile don't "
                                 "correspond to the number of fasta file\n"
                                 + " ".join(header) + "\n")
             fastas = {}
@@ -257,7 +257,8 @@ class ClassicalMLST:
                 name = fi.name.split("/")[-1]
                 name = name[:name.rfind(".")]
                 if name not in header:
-                    raise Exception("Gene " + name + " not found in sheme\n" + " ".join(header))
+                    raise exceptions.BadInputForCreate("Gene " + name + " not found in profile\n" + \
+                                                       " ".join(header))
                 fastas[name] = fi
 
             # load sequence allele
@@ -270,16 +271,16 @@ class ClassicalMLST:
                         match = re.search('[0-9]+$', seq.id)
                         allele = int(match.group(0))
                     except Exception as err:
-                        raise Exception("Unable to obtain allele number for the sequence: " + seq.id) from err
-
+                        raise exceptions.BadInputForCreate("Unable to obtain allele number for the sequence: " + \
+                                                           seq.id) from err
                     self.__database.add_sequence(str(seq.seq), \
                                                  utils.clean_geneid(gene), \
                                                  allele)
                     alleles.get(gene).add(allele)
 
             # load MLST sheme
-            logging.debug("Load schema %s", scheme.name)
-            for line in scheme:
+            logging.debug("Load profile %s", profile.name)
+            for line in profile:
                 line_content = line.rstrip("\n").split("\t")
                 sequence_typing = int(line_content[0])
                 for gene, allele in zip(header[1:len(fastas)+1], \
@@ -346,7 +347,7 @@ class ClassicalMLST:
                 for gene in genes.get(core_gene):
                     seq = seqs.get(gene.chro, None)
                     if seq is None:
-                        raise Exception("Chromosome ID not found " + gene.chro)
+                        raise exceptions.ChromosomeNotFound("Chromosome ID not found " + gene.chro)
 
                     # verify coverage and correct
                     # if gene.coverage != 1:

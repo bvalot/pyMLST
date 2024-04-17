@@ -114,3 +114,6 @@ target/
 
 #Configuraiton file
 pymlst.conf
+
+#Alembic database
+pymlst/data/alembic/*/*db

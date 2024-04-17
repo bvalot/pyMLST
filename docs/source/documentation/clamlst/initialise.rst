@@ -50,9 +50,9 @@ profile file, if present.
 .. code-block:: bash
    
    claMLST create --help
-   Usage: claMLST create [OPTIONS] DATABASE SCHEME ALLELES...
+   Usage: claMLST create [OPTIONS] DATABASE PROFILE ALLELES...
 
-   Creates a classical MLST DATABASE from a SCHEME csv and ALLELES files.
+   Creates a classical MLST DATABASE from a txt PROFILE and fasta ALLELES files.
 
    Options:
    -f, --force        	  Overwrites alrealdy existing DATABASE

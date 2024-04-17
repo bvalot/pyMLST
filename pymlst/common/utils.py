@@ -109,8 +109,11 @@ def get_output(kwargs):
 def check_type(conn, mlst_type):
     inspector = inspect(conn)
     tables = inspector.get_table_names()
-    if 'mlst_type' not in tables:
-        set_type(conn, mlst_type)
+    if len(tables) == 0:
+        return
+    elif 'mlst_type' not in tables:
+        ##set_type(conn, mlst_type)
+        logging.warning('The base missing mlst_type metadata, continue with %s', mlst_type)
         return
     m_t = conn.execute(
         select(flag.mlst_type.c.name)
@@ -121,11 +124,11 @@ def check_type(conn, mlst_type):
             'on belongs to the wrong MLST type')
 
 
-def set_type(conn, mlst_type):
-    flag.metadata.create_all(conn)
-    conn.execute(
-        flag.mlst_type.insert(),
-        name=mlst_type)
+# def set_type(conn, mlst_type):
+#     flag.metadata.create_all(conn)
+#     conn.execute(
+#         flag.mlst_type.insert(),
+#         name=mlst_type)
 
 
 def get_updated_engine(path, module):
