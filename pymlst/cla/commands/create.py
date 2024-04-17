@@ -13,14 +13,14 @@ from pymlst.common import exceptions
               help='Overwrites alrealdy existing DATABASE')
 @click.argument('database',
                 type=click.Path(exists=False))
-@click.argument('scheme',
+@click.argument('profile',
                 type=click.File('r'))
 @click.argument('alleles',
                 type=click.File('r'), nargs=-1, required=True)
 
 
-def cli(force, database, scheme, alleles):
-    """Creates a classical MLST DATABASE from a SCHEME csv and ALLELES files."""
+def cli(force, database, profile, alleles):
+    """Creates a classical MLST DATABASE from a txt PROFILE and fasta ALLELES files."""
 
     try:
 
@@ -31,7 +31,7 @@ def cli(force, database, scheme, alleles):
                 raise exceptions.PyMLSTError("Database alreadly exists, use --force to override it")
 
         with pymlst.open_cla(os.path.abspath(database)) as mlst:
-            mlst.create(scheme, alleles)
+            mlst.create(profile, alleles)
 
     except exceptions.PyMLSTError as err:
         raise click.ClickException(str(err))

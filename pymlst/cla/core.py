@@ -204,7 +204,7 @@ class ClassicalMLST:
         Example of usage::
 
             open_cla('database.db') as db:
-                db.create(open('scheme.txt'), [open('gene1.fasta'),
+                db.create(open('profile.txt'), [open('gene1.fasta'),
                                                open('gene2.fasta'),
                                                open('gene3.fasta')])
                 db.multi_search(open('genome.fasta'))
@@ -223,15 +223,15 @@ class ClassicalMLST:
     def database(self):
         return self.__database
 
-    def create(self, scheme, alleles):
+    def create(self, profile, alleles):
         """Creates a classical MLST database from an MLST profile and a list of alleles.
 
-        :param scheme: The MLST profile
+        :param profile: The MLST profile
         :param alleles: A list of alleles files.
 
-        The MLST profile should be a **CSV** file respecting the following format:
+        The MLST profile should be a **TXT** file respecting the following format:
 
-        .. csv-table:: MLST Profile CSV
+        .. csv-table:: MLST Profile TXT
             :header: "ST", "gene1", "gene2", "gene3", "..."
             :widths: 5, 5, 5, 5, 5
 
@@ -247,9 +247,9 @@ class ClassicalMLST:
         
         with self.database.begin():
             # Verify sheme list with fasta files
-            header = scheme.readline().rstrip("\n").split("\t")
+            header = profile.readline().rstrip("\n").split("\t")
             if len(header) < len(alleles) + 1:
-                raise exceptions.BadInputForCreate("The number of genes in sheme don't "
+                raise exceptions.BadInputForCreate("The number of genes in profile don't "
                                 "correspond to the number of fasta file\n"
                                 + " ".join(header) + "\n")
             fastas = {}
@@ -257,7 +257,7 @@ class ClassicalMLST:
                 name = fi.name.split("/")[-1]
                 name = name[:name.rfind(".")]
                 if name not in header:
-                    raise exceptions.BadInputForCreate("Gene " + name + " not found in sheme\n" + \
+                    raise exceptions.BadInputForCreate("Gene " + name + " not found in profile\n" + \
                                                        " ".join(header))
                 fastas[name] = fi
 
@@ -279,8 +279,8 @@ class ClassicalMLST:
                     alleles.get(gene).add(allele)
 
             # load MLST sheme
-            logging.debug("Load schema %s", scheme.name)
-            for line in scheme:
+            logging.debug("Load profile %s", profile.name)
+            for line in profile:
                 line_content = line.rstrip("\n").split("\t")
                 sequence_typing = int(line_content[0])
                 for gene, allele in zip(header[1:len(fastas)+1], \
