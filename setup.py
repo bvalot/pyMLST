@@ -70,6 +70,7 @@ setup(
     pyMLST=pymlst.cmd:py
     wgMLST=pymlst.cmd:wg
     claMLST=pymlst.cmd:cla
+    pyTyper=pymlst.cmd:pytyper
     """,
     python_requires=">=3.7.0",
     license='GPLv3',  # noqa

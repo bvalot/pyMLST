@@ -12,3 +12,4 @@ from . import config
 from .version import __version__, __release__  # noqa
 from .wg.core import open_wg
 from .cla.core import open_cla
+from .pytyper.core import open_typer
