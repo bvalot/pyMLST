@@ -7,10 +7,6 @@ import re
 import io
 import tempfile
 
-# For type declarations in code
-from typing import Union, TypeAlias
-File: TypeAlias = Union[str, os.PathLike]
-
 
 from alembic.command import heads
 from Bio import SeqIO
@@ -35,7 +31,7 @@ from pymlst.common.utils import create_logger
 
 # Creates generator function for pytyper objects (and add context manager decorator) 
 @contextmanager
-def open_typer(method: str):
+def open_typer(method):
     """
     :param method: Defines typing method to apply. Possible values :
         1- fim
@@ -47,7 +43,7 @@ def open_typer(method: str):
     utils.create_logger()
     
     # absolute path to automatically initialized pyTyper database
-    fi: File = config.get_data('pytyper.db')
+    fi = config.get_data('pytyper.db')
 
     if method == FIM:
         typer = FimH(fi)
@@ -67,7 +63,7 @@ def open_typer(method: str):
 
 class DatabaseTyper:
 
-    def __init__(self, fi: File) -> None:
+    def __init__(self, fi):
         """
         :param file: The path to the database file to work with.
         """
@@ -81,7 +77,7 @@ class DatabaseTyper:
             yield
 
     @property
-    def connection(self) -> None:
+    def connection(self):
         return self.__connection
 
     def check_db(self, method):
@@ -94,7 +90,7 @@ class DatabaseTyper:
         return(len(count) > 1)
 
 
-    def add_sequence(self, sequence, method, allele) -> bool:
+    def add_sequence(self, sequence, method, allele):
         try:
             self.connection.execute(
                 model.typerSeq.insert(),
@@ -106,13 +102,13 @@ class DatabaseTyper:
         return(True)
 
         
-    def add_st(self, st, method, allele) -> None:
+    def add_st(self, st, method, allele):
         self.connection.execute(
             model.typerSt.insert(),
             st=st, typing=method, allele=allele
         )
 
-    def get_st(self, method, allele) -> str:
+    def get_st(self, method, allele):
         """Gets all the STs of a gene/allele pair."""
         typer_st = self.connection.execute(
             select([model.typerSt.c.st])
@@ -130,7 +126,7 @@ class DatabaseTyper:
 class PyTyper(ABC):
     """ Primary class for all pyTyper objects listed on method
     """
-    def __init__(self, fi : File, typing : str) -> None:
+    def __init__(self, fi , typing):
         """ 
         :param fi: Path to the database file
         :param typing: Typing type
@@ -181,7 +177,7 @@ class PyTyper(ABC):
         pass
 
     
-    def close(self) -> None:
+    def close(self):
         self._database.close()
 
     def check_input(self, identity, coverage):
@@ -193,7 +189,7 @@ class PyTyper(ABC):
 
 class FimH(PyTyper):
     
-    def __init__(self, fi: File) -> None:
+    def __init__(self, fi):
         PyTyper.__init__(self, fi, FIM)
         self.typing = FIM
 
