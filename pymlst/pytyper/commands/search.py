@@ -4,10 +4,12 @@ import os
 import click
 
 import pymlst
+from pymlst.pytyper import model
+from pymlst.pytyper.method import FIM, SPA, CLMT
 from pymlst.common import utils, exceptions
 
 @click.command(name="search")
-@click.option("--identity", "i",
+@click.option("--identity", "-i",
               type=click.FLOAT,
               help="Minimum identity to search gene (default=0.9).")
 @click.option("--coverage", "-c",
@@ -22,7 +24,7 @@ from pymlst.common import utils, exceptions
 
 # Database is initialized automatically without intervention from user
 @click.argument('method',
-                type=click.Choice(['fim', 'spa', 'clmt']),
+                type=click.Choice([FIM, SPA, CLMT]),
                 required=True)
 @click.argument('genomes',
                 type=click.File('r'),

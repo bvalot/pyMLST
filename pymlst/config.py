@@ -3,7 +3,7 @@ import os
 import shutil
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
-_CONF_PATH = os.path.join(_ROOT, 'pymlst.conf')
+_CONF_PATH = os.path.join(_ROOT, 'data', 'pymlst.conf')
 
 _BIN_SECTION = 'BINARIES'
 _LOG_SECTION = 'LOGGING'

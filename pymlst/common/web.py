@@ -6,25 +6,19 @@ import zipfile
 import requests
 import questionary
 
+from git import Repo
 from bs4 import BeautifulSoup
 from Bio import SeqIO
 
 import urllib3
 urllib3.disable_warnings()
 
-from pymlst.common.exceptions import PyMLSTError
+from pymlst.common import exceptions
 
 PUBMLST_URL = 'https://rest.pubmlst.org/db'
 PASTEUR_URL = 'https://bigsdb.pasteur.fr/api/db'
 CGMLST_URL = 'https://www.cgmlst.org/ncs'
 
-
-class PyMLSTWebError(PyMLSTError):
-    pass
-
-
-class StructureError(PyMLSTWebError):
-    pass
 
 
 def request(query):
@@ -67,7 +61,7 @@ def is_mlst_scheme(url, description):
 def process_results(choices, query, prompt):
     choices_length = len(choices)
     if choices_length == 0:
-        raise PyMLSTWebError('No result found for \'{}\'\n'.format(query))
+        raise exceptions.PyMLSTWebError('No result found for \'{}\'\n'.format(query))
     if choices_length == 1:
         logging.info("One element found : {}".format(choices[0]))
         return choices[0]
@@ -75,7 +69,7 @@ def process_results(choices, query, prompt):
         logging.info("{} elements found, please choose one:".format(str(len(choices))))       
         return display_prompt('({}) Results found'.format(choices_length),
                               choices)
-    raise PyMLSTWebError('More than 1 result found for \'{}\'\n'.format(query))
+    raise exceptions.PyMLSTWebError('More than 1 result found for \'{}\'\n'.format(query))
 
 
 def get_mlst_species(query, repo_url):
@@ -88,7 +82,7 @@ def get_mlst_species(query, repo_url):
     try:
         whole_base = request(repo_url).json()
     except ValueError as error:
-        raise StructureError() from error
+        raise exceptions.StructureError() from error
 
     species = {}
     species_all = {}
@@ -107,7 +101,7 @@ def get_mlst_species(query, repo_url):
                         if sub_query in des:
                             species_all[des] = database['href']
     except KeyError as error:
-        raise StructureError() from error
+        raise exceptions.StructureError() from error
     if len(species) > 0:
         return species
     logging.info("No elements found for {}, search for each individual term".format(query))
@@ -135,7 +129,7 @@ def get_mlst_schemes(species_url, query):
             if query_low in des:
                 schemes[des] = scheme['scheme']
     except KeyError as error:
-        raise StructureError() from error
+        raise exceptions.StructureError() from error
 
     return schemes
 
@@ -158,7 +152,7 @@ def retrieve_mlst(query, prompt_enabled, mlst='', repository='pubmlst'):
         if mlst=='':
             mlst='mlst'
     else:
-        raise Exception("Only PUBMLST or PASTEUR repository are defined")
+        raise exceptions.PyMLSTWebError("Only PUBMLST or PASTEUR repository are defined")
     species_choice = process_results(list(species.keys()), query, prompt_enabled)
     if species_choice is None:
         return None
@@ -185,7 +179,7 @@ def get_cgmlst_species(query):
 
     table = soup.find('tbody')
     if table is None:
-        raise StructureError()
+        raise exceptions.StructureError()
 
     lines = table.find_all('a')
 
@@ -200,7 +194,7 @@ def get_cgmlst_species(query):
         if query_low in name.lower():
             url = line.get('href')
             if url is None:
-                raise StructureError()
+                raise exceptions.StructureError()
             species[name] = url
 
     return species
@@ -286,3 +280,13 @@ def get_mlst_files(url, directory):
     open(os.path.join(directory, 'profiles.csv'), 'wt').write(profiles.text)
     # with open(os.path.join(directory, 'profiles.csv'), 'wt') as profiles_dir:
     #     profiles_dir.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))
+
+def clone_repo(url, directory):
+    """Clone a git repository and puts the content in the given directory.
+    
+    :param url: The git URL.
+    :param directory: The directory.
+    """
+    repo = Repo.clone_from(url, directory)
+    logging.debug("Clone database from %s", url)
+    

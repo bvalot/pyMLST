@@ -22,8 +22,8 @@ def upgrade():
     inspector = sa.inspect(engine)
     tables = inspector.get_table_names()
 
-    if 'typer' not in tables:
-        op.create_table('typer',
+    if 'typerSeq' not in tables:
+        op.create_table('typerSeq',
             sa.Column('id', sa.Integer(), nullable=False),
             sa.Column('sequence', sa.Text(), nullable=False),
             sa.Column('typing', sa.Text(), nullable=True),
@@ -31,6 +31,13 @@ def upgrade():
             sa.PrimaryKeyConstraint('id'),
             sa.UniqueConstraint('sequence'))
 
+    if 'typerSt' not in tables:
+        op.create_table('typerSt',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('st', sa.Text(), nullable=False),
+            sa.Column('typing', sa.Text(), nullable=True),
+            sa.Column('allele', sa.Text(), nullable=False),
+            sa.PrimaryKeyConstraint('id'))
 
     if 'mlst_type' not in tables:
         table = op.create_table('mlst_type',
@@ -41,5 +48,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table(['typer', 'mlst_type'])
-
+    pass
