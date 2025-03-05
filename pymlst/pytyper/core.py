@@ -290,55 +290,86 @@ class Clmt(PyTyper):
                 raise exceptions.AlleleSequenceNotFound(",".join(als) +  " Not found in the database")
             ##check others gene for distinction
             if st == 'I|A|C':
-                if 'Cl.I' in res:
-                    result.set_notes("Cl.I'|+")
+                if 'aesI' in res:
+                    result.set_notes("aesI'|+")
                     result.set_st("Clade I")
-                elif 'Gp.C' in res:
-                    result.set_notes("Cl.I'|-, Gp.C|+")
+                elif 'trpAgpC' in res:
+                    result.set_notes("aesI'|-, trpAgpC|+")
                     result.set_st("C")
                 else:
-                    result.set_notes("Cl.I'|-, Gp.C|-")
+                    result.set_notes("aesI'|-, trpAgpC|-")
                     result.set_st("A")
             elif st == 'D|E':
-                if 'Gp.E' in res:
-                    result.set_notes("Gp.E|+")
+                if 'fdm' in res:
+                    result.set_notes("fdm|+")
                     result.set_st("E")
                 else:
-                    result.set_notes("Gp.E|-")
+                    result.set_notes("fdm|-")
                     result.set_st("D")
             elif st == 'E|I':
-                if 'Cl.I' in res:
-                    result.set_notes("Cl.I|+")
+                if 'aesI' in res:
+                    result.set_notes("aesI|+")
                     result.set_st("Clade I")
-                elif 'Gp.E' in res:
-                    result.set_notes("Cl.I|-, Gp.E|+")
+                elif 'fdm' in res:
+                    result.set_notes("aesI|-, fdm|+")
                     result.set_st("E")
                 else:
-                    result.set_notes("Cl.I|-, Gp.E|-")
-                    result.set_st("Unknown")
+                    result.set_notes("aesI|-, fdm|-")
+                    result.set_st("E or Clade I")
             elif st == 'I|II':
-                if 'Cl.I' in res:
-                    result.set_notes("Cl.I|+")
+                if 'aesI' in res:
+                    result.set_notes("aesI|+")
                     result.set_st("Clade I")
-                elif 'Cl.II' in res:
-                    result.set_notes("Cl.I|-, Cl.II|+")
+                elif 'aesII' in res:
+                    result.set_notes("aesI|-, aesII|+")
                     result.set_st("Clade II")
                 else:
-                    result.set_notes("Cl.I|-, Cl.II|-")         
+                    result.set_notes("aesI|-, aesII|-")         
                     result.set_st("Unknown")
-            elif st == 'III|IV|V':
-                if 'Cl.III' in res:
-                    result.set_notes("Cl.III|+")
-                    result.set_st("Clade III")
-                elif 'Cl.IV' in res:
-                    result.set_notes("Cl.III|-, Cl.IV|+")
-                    result.set_st("Clade IV")
-                elif 'Cl.V' in res:
-                    result.set_notes("Cl.III|-, Cl.IV|-, cl.V|+")
-                    result.set_st("Clade V")
+            elif st == 'G|B2':
+                if 'ybgD' in res:
+                    result.set_notes("ybgD|+")
+                    result.set_st("G")
                 else:
-                    result.set_notes("Cl.III|-, Cl.IV|-, cl.V|-")                    
+                    result.set_notes("ybgD|-")
+                    result.set_st("B2")
+            elif st == 'G|F':
+                if 'ybgD' in res:
+                    result.set_notes("ybgD|+")
+                    result.set_st("G")
+                else:
+                    result.set_notes("ybgD|-")
+                    result.set_st("F")
+            elif st == 'H|B2':
+                if 'fdm' in res:
+                    result.set_notes("fdm|+")
+                    result.set_st("H")
+                else:
+                    result.set_notes("fdm|-")
+                    result.set_st("B2")                    
+            elif st == 'III|IV|V':
+                note = []
+                match = False
+                if 'chuIII' in res:
+                    note.append("chuIII|+")
+                    match = True
+                else:
+                    note.append("chuIII|-")
+                if 'chuIV' in res:
+                    note.append("chuIV|+")
+                    match = True
+                else:
+                    note.append("chuIV|-")
+                if 'chuV' in res:
+                    note.append("chuV|+")
+                    match = True
+                else:
+                    note.append("chuV|-")
+                if match:
+                    result.set_st("Clade III/IV/V")
+                else:
                     result.set_st("Unknown")
+                result.set_notes(", ".join(note))
             else:
                 result.set_st(st)
             if fasta:
