@@ -11,10 +11,10 @@ from pymlst.common import utils, exceptions
 @click.command(name="search")
 @click.option("--identity", "-i",
               type=click.FLOAT,
-              help="Minimum identity to search gene (default=0.9).")
+              help="Minimum identity to search gene.")
 @click.option("--coverage", "-c",
               type=click.FLOAT,
-              help="Minimum coverage to search gene (default=0.9).")
+              help="Minimum coverage to search gene.")
 @click.option('--fasta', '-f',
               type=click.File('w'),
               help='Writes fasta file with gene allele.')

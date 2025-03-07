@@ -27,7 +27,7 @@ from pymlst.pytyper.method import FIM, SPA, CLMT
 from pymlst.pytyper.url import SPA_URL_TYPE, SPA_URL_SEQ, FIM_URL
 from pymlst import config
 from pymlst.common import blat, kma, utils, exceptions, web
-from pymlst.common.utils import create_logger
+from pymlst.common.utils import create_logger, read_genome, file_name
 
 # Creates generator function for pytyper objects (and add context manager decorator) 
 @contextmanager
@@ -181,11 +181,32 @@ class PyTyper(ABC):
         self._database.close()
 
     def check_input(self, identity, coverage):
+        """
+        Verify input identity and coverage to be between 0 to 1
+        """
         if identity < 0 or identity > 1:
             raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
+        logging.info("Use %s minimum identity for the research", str(identity))
         if coverage <0 or coverage > 1:
             raise exceptions.BadCoverageRange('Coverage must be in range [0-1]')
-        
+        logging.info("Use %s minimum coverage for the research", str(coverage))
+
+    def write_fasta_allele(self, genome, fasta, psl):
+        """
+        Export allele in fasta output for a list of psl results
+        """
+        logging.info("Export allele result to fasta output %s", os.path.basename(fasta.name))
+        seqs = read_genome(genome)
+        genome_name = file_name(genome)
+        for gene,aligns in psl.items():
+            for al in aligns:
+                seq = seqs.get(al.chro, None)
+                if seq is None:
+                    raise exceptions.ChromosomeNotFound("Chromosome ID not found " + al.chro)
+                al_seq = al.get_sequence(seq)
+                fasta.write(">" + genome_name + "|" + gene + "\n" )
+                fasta.write(str(al_seq) + "\n")
+    
 
 class FimH(PyTyper):
     
@@ -255,21 +276,22 @@ class Clmt(PyTyper):
         self.typing = CLMT
 
     def search_genome(self, genome, identity, coverage, fasta):
-        genome_name = os.path.basename(genome.name).split('.')[0]
+        genome_name = file_name(genome)
         logging.info("Search %s typing for %s genome", self.typing, genome_name)
         result = TypingResult(genome_name, self.typing)
         with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:
             with open(config.get_data('pytyper/clmt.fna'),'r') as clmtfna:
                 try:
                     res = blat.run_blat(genome, clmtfna, tmpout, identity, coverage)
-                    logging.debug(", ".join(res.keys()))
+                    logging.info(", ".join(res.keys()))
                 except exceptions.CoreGenomePathNotFound:
                     logging.error("Not Escherichia genome")
                     result.set_notes("Not Escherichia genome")
                     return(result)
         ##check trpA/TrpBA and other escherichia
         if 'trpA' not in res and 'trpBA' not in res:
-            result.set_notes("Not Escherichia genome")
+            result.set_st("Unknown")
+            result.set_notes("trpA/trpBA not found")
         elif 'chuAalbertii' in res:
             result.set_allele("chuAalbertii")
             result.set_notes("Escherichia albertii")
@@ -374,11 +396,14 @@ class Clmt(PyTyper):
                 result.set_st(st)
             if fasta:
                 logging.debug("Write alleles in fasta output")
+                self.write_fasta_allele(genome, fasta, res)
         return(result)
         
         
-    def multi_search(self, genomes, identity=0.9, coverage=0.9, fasta=None, output=sys.stdout):
+    def multi_search(self, genomes, identity=0.90, coverage=0.99, fasta=None, output=sys.stdout):
         self.check_input(identity, coverage)
+        if coverage < 0.98:
+            logging.warning("Use identity less than 0.98 may lead to erroneous results")
         header = True
         for genome in genomes:
             result = self.search_genome(genome, identity, coverage, fasta)
@@ -407,6 +432,30 @@ class Clmt(PyTyper):
                 self._database.add_st(li[0], CLMT, alleles)
                 count += 1
             logging.info("Add %s CLERMONT type in the database", str(count))
+
+
+    # def check_result(self, genome, res):
+    #     res_ok = {}
+    #     seqs = read_genome(genome)
+    #     coregenes = read_genome(config.get_data('pytyper/clmt.fna'))
+    #     for gene_name,al_all in res.items():
+    #         core_seq = coregenes.get(gene_name)
+    #         for al in al_all:
+    #             if al.coverage == 1:
+    #                 res_ok.setdefault(gene_name, []).append(al)
+    #             else:
+    #                 logging.debug("Align incomplet gene : %s", gene_name)
+    #                 seq = seqs.get(al.chro, None)
+    #                 if seq is None:
+    #                     raise exceptions.ChromosomeNotFound("Chromosome ID not found " + al.chro)
+    #                 sequence = al.get_aligned_sequence(seq, core_seq)
+    #                 logging.debug(str(sequence))
+    #                 logging.debug(str(core_seq))
+    #                 if len(sequence) != len(core_seq):
+    #                     logging.debug("Partial gene found : %s, skip", gene_name)
+    #                 else:
+    #                     res_ok.setdefault(gene_name, []).append(al)
+    #     return(res_ok)
         
 
 

@@ -30,6 +30,15 @@ def write_genome(genome_dict, handle):
         handle.write('> ' + str(seq_id) + '\n'
                      + str(seq) + '\n')
 
+def file_name(handle):
+    filename = os.path.basename(handle.name)
+    if filename.endswith(".fasta"):
+        return filename.rstrip(".fasta")
+    if filename.endswith(".fna"):
+        return filename.rstrip(".fna")
+    else:
+        return filename.split('.')[0]
+    
 
 def strip_file(file):
     found = []  
