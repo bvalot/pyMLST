@@ -224,7 +224,7 @@ class FimH(PyTyper):
         PyTyper.__init__(self, fi, FIM)
         self.typing = FIM
 
-    def search_genome(self, genome):
+    def search_genome(self, genome, identity, coverage, fasta):
         print("INSIDE SEARCH GENOME FIM")
 
     def multi_search(self, genomes):
@@ -266,14 +266,14 @@ class Spa(PyTyper):
                     result.set_notes("No SPA found")
                     return(result)
         ##check coverage
-        res = []
+        res = {'spa':[]}
         ids = set()
         for al in res_all.get('spa'):
             if al.coverage > coverage:
-                res.append(al)
+                res.get('spa').append(al)
             else:
                 ids.add(al.chro)
-        if len(res) == 0:
+        if len(res.get('spa')) == 0:
             logging.info("No complete SPA found")
             result.set_notes("No complete SPA found. Check: " + ";".join(ids))
             return(result)
@@ -284,7 +284,7 @@ class Spa(PyTyper):
         seqs = read_genome(genome)
         notes = []
         count = 0
-        for al in res:
+        for al in res.get('spa'):
             count += 1
             spans = []
             reps = {}

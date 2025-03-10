@@ -21,6 +21,8 @@ def records_to_dict(records):
 
 
 def read_genome(handle):
+    if handle.seekable():
+        handle.seek(0)
     records = SeqIO.parse(handle, 'fasta')
     return records_to_dict(records)
 
