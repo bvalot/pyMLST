@@ -101,6 +101,13 @@ class DatabaseTyper:
             return(False)
         return(True)
 
+    def get_sequences(self, method):
+        """Gets all sequences for an method"""
+        seqs = self.connection.execute(
+            select([model.typerSeq.c.allele, model.typerSeq.c.sequence])
+            .where(model.typerSeq.c.typing == method)
+        ).fetchall()
+        return(seqs)
         
     def add_st(self, st, method, allele):
         self.connection.execute(
@@ -109,14 +116,17 @@ class DatabaseTyper:
         )
 
     def get_st(self, method, allele):
-        """Gets all the STs of a gene/allele pair."""
+        """Gets the STs of an allele."""
         typer_st = self.connection.execute(
-            select([model.typerSt.c.st])
+            select(model.typerSt.c.st)
             .where(and_(
                 model.typerSt.c.typing == method,
                 model.typerSt.c.allele == allele))
-        ).fetchone()
-        return(typer_st[0])
+        ).first()
+        if typer_st is None or typer_st[0] == 'NT':
+            return ""
+        else:
+            return(typer_st[0])
         
     def close(self) -> None:
         self.__connection.close()
@@ -242,11 +252,82 @@ class Spa(PyTyper):
         PyTyper.__init__(self, fi, SPA)
         self.typing = SPA
 
-    def search_genome(self, genome):
-        print("INSIDE SEARCH GENOME SPA")
+    def search_genome(self, genome, identity, coverage, fasta):
+        genome_name = file_name(genome)
+        logging.info("Search %s typing for %s genome", self.typing, genome_name)
+        result = TypingResult(genome_name, self.typing)
+        with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:
+            with open(config.get_data('pytyper/spa.fna'),'r') as spafna:
+                try:
+                    res_all = blat.run_blat(genome, spafna, tmpout, identity, \
+                                        0.3, maxintron=1000)
+                except exceptions.CoreGenomePathNotFound:
+                    logging.warning("No SPA found")
+                    result.set_notes("No SPA found")
+                    return(result)
+        ##check coverage
+        res = []
+        ids = set()
+        for al in res_all.get('spa'):
+            if al.coverage > coverage:
+                res.append(al)
+            else:
+                ids.add(al.chro)
+        if len(res) == 0:
+            logging.info("No complete SPA found")
+            result.set_notes("No complete SPA found. Check: " + ";".join(ids))
+            return(result)
+        else:
+            logging.info("Found %s SPA genes", str(len(res)))
+            
+        ## search individual rep for each potential spa region
+        seqs = read_genome(genome)
+        notes = []
+        count = 0
+        for al in res:
+            count += 1
+            spans = []
+            reps = {}
+            if al.chro not in seqs:
+                raise exceptions.ChromosomeNotFound("Chromosome ID not found " + al.chro)
+            sequence = str(al.get_sequence(seqs.get(al.chro)))
+            for rep,seq in self._database.get_sequences(self.typing):
+                for f in re.finditer(seq, sequence, re.IGNORECASE):
+                    spans.append(f.span())
+                    reps[f.span()] = rep
+            spans.sort()
+            ##check found repetition
+            if len(spans) == 0:
+                continue
+            ##check repetition are in a row
+            check = self.check_repetition(spans)
+            if check is not None:
+                notes.append(check)
+            ##combinaisons of reps => allele
+            allele = "-".join([reps.get(span) for span in spans])
+            st = self._database.get_st(self.typing, allele)
+            if count==1:
+                result.set_st(st)
+                result.set_allele(allele)
+            else:
+                notes.append("Found other Spa : "+st+"|"+allele)
+        if len(notes)>0:
+            result.set_notes("; ".join(notes))
+        if fasta:
+            logging.debug("Write alleles in fasta output")
+            self.write_fasta_allele(genome, fasta, res)
+        return(result)
 
-    def multi_search(self, genomes):
-        print("INSIDE multi_search SPA")
+    def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+        self.check_input(identity, coverage)
+        if coverage<0.8 :
+            logging.warning("Use identity less than 0.8 may lead to erroneous results")
+        header = True
+        for genome in genomes:
+            result = self.search_genome(genome, identity, coverage, fasta)
+            result.write(output, header)
+            if header == True:
+                header = False
 
     def create(self):
         logging.info("Initialise SPA database")
@@ -256,18 +337,36 @@ class Spa(PyTyper):
             h = line.rstrip("\n").split(",")
             if len(h) != 2 :
                 logging.warning("Bad line when readind SPA type\n %s", line)
-            self._database.add_st(h[0], SPA, h[1])
+            self._database.add_st(h[0], SPA, h[1].strip())
             count += 1
         logging.info("Add %s SPA type in the database", str(count))
         b = web.request(SPA_URL_SEQ)
         count = 0
         for seq in SeqIO.parse(io.StringIO(b.text), "fasta"):
-            ok = self._database.add_sequence(str(seq.seq), SPA, seq.id)
+            ok = self._database.add_sequence(str(seq.seq), SPA, \
+                                             seq.id.lstrip("r"))
             if ok:
                 count += 1
         logging.info("Add %s SPA sequences in the database", str(count))        
         
-
+    def check_repetition(self, spans):
+        """Check that repetition are successive"""
+        check = True
+        value = None
+        notes = []
+        for span in spans:
+            if value is None:
+                value = span[1]
+                continue
+            if value != span[0]:
+                logging.debug("Found discontinous spa repeat at %s", str(value))
+                notes.append("Discontinous at "+value)
+                check=False
+            value = span[1]
+        if check:
+            return(None)
+        else:
+            return(", ".append(notes))
 
 class Clmt(PyTyper):
     
