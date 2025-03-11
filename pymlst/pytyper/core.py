@@ -108,7 +108,34 @@ class DatabaseTyper:
             .where(model.typerSeq.c.typing == method)
         ).fetchall()
         return(seqs)
+
+    def get_sequence_by_allele(self, method, allele):
+        """Gets sequence for an allele in the method"""
+        seq = self.connection.execute(
+            select([model.typerSeq.c.sequence])
+            .where(and_(
+                model.typerSeq.c.typing == method,
+                model.typerSeq.c.allele == allele))
+        ).first()
+        if seq is None or seq[0] == 'NT':
+            raise exceptions.AlleleSequenceNotFound("Sequence for the " + allele + " allele not found")
+        else:
+            return(seq[0])
         
+    def get_allele_by_sequence(self, method, sequence):
+        """Gets alleles for an sequence in the method"""
+        allele = self.connection.execute(
+            select([model.typerSeq.c.allele])
+            .where(and_(
+                model.typerSeq.c.typing == method,
+                model.typerSeq.c.sequence == sequence))
+        ).first()
+        if allele is None or allele[0] == 'NT':
+            return("New")
+        else:
+            return(allele[0])
+
+
     def add_st(self, st, method, allele):
         self.connection.execute(
             model.typerSt.insert(),
@@ -124,7 +151,7 @@ class DatabaseTyper:
                 model.typerSt.c.allele == allele))
         ).first()
         if typer_st is None or typer_st[0] == 'NT':
-            return ""
+            return("")
         else:
             return(typer_st[0])
         
@@ -225,10 +252,52 @@ class FimH(PyTyper):
         self.typing = FIM
 
     def search_genome(self, genome, identity, coverage, fasta):
-        print("INSIDE SEARCH GENOME FIM")
+        genome_name = file_name(genome)
+        logging.info("Search %s typing for %s genome", self.typing, genome_name)
+        result = TypingResult(genome_name, self.typing)
+        with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:
+            with open(config.get_data('pytyper/fimh.fna'),'r') as spafna:
+                try:
+                    res = blat.run_blat(genome, spafna, tmpout, identity, \
+                                        coverage, maxintron=1000)
+                except exceptions.CoreGenomePathNotFound:
+                    logging.warning("No fimH found")
+                    result.set_notes("No fimH found")
+                    return(result)
+        seqs = read_genome(genome)
+        sts = []
+        notes = []
+        for al in res.get('fimh'):
+            seq = seqs.get(al.chro, None)
+            if seq is None:
+                raise exceptions.ChromosomeNotFound("Chromosome ID not found " + al.chro)
+            ##check coverage
+            if al.coverage == 1:
+                sequence = al.get_sequence(seq)
+            else:
+                logging.debug("Align incomplet fimH gene")
+                sequence = al.get_aligned_sequence(seq, self._database.get_sequence_by_allele(self.typing, 'FimH1'))
+            sequence = str(sequence)
+            sts.append(self._database.get_allele_by_sequence(self.typing, sequence))
+        result.set_st("; ".join(sts))
+        result.set_notes("; ".join(notes))
 
-    def multi_search(self, genomes):
-        print("INSIDE multi_search FIM")
+        ##write fasta
+        if fasta:
+            logging.debug("Write alleles in fasta output")
+            self.write_fasta_allele(genome, fasta, res)
+        return(result)
+
+    def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+        self.check_input(identity, coverage)
+        if coverage<0.8 :
+            logging.warning("Use identity less than 0.8 may lead to erroneous results")
+        header = True
+        for genome in genomes:
+            result = self.search_genome(genome, identity, coverage, fasta)
+            result.write(output, header)
+            if header == True:
+                header = False
         
     def create(self):
         logging.info("Initialise FIM database")
