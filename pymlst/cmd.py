@@ -78,10 +78,11 @@ py = PyMlstCommand(
     \b
     Common utility commands.
     
-    Two pipelines are available:\n
+    Tree pipelines are available:\n
       claMLST     for classical MLST analysis\n
-      wgMLST      for Whole/Core genome MLST analysis''')
-
+      wgMLST      for Whole/Core genome MLST analysis\n
+      pyTyper     for other typing analysis''')
+      
 wg = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'wg', 'commands'),
     'Whole/Core genome MLST commands.')
@@ -92,4 +93,4 @@ cla = PyMlstCommand(
 
 pytyper = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'pytyper', 'commands'),
-    'Other typing methods.')
+    'Other typing commands.')

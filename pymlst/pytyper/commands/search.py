@@ -32,10 +32,12 @@ from pymlst.common import utils, exceptions
                 nargs=-1)
 
 def cli(method, genomes, **kwargs):
-    """Searches strain type using specified METHOD for an assembly GENOME.
     
-    ...
+    """Searches strain type using specified METHOD for an assembly GENOME.
 
+    fim: fimH typing for Escherichia coli\n
+    spa: spa typing for Staphylococcus aureus\n
+    clmt: Phylogouping using ClermontTyping method for Escherichia coli
     """
     
     try:

@@ -73,11 +73,13 @@ class DatabaseTyper:
 
     @contextmanager
     def begin(self):
+        """Initialise database connection"""
         with self.__connection.begin():
             yield
 
     @property
     def connection(self):
+        """Get database connection"""
         return self.__connection
 
     def check_db(self, method):
@@ -91,6 +93,7 @@ class DatabaseTyper:
 
 
     def add_sequence(self, sequence, method, allele):
+        """Add a sequence and an associated allele for the method in the database"""
         try:
             self.connection.execute(
                 model.typerSeq.insert(),
@@ -137,6 +140,7 @@ class DatabaseTyper:
 
 
     def add_st(self, st, method, allele):
+        """Add an ST and an associated allele for the method in the database"""
         self.connection.execute(
             model.typerSt.insert(),
             st=st, typing=method, allele=allele
@@ -156,6 +160,7 @@ class DatabaseTyper:
             return(typer_st[0])
         
     def close(self) -> None:
+        """Close database connection"""
         self.__connection.close()
 
 
@@ -194,20 +199,19 @@ class PyTyper(ABC):
             Spa
             Clermont
         
-        Uses a scheme created temporarily that is specific to the typing, and a multifasta file
-        containing target alleles for the method.
+        Uses a scheme created automatically that is specific to the typing
         """
         pass
 
 
     @abstractmethod
-    def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
+    def multi_search(self, genomes, identity, coverage, fasta=None, output=sys.stdout):
         """
         Performed batch search analysis of list of genomes
         
         :param genomes: List of path to the fasta genomes
-        :param identity: Minimum identity treshold (0.9)
-        :param coverage: Minimum coverage threshold (0.9)
+        :param identity: Minimum identity treshold
+        :param coverage: Minimum coverage threshold
         :param fasta: Path to a file to write alleles in fasta format (None)
         :param output: Write result on this output (stdout)
         """
@@ -215,11 +219,17 @@ class PyTyper(ABC):
 
     
     def close(self):
+        """
+        Close database
+        """
         self._database.close()
 
     def check_input(self, identity, coverage):
         """
         Verify input identity and coverage to be between 0 to 1
+        
+        :param identity: Minimum identity treshold
+        :param coverage: Minimum coverage threshold
         """
         if identity < 0 or identity > 1:
             raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
@@ -231,6 +241,10 @@ class PyTyper(ABC):
     def write_fasta_allele(self, genome, fasta, psl):
         """
         Export allele in fasta output for a list of psl results
+
+        :param genome: Handle of genome fasta file
+        :param fasta: handle of fasta output
+        :param psl: Blat alignement results {gene:[alignements]}
         """
         logging.info("Export allele result to fasta output %s", os.path.basename(fasta.name))
         seqs = read_genome(genome)
@@ -246,7 +260,10 @@ class PyTyper(ABC):
     
 
 class FimH(PyTyper):
-    
+    """
+    fimH typing for Escherichia coli.
+    """
+        
     def __init__(self, fi):
         PyTyper.__init__(self, fi, FIM)
         self.typing = FIM
@@ -316,6 +333,9 @@ class FimH(PyTyper):
                 
 
 class Spa(PyTyper):
+    """
+    Spa typing for Staphylococcus aureus.
+    """
     
     def __init__(self, fi):
         PyTyper.__init__(self, fi, SPA)
@@ -438,6 +458,9 @@ class Spa(PyTyper):
             return(", ".append(notes))
 
 class Clmt(PyTyper):
+    """
+    Phylogroupe determination using ClermontTyping methods for Escherichia coli.
+    """
     
     def __init__(self, fi):
         PyTyper.__init__(self, fi, CLMT)

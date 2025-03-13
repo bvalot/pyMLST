@@ -18,6 +18,10 @@ We have developed pyMLST to perform this task. Unlike other tools, it uses a loc
 This allows the collection of strains to be expanded iteratively. The input can be (i) an assembler-generated draft genome, (ii) the direct raw data, or (iii) other genomes stored in the sequence database.
 
 ## New version
+V2.2:
+
+- Introduced new typing methods with fimH and phylogrouping for *Escherichia coli* and spa for *Staphylococcus aureus* (pyTyper search command)
+
 V2.1:
 
 - Use raw reads (FASTQ) directly with the kma integration (search2 and add2 command)

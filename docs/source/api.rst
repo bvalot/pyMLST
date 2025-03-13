@@ -33,3 +33,10 @@ Classical MLST
 .. automodule:: pymlst.cla.core
     :members:
     :member-order: bysource
+
+Other Typing
+-----------------
+
+.. automodule:: pymlst.pytyper.core
+    :members:
+    :member-order: bysource

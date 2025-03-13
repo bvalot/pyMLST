@@ -28,7 +28,7 @@ quicktest:
 coverage:
 	py.test --cov-report html --cov=$(PROJ_SLUG) tests/
 
-docs: coverage
+docs: 
 	mkdir -p docs/source/_static
 	mkdir -p docs/source/_templates
 	cd docs && $(MAKE) html
