@@ -66,11 +66,12 @@ def cli(force, prompt, mlst, repository, database, species):
         with tempfile.TemporaryDirectory() as tmp_dir, \
                 pymlst.open_cla(os.path.abspath(database)) as mlst_db:
 
-            web.get_mlst_files(url, tmp_dir)
+            version = web.get_mlst_files(url, tmp_dir)
 
             mlst_db.create(open(tmp_dir + '/profiles.csv', 'rt'),
                            [open(tmp_dir + '/locus/' + locus, 'r')
                            for locus in os.listdir(tmp_dir + '/locus')])
+            mlst_db.add_infos(repository, ' '.join(species), mlst, version)
 
     except requests.exceptions.HTTPError:
         raise click.ClickException('Could not retrieve online data')
@@ -78,7 +79,7 @@ def cli(force, prompt, mlst, repository, database, species):
         raise click.ClickException('Could not access to the server, please verify your internet connection')
     except requests.exceptions.Timeout:
         raise click.ClickException('The server took too long to respond')
-    except web.StructureError:
+    except exceptions.StructureError:
         raise click.ClickException('It seems like the structure of the website/API changed '
                                    'since this application was developed.')
     except exceptions.PyMLSTError as err:

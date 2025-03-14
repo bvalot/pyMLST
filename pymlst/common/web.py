@@ -263,7 +263,8 @@ def get_mlst_files(url, directory):
     :param directory: The directory.
     """
     mlst_scheme = request(url).json()
-    logging.info("Database version : {}".format(mlst_scheme.get('last_added', "Not found")))
+    version = mlst_scheme.get('last_added', "Not found")
+    logging.info("Database version : {}".format(version))
 
     # Downloading the locus files in a directory :
     locus_dir = os.path.join(directory, 'locus')
@@ -278,8 +279,8 @@ def get_mlst_files(url, directory):
     profiles_url = url + '/profiles_csv'
     profiles = request(profiles_url)
     open(os.path.join(directory, 'profiles.csv'), 'wt').write(profiles.text)
-    # with open(os.path.join(directory, 'profiles.csv'), 'wt') as profiles_dir:
-    #     profiles_dir.write(clean_csv(profiles.text, len(mlst_scheme['loci'])))
+    return(version)
+    
 
 def clone_repo(url, directory):
     """Clone a git repository and puts the content in the given directory.
