@@ -96,6 +96,9 @@ You can get scheme for:
    -f, --force        Overwrite alrealdy existing DATABASE
    -c, --concatenate  Automatically concatenates genes with duplicated sequences
    -r, --remove       Automatically removes genes with duplicated sequences
+   -s, --species TEXT  Name of the species
+   -V, --version TEXT  Version of the database
+
 
 .. warning::
 

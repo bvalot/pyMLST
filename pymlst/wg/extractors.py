@@ -210,8 +210,13 @@ class GeneExtractor(TableExtractor):
 class StatsExtractor(Extractor):
     """ Extracts stats, number of strains, coregenes and sequences from a wgMLST database. """
     def extract(self, base, output):
-        output.write("Strains\t" + str(len(base.get_all_strains())) + "\n")
+        infos = base.get_infos()
+        for c,v in zip(['name', 'source', 'species', 'version'], infos):
+            if v is None:
+                v = ""
+            output.write(c + "\t" + v + "\n")
         output.write("Coregenes\t" + str(len(base.get_core_genes())) + "\n")
+        output.write("Strains\t" + str(len(base.get_all_strains())) + "\n")
         output.write("Sequences\t" + str(base.count_sequences()) + "\n")
 
 class StrainExtractor(TableExtractor):

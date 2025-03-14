@@ -218,7 +218,34 @@ def retrieve_cgmlst(query, prompt_enabled):
 
     return species_url
 
+def get_cgmlst_info(url):
+    """Retrieve informations of cgMLST data
 
+    :param url: The url information page
+    
+    """
+    page = request(url)
+
+    soup = BeautifulSoup(page.content, 'html.parser')
+
+    table = soup.find('tbody')
+    if table is None:
+        raise exceptions.StructureError()
+
+    lines = [v.get_text() for v in table.contents]
+    genus = ""
+    species = ""
+    version = ""
+    for line in lines:
+        if line.startswith("Genus"):
+            genus = line.lstrip("Genus")
+        if line.startswith("Species"):
+            species = line.lstrip("Species")
+        if line.startswith("Last Change"):
+            version = line.lstrip("Last Change")
+    return(genus+" "+species, version)
+
+    
 def get_cgmlst_file(url, handle):
     """Download cgMLST data and use them to initialize a fasta file.
 

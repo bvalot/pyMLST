@@ -15,3 +15,9 @@ mlst = Table('mlst', metadata,
              Index('ix_gene', 'gene'),
              Index('ix_seqid', 'seqid'),
              Index('ix_souche_gene_seqid', 'gene', 'souche', 'seqid'))
+
+mlst_type = Table('mlst_type', metadata,
+                  Column('name', Text),
+                  Column('source', Text),
+                  Column('species', Text),
+                  Column('version', Text))
