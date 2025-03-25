@@ -16,13 +16,14 @@ from pymlst.common.psl import Psl
 from pymlst.common import exceptions
 
 
-def run_blat(genome, tmpfile, tmpout, identity, coverage):
+def run_blat(genome, tmpfile, tmpout, identity, coverage, maxintron=20):
     """Run Blat and return Psl Object"""
     path = config.get_binary_path('blat')
     if path is None:
         raise exceptions.BinaryNotFound('BLAT binary was not found')
 
-    command = [path, '-maxIntron=20', '-fine', '-minIdentity='+str(identity*100),
+    command = [path, '-maxIntron='+str(maxintron), '-fine', \
+               '-minIdentity='+str(identity*100), \
                genome.name, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 

@@ -13,3 +13,10 @@ mlst = Table('mlst', metadata,
              Column('st', Integer),
              Column('gene', Text),
              Column('allele', Integer))
+
+mlst_type = Table('mlst_type', metadata,
+                  Column('name', Text),
+                  Column('source', Text),
+                  Column('species', Text),
+                  Column('mlst', Text),
+                  Column('version', Text))

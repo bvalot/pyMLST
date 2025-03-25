@@ -39,7 +39,7 @@ class PyMlstCommand(click.MultiCommand):
         cmd_names = []
         for filename in os.listdir(self.path):
             if filename.endswith('.py') and not filename.startswith('__init__'):
-                cmd_names.append(filename[:-3])
+                cmd_names.append(filename[:-3]) # append file name without '.py'
         cmd_names.sort()
         return cmd_names
 
@@ -55,6 +55,11 @@ class PyMlstCommand(click.MultiCommand):
             raise click.ClickException(
                 'Unknown sub-command \'{}\''.format(name))
         return name_scope['cli']
+
+# pyTyper command subclass for adding typing method as argument
+class PyTyperCommand(PyMlstCommand):
+    """Global pyTyper command."""
+    pass
 
 
 def print_version(ctx, param, value):
@@ -73,10 +78,11 @@ py = PyMlstCommand(
     \b
     Common utility commands.
     
-    Two pipelines are available:
-      claMLST     for classical MLST analysis
-      wgMLST      for Whole/Core genome MLST analysis''')
-
+    Tree pipelines are available:\n
+      claMLST     for classical MLST analysis\n
+      wgMLST      for Whole/Core genome MLST analysis\n
+      pyTyper     for other typing analysis''')
+      
 wg = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'wg', 'commands'),
     'Whole/Core genome MLST commands.')
@@ -84,3 +90,7 @@ wg = PyMlstCommand(
 cla = PyMlstCommand(
     os.path.join(os.path.dirname(__file__), 'cla', 'commands'),
     'Classical MLST commands.')
+
+pytyper = PyMlstCommand(
+    os.path.join(os.path.dirname(__file__), 'pytyper', 'commands'),
+    'Other typing commands.')

@@ -53,17 +53,18 @@ def cli(force, prompt, database, species):
             tmp.close()
             if len(skipped) > 0:
                 logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))
-
+            infos = web.get_cgmlst_info(url)
             with pymlst.open_wg(os.path.abspath(database)) as mlst:
                 mlst.create(tmp.name)
-
+                mlst.add_infos("cgmlst.org", infos[0], infos[1])
+                
     except requests.exceptions.HTTPError:
         raise click.ClickException('Could not retrieve online data')
     except requests.exceptions.ConnectionError:
         raise click.ClickException('Could not access to the server, please verify your internet connection')
     except requests.exceptions.Timeout:
         raise click.ClickException('The server took too long to respond')
-    except web.StructureError:
+    except exceptions.StructureError:
         raise click.ClickException('It seems like the structure of the website/API changed '
                                    'since this application was developed.')
     except exceptions.PyMLSTError as err:

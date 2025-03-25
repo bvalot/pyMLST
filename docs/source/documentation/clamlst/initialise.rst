@@ -56,6 +56,9 @@ profile file, if present.
 
    Options:
    -f, --force        	  Overwrites alrealdy existing DATABASE
+   -s, --species TEXT     Name of the species
+   -V, --version TEXT     Version of the database
+
 
    
 Scheme example

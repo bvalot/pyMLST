@@ -16,10 +16,16 @@ from pymlst.common import exceptions, utils
 @click.option('--remove', '-r',
               is_flag=True,
               help='Automatically removes GENES with duplicated sequences.')
+@click.option('--species', '-s',
+              type=click.STRING,
+              help='Name of the species')
+@click.option('--version', '-V',
+              type=click.STRING,
+              help='Version of the database')
 @click.argument('database', type=click.Path(exists=False))
 @click.argument('coregene', type=click.File('r'))
 
-def cli(database, force, **kwargs):
+def cli(force, species, version, database, **kwargs):
     """Creates a wgMLST DATABASE from a template COREGENE."""
        
     try:
@@ -32,6 +38,7 @@ def cli(database, force, **kwargs):
 
         with pymlst.open_wg(os.path.abspath(database)) as mlst:
             mlst.create(**utils.clean_kwargs(kwargs))
+            mlst.add_infos("custom", species, version)
 
     except exceptions.DuplicatedGeneSequence as err:
         raise click.UsageError('{}, use -c or -r options to manage it'

@@ -47,6 +47,7 @@ Documentation
    documentation/installation
    documentation/cgmlst
    documentation/clamlst
+   documentation/pytyper
 
    
 .. toctree::

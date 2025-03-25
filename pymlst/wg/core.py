@@ -118,6 +118,14 @@ class DatabaseWG:
             if "-" in name:
                 logging.warning("Strain name '{}' contain '-', that could make some problems for further analysis".format(name))
 
+    def add_infos(self, repository, species, version):
+        """Add infos of the cgMLST schema use in this database"""
+        self.connection.execute(
+            model.mlst_type.update()
+            .where(model.mlst_type.c.name == "wg")
+            .values(source=repository, species=species, version=version)
+    )
+        
     def add_core_genome(self, gene, sequence, mode=None):
         self.check_name(gene)
         if gene in self.__core_genome:
@@ -255,7 +263,15 @@ class DatabaseWG:
                 select([model.mlst])
                 .where(model.mlst.c.souche == souche)))
         ).scalar() is True  # -> True or False (Otherwise returns True or None)
-
+    
+    def get_infos(self):
+        """Return infos values of the database"""
+        infos = self.connection.execute(
+            select(model.mlst_type)
+            .where(model.mlst_type.c.name == "wg")
+        ).first()
+        return(infos)
+    
     def get_gene_sequences(self, gene):
         """Return all the sequences for a specific gene and
         lists the strains that are referencing them."""
@@ -524,6 +540,24 @@ class WholeGenomeMLST:
 
             logging.info('Database initialized')
 
+    def add_infos(self, repository, species, version):
+        """Add infos of the cgMLST schema store in database.
+
+        :param repository: Source of the cgMLST data
+        :param species: Name of the specie
+        :param version: Version of the database
+        """
+        self.database.add_infos(repository, species, version)
+        logging.debug("Add INFOS on the database")
+
+    def get_infos(self, output=sys.stdout):
+        """Get infos of the cgMLST schema store in the database"""
+        infos = self.database.get_infos()
+        for c,v in zip(['name', 'source', 'species', 'version'], infos):
+            if v is None:
+                v = ""
+            output.write(c + "\t" + v + "\n")
+    
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         """Adds a genome strain to the database.
 

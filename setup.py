@@ -63,13 +63,15 @@ setup(
         'beautifulsoup4>=4.9',
         'questionary>=1.9',
         'setuptools>=44.0',
-        'alembic>=1.6'
+        'alembic>=1.6',
+        'GitPython>=3.1'
     ],
     entry_points="""
     [console_scripts]
     pyMLST=pymlst.cmd:py
     wgMLST=pymlst.cmd:wg
     claMLST=pymlst.cmd:cla
+    pyTyper=pymlst.cmd:pytyper
     """,
     python_requires=">=3.7.0",
     license='GPLv3',  # noqa

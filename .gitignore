@@ -112,8 +112,9 @@ docs/_build/
 # PyBuilder
 target/
 
-#Configuraiton file
+#Configuration file
 pymlst.conf
 
 #Alembic database
 pymlst/data/alembic/*/*db
+pymlst/data/*db

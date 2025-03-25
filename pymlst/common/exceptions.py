@@ -65,3 +65,11 @@ class EmptyDatabase(PyMLSTError):
 
 class BadInputForCreate(PyMLSTError):
     pass
+
+
+class PyMLSTWebError(PyMLSTError):
+    pass
+
+
+class StructureError(PyMLSTWebError):
+    pass

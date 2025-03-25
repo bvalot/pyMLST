@@ -17,7 +17,7 @@ You can install pyMLST and their dependancy using `bioconda <https://anaconda.or
 
 .. code-block:: bash
 
-   conda install -c bioconda -c conda-forge pymlst
+   conda install -c conda-forge -c bioconda pymlst
 
 Manual Installation
 ===================

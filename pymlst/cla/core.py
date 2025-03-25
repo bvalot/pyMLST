@@ -79,6 +79,15 @@ class DatabaseCLA:
     def __load_core_genome(self):
         return self.get_genes_by_allele(self.__ref)
 
+    def add_infos(self, repository, species, mlst, version):
+        """Add infos of the MLST schema use in this database"""
+        self.connection.execute(
+            model.mlst_type.update()
+            .where(model.mlst_type.c.name == "cla")
+            .values(source=repository, species=species, mlst=mlst, \
+                    version=version)
+        )
+
     def add_sequence(self, sequence, gene, allele):
         """Adds a new sequence associated to a gene and an allele."""
         try:
@@ -103,6 +112,14 @@ class DatabaseCLA:
             model.mlst.insert(),
             st=sequence_typing, gene=gene, allele=allele)
 
+    def get_infos(self):
+        """Return infos values of the database"""
+        infos = self.connection.execute(
+            select(model.mlst_type)
+            .where(model.mlst_type.c.name == "cla")
+        ).first()
+        return(infos)
+        
     def get_genes_by_allele(self, allele):
         """Returns all the distinct genes in the database and their sequences for a given allele."""
         genes = self.connection.execute(
@@ -125,6 +142,14 @@ class DatabaseCLA:
         if res is None:
             return None
         return res.allele
+
+    def get_st(self):
+        """Gets all St present in the database"""
+        sts = self.connection.execute(
+            select([model.mlst.c.st])
+        ).fetchall()
+        return [seq_t.st for seq_t in sts]
+
 
     def get_st_by_gene_and_allele(self, gene, allele):
         """Gets all the STs of a gene/allele pair."""
@@ -296,6 +321,30 @@ class ClassicalMLST:
                                                  int(allele))
 
             logging.info('Database initialized')
+
+    def add_infos(self, repository, species, mlst, version):
+        """Add infos of the MLST schema store in database.
+
+        :param repository: Source of the MLST data
+        :param species: Name of the specie
+        :param mlst: Name of the MLST schema
+        :param version: Version of the database
+        """
+        self.database.add_infos(repository, species, mlst, version)
+        logging.debug("Add INFOS on the database")
+
+    def get_infos(self, output=sys.stdout):
+        """Get infos of the MLST schema store in the database"""
+        infos = self.database.get_infos()
+        for c,v in zip(['name', 'source', 'species', 'mlst', 'version'], infos):
+            if v is None:
+                v = ""
+            output.write(c + "\t" + v + "\n")
+        output.write("st\t" + str(len(self.database.get_st())) + "\n")
+        for gene in self.database.core_genome:
+            seqs = self.database.get_all_sequences_by_gene(gene)
+            output.write(gene + "\t" + str(len(seqs)) + "\n")
+        
 
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None):
         """Search the **Sequence Type** number of a strain.
