@@ -39,7 +39,7 @@ class PyMlstCommand(click.MultiCommand):
         cmd_names = []
         for filename in os.listdir(self.path):
             if filename.endswith('.py') and not filename.startswith('__init__'):
-                cmd_names.append(filename[:-3]) # append file name without '.py'
+                cmd_names.append(filename[:-3])
         cmd_names.sort()
         return cmd_names
 
@@ -55,11 +55,6 @@ class PyMlstCommand(click.MultiCommand):
             raise click.ClickException(
                 'Unknown sub-command \'{}\''.format(name))
         return name_scope['cli']
-
-# pyTyper command subclass for adding typing method as argument
-class PyTyperCommand(PyMlstCommand):
-    """Global pyTyper command."""
-    pass
 
 
 def print_version(ctx, param, value):
