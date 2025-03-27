@@ -5,3 +5,8 @@ include pymlst/data/alembic/wg/versions/*.py
 include pymlst/data/alembic/cla/env.py
 include pymlst/data/alembic/cla/script.py.mako
 include pymlst/data/alembic/cla/versions/*.py
+include pymlst/data/alembic/pytyper/env.py
+include pymlst/data/alembic/pytyper/script.py.mako
+include pymlst/data/alembic/pytyper/versions/*.py
+include pymlst/data/pytyper/*fna
+include pymlst/data/pytyper/*txt
