@@ -618,7 +618,8 @@ class ClassicalMLST:
                         tmp = st_value
                     else:
                         tmp = tmp.intersection(st_value)
-            st_val = list(tmp)
+            if tmp is not None:
+                st_val = list(tmp)
         return st_val
         
     def close(self):
