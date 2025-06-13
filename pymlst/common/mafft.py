@@ -4,6 +4,7 @@ import sys
 import subprocess
 
 from Bio import AlignIO
+from io import StringIO
 
 from pymlst import config
 from pymlst.common import utils, exceptions
@@ -20,12 +21,13 @@ def align(genes):
                              stdout=subprocess.PIPE, \
                              stderr=subprocess.PIPE, \
                              encoding=sys.stdout.encoding)
-        records = AlignIO.parse(p.stdout, "fasta")
+        #records = AlignIO.parse(p.stdout, "fasta")
         try:
-            alignments = next(records)
-        except StopIteration:
+            outs, errs = p.communicate()
+            alignments = next(AlignIO.parse(StringIO(outs), "fasta"))
+        except:
             logging.error("MAFFT doesn't finish correctly\n" + \
-                          p.stderr.read())
+                          errs)
             return {}
         return utils.records_to_dict(alignments)
 

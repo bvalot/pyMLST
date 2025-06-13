@@ -29,7 +29,7 @@ def read_genome(handle):
 
 def write_genome(genome_dict, handle):
     for seq_id, seq in genome_dict.items():
-        handle.write('> ' + str(seq_id) + '\n'
+        handle.write('>' + str(seq_id) + '\n'
                      + str(seq) + '\n')
 
 def file_name(handle):
