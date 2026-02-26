@@ -385,32 +385,6 @@ class DatabaseWG:
         are different (different seqids so different sequences).
         The compared genes are restricted to the ones given in the valid_schema.
         """
-        # alias_1 = model.mlst.alias()
-        # alias_2 = model.mlst.alias()
-
-        # result = self.connection.execute(
-        #     select(
-        #         [alias_1.c.souche, alias_2.c.souche, count(distinct(alias_1.c.gene))])
-        #     .select_from(
-        #         alias_1.join(
-        #             alias_2,
-        #             and_(
-        #                 alias_1.c.seqid != alias_2.c.seqid,
-        #                 alias_1.c.souche != alias_2.c.souche,
-        #                 alias_1.c.gene == alias_2.c.gene)))
-        #     .where(
-        #         and_(
-        #             in_(alias_1.c.gene, valid_schema),
-        #             alias_1.c.souche != self.__ref,
-        #             alias_2.c.souche != self.__ref))
-        #     .group_by(alias_1.c.souche, alias_2.c.souche)
-        # ).fetchall()
-
-        # distance = {}
-        # for entry in result:
-        #     dist = distance.setdefault(entry[0], {})
-        #     dist[entry[1]] = entry[2]
-
         mlst = self.get_mlst(valid_schema)
         strains = self.get_all_strains()
         
@@ -494,8 +468,15 @@ class WholeGenomeMLST:
         having the same sequence
         will be stored as a single gene named **g1;g2**.
         """
+        from pymlst.common import kma, blat
+        import tempfile
+        import os
+        
         ##remove old indexing
         kma.delete_indexing(self.__file)
+        
+        # Also remove old 2bit database
+        blat.delete_2bit_database(self.__file)
         
         with self.database.begin():
             rc_genes = 0
@@ -539,6 +520,29 @@ class WholeGenomeMLST:
                     "You probably load genome instead of genes")
 
             logging.info('Database initialized')
+            
+            # Create 2bit database for BLAT
+            self.__create_2bit_database()
+
+    def __create_2bit_database(self):
+        """Create a 2bit database from the core genome for BLAT usage"""
+        from pymlst.common import blat
+        import tempfile
+        import os
+        
+        # Create temporary fasta file with core genome
+        with tempfile.NamedTemporaryFile(mode='w+t', suffix='.fasta', delete=False) as tmpfile:
+            self.__create_core_genome_file(tmpfile)
+            tmpfile.flush()
+            
+            try:
+                # Create 2bit database
+                blat.create_2bit_database(tmpfile.name, self.__file)
+                logging.info('Created 2bit database for BLAT: %s.2bit', self.__file)
+            finally:
+                # Clean up temporary file
+                if os.path.exists(tmpfile.name):
+                    os.remove(tmpfile.name)
 
     def add_infos(self, repository, species, version):
         """Add infos of the cgMLST schema store in database.
@@ -560,21 +564,16 @@ class WholeGenomeMLST:
     
     def add_strain(self, genome, strain=None, identity=0.95, coverage=0.90):
         """Adds a genome strain to the database.
-
-        How it works:
-
-        1. A `BLAT`_ research is performed on each given contig of the strain to find
-           sub-sequences matching the core genes.
-        2. The identified sub-sequences are extracted and added to our database where
-           they are associated to a **sequence ID**.
-        3. An MLST entry is created, referencing the sequence,
-           the gene it belongs to, and the strain it was found in.
-
-        :param genome: The strain genome we want to add as a `fasta`_ file.
+        
+        :param genome: The strain genome we want to add as a file object
         :param strain: The name that will be given to the new strain in the database.
         :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
         :param coverage: Sets the minimum accepted coverage for found sequences.
         """
+        from pymlst.common import blat, psl
+        import tempfile
+        import os
+        
         with self.database.begin():
             if identity < 0 or identity > 1:
                 raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
@@ -583,29 +582,52 @@ class WholeGenomeMLST:
 
             name = strain
             if name is None:
-                name = genome.name.split('/')[-1]
+                # Get strain name from file object
+                if hasattr(genome, 'name') and genome.name:
+                    name = os.path.basename(genome.name)
+                    # Remove extensions
+                    if name.endswith('.gz'):
+                        name = name[:-3]
+                    if name.endswith('.fasta'):
+                        name = name[:-6]
+                    elif name.endswith('.fa'):
+                        name = name[:-3]
+                    elif name.endswith('.fna'):
+                        name = name[:-4]
+                else:
+                    name = 'unknown_strain'
+            
             self.__database.check_name(name, strain=True)
 
-            tmpfile, tmpout = blat.blat_tmp()
+            # Verify that the strain is not already in the database
+            if self.__database.contains_souche(name):
+                raise exceptions.StrainAlreadyPresent(
+                    f'Strain {name} already present in the base')
+
+            # Check if 2bit database exists, create if not
+            if not blat.is_2bit_database(self.__file):
+                logging.info("2bit database not found, creating it...")
+                self.__create_2bit_database()
+
+            tmpout = tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=False)
             tmpout.close()
 
             try:
-                # verify that the strain is not already in the database
-                if self.__database.contains_souche(name):
-                    raise exceptions.StrainAlreadyPresent(
-                        'Strain {} already present in the base'.format(name))
-
-                # read coregene
-                self.__create_core_genome_file(tmpfile)
-                tmpfile.close()
-
-                # BLAT analysis
-                logging.info("Search coregene with BLAT")
-                genes = blat.run_blat(genome, tmpfile, tmpout, identity, coverage)
-                logging.info("Finish run BLAT, found %s genes", len(genes))
-
-                # add MLST sequence
+                # BLAT analysis using 2bit database
+                logging.info("Searching core genes with BLAT...")
+                two_bit_file = self.__file + '.2bit'
+                
+                # Get the file path from the file object
+                genome_path = genome.name
+                
+                # Run BLAT directly on the file
+                genes = blat.run_blat_with_2bit(genome_path, two_bit_file, tmpout, identity, coverage)
+                
+                # Read sequences from the same file
+                genome.seek(0)
                 seqs = utils.read_genome(genome)
+                
+                logging.info(f"BLAT finished, found {len(genes)} genes")
 
                 bad = 0
                 partial = 0
@@ -621,7 +643,7 @@ class WholeGenomeMLST:
                         seq = seqs.get(gene.chro, None)
                         if seq is None:
                             raise exceptions.ChromosomeNotFound(
-                                'Chromosome {} not found '.format(gene.chro))
+                                f'Chromosome {gene.chro} not found')
 
                         # Correct coverage
                         if gene.coverage == 1:
@@ -632,14 +654,14 @@ class WholeGenomeMLST:
 
                         if sequence and psl.test_cds(sequence):
                             if gene.coverage != 1:
-                                logging.debug("Gene %s fill: added", gene.gene_id())
+                                logging.debug(f"Gene {gene.gene_id()} filled: added")
                                 partial_filled += 1
                                 partial += 1
                         else:
                             if gene.coverage == 1:
-                                logging.debug("Gene %s not correct: removed", gene.gene_id())
+                                logging.debug(f"Gene {gene.gene_id()} not correct: removed")
                             else:
-                                logging.debug("Gene %s partial: removed", gene.gene_id())
+                                logging.debug(f"Gene {gene.gene_id()} partial: removed")
                                 partial += 1
                             bad += 1
                             continue
@@ -647,14 +669,12 @@ class WholeGenomeMLST:
                         # Insert data in database
                         self.__database.add_genome(gene.gene_id(), name, str(sequence))
 
-                logging.info("Added %s new MLST genes to the database", len(genes) - bad)
-                logging.info('Found %s partial genes, filled %s', partial, partial_filled)
-                logging.info('Removed %s genes', bad)
+                logging.info(f"Added {len(genes) - bad} new MLST genes to the database")
+                logging.info(f'Found {partial} partial genes, filled {partial_filled}')
+                logging.info(f'Removed {bad} genes')
                 logging.info("DONE")
 
             finally:
-                if os.path.exists(tmpfile.name):
-                    os.remove(tmpfile.name)
                 if os.path.exists(tmpout.name):
                     os.remove(tmpout.name)
 
@@ -678,6 +698,8 @@ class WholeGenomeMLST:
         :param coverage: Sets the minimum accepted coverage for found sequences.
         :param reads: Sets the minimum number of reads coverage to conserved an results 
         """
+        from pymlst.common import kma
+        
         with self.database.begin():
             if identity < 0 or identity > 1:
                 raise exceptions.BadIdentityRange('Identity must be in range [0-1]')
@@ -687,9 +709,9 @@ class WholeGenomeMLST:
             ##indexing
             if kma.is_database_indexing(self.__file) is False:
                 with kma.index_tmpfile() as tmpfile:
-                    coregene = self.__create_core_genome_file(tmpfile)
+                    self.__create_core_genome_file(tmpfile)
                     tmpfile.flush()
-                    kma.index_database(self.__file, tmpfile)
+                    kma.index_database(self.__file, tmpfile.name)
 
             ##Strain name
             name = strain
@@ -698,7 +720,7 @@ class WholeGenomeMLST:
             self.__database.check_name(name)
         
             ##run kma
-            kma_res,seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
+            kma_res, seqs = kma.run_kma(fastqs, self.__file, identity, coverage, reads)
             core_genes = self.__database.core_genome
             
             valid = 0
@@ -707,14 +729,14 @@ class WholeGenomeMLST:
             for res in kma_res:
                 seq = seqs.get(res)
                 if seq is None:
-                    raise PyMLSTError("%s not found in the fasta files", res)
+                    raise exceptions.PyMLSTError(f"{res} not found in the fasta files")
 
                 ## test minus
                 b = (seq.count('a') + seq.count('t') + seq.count('c') + \
                      seq.count('g'))
                 if b != 0:
                     minus +=1
-                    logging.debug("%s Remove incertain", res)
+                    logging.debug(f"{res} Remove uncertain")
                     continue
 
                 ## test CDS
@@ -722,28 +744,29 @@ class WholeGenomeMLST:
                     seq.translate(cds=True, table=11)
                 except:
                     frame += 1
-                    logging.debug("%s Remove bad CDS", res)
+                    logging.debug(f"{res} Remove bad CDS")
                     continue
  
                 ##add sequence and MLST
                 gene = res.split("_")[0]
                 if gene not in core_genes:
-                    logging.warning("Gene %s not present in database", gene)
+                    logging.warning(f"Gene {gene} not present in database")
                     continue
                 valid +=1
                 self.__database.add_genome(gene, name, str(seq))
                 
-            logging.info("Add %s new MLST genes to database", str(valid))
-            logging.info("Remove %s genes with uncertain bases", str(minus))
-            logging.info("Remove %s genes with bad CDS", str(frame))  
+            logging.info(f"Add {valid} new MLST genes to database")
+            logging.info(f"Remove {minus} genes with uncertain bases")
+            logging.info(f"Remove {frame} genes with bad CDS")  
 
-            
     def remove_gene(self, genes, file=None):
         """Removes genes from the database.
 
         :param genes: Names of the genes to remove.
         :param file: A file containing a gene name per line.
         """
+        from pymlst.common import blat, kma
+        
         # list genes to remove
         all_genes = utils.strip_file(file)
         if genes is not None:
@@ -754,13 +777,19 @@ class WholeGenomeMLST:
 
         for gene in all_genes:
             if self.__database.remove_gene(gene):
-                logging.info("%s : OK", gene)
+                logging.info(f"{gene} : OK")
             else:
-                logging.warning("%s : Not found", gene)
+                logging.warning(f"{gene} : Not found")
 
         ##delete kma indexing as gene have been modified
         if kma.is_database_indexing(self.__file):
             kma.delete_indexing(self.__file)
+        
+        ##delete and recreate 2bit database if needed
+        if blat.is_2bit_database(self.__file):
+            blat.delete_2bit_database(self.__file)
+            self.__create_2bit_database()
+            logging.info("Updated 2bit database after gene removal")
 
     def remove_strain(self, strains, file=None):
         """Removes entire strains from the database.
@@ -770,7 +799,7 @@ class WholeGenomeMLST:
         """
         if self.__database.ref in strains:
             raise exceptions.ReferenceStrainRemoval(
-                '{} strain can not be removed'.format(self.__database.ref))
+                f'{self.__database.ref} strain can not be removed')
 
         # list strains to remove
         all_strains = utils.strip_file(file)
@@ -782,9 +811,9 @@ class WholeGenomeMLST:
 
         for strain in all_strains:
             if self.__database.remove_strain(strain):
-                logging.info("%s : OK", strain)
+                logging.info(f"{strain} : OK")
             else:
-                logging.warning("%s : Not found", strain)
+                logging.warning(f"{strain} : Not found")
 
     def extract(self, extractor, output=sys.stdout):
         """Takes an extractor object and writes the extraction result on the given output.

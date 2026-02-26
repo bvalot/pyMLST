@@ -117,4 +117,6 @@ pymlst.conf
 
 #Alembic database
 pymlst/data/alembic/*/*db
-pymlst/data/*db
+pymlst/data/*dbpyMLST_env/
+*.pyc
+__pycache__/
