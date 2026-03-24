@@ -16,203 +16,53 @@ from pymlst.common import flag, exceptions
 
 
 def records_to_dict(records):
-    """Convert SeqIO records to dictionary."""
+    """Convert SeqIO records to dictionary and upper seq."""
     seq_dict = {}
     for seq in records:
         seq_dict[seq.id] = seq.seq.upper()
     return seq_dict
 
 
-# ==================== FASTA FORMAT DETECTION ====================
-
-def is_fasta_handle(handle):
-    """
-    Check if a file handle contains FASTA format data.
-    
-    Handles:
-    - Standard FASTA headers (starting with '>')
-    - Comment lines (starting with ';' or '#')
-    - Empty lines
-    - Works with non-seekable handles
-    
-    Args:
-        handle: A file handle
-    
-    Returns:
-        bool: True if the handle appears to be in FASTA format
-    """
-    try:
-        # Save current position if seekable
-        can_seek = hasattr(handle, 'seekable') and handle.seekable()
-        if can_seek:
-            current_pos = handle.tell()
-        
-        # Read lines until we find a FASTA header or run out of lines
-        found_header = False
-        line_count = 0
-        max_lines = 20  # Check up to 20 lines to handle long comment blocks
-        
-        while line_count < max_lines:
-            try:
-                line = handle.readline()
-                if not line:  # EOF
-                    break
-                
-                line = line.strip()
-                line_count += 1
-                
-                # Skip empty lines
-                if not line:
-                    continue
-                
-                # Skip comment lines (common in FASTA files)
-                if line.startswith(';') or line.startswith('#'):
-                    continue
-                
-                # Found a FASTA header
-                if line.startswith('>'):
-                    found_header = True
-                    break
-                
-                # If we find any non-empty, non-comment line that's not '>',
-                # and we haven't found a header yet, it's probably not FASTA
-                if line_count > 5:  # After 5 non-comment lines without '>', give up
-                    break
-                
-            except Exception:
-                break
-        
-        # Restore position if seekable
-        if can_seek:
-            try:
-                handle.seek(current_pos)
-            except Exception:
-                pass
-        
-        return found_header
-        
-    except Exception:
-        # If anything fails, assume it's FASTA (backward compatible)
+def is_fasta_gzip(filepath):
+    """Check if Path is a gzip file"""
+    if filepath.suffix == '.gz':
         return True
-
-
-# ==================== ENHANCED READ_GENOME ====================
-
-def read_genome(handle):
-    """
-    Read genome from an open file handle with format validation.
-    
-    This function:
-    1. Detects if the file is gzip compressed (magic bytes)
-    2. Creates appropriate streaming handle
-    3. Validates FASTA format
-    4. Parses sequences
-    
-    Args:
-        handle: An open file handle (text or binary mode)
-    
-    Returns:
-        dict: Dictionary with sequence IDs as keys and sequences as values
-    
-    Raises:
-        ValueError: If the file is not in FASTA format
-        IOError: If there are issues reading the file
-    """
-    original_handle = handle
-    parse_handle = None
-    file_path = None
-    
-    # Get file path if available
-    if hasattr(handle, 'name'):
-        file_path = handle.name
-    
-    try:
-        # ===== STEP 1: Detect file type and create appropriate handle =====
-        
-        # Check if we can read magic bytes
-        can_read_magic = False
-        magic = None
-        
-        try:
-            if hasattr(handle, 'seekable') and handle.seekable():
-                pos = handle.tell()
-                magic = handle.read(2)
-                handle.seek(pos)
-                can_read_magic = True
-        except:
-            pass
-        
-        # Decision tree for handle creation
-        if can_read_magic and magic == b'\x1f\x8b':
-            # Gzip detected by magic bytes
-            logging.debug("Gzip file detected by magic bytes")
-            if file_path:
-                parse_handle = gzip.open(file_path, 'rt')
+    elif filepath.suffix == '.fasta' or filepath.suffix == '.fna':
+        return False
+    else:
+        with filepath.open(mode='rb') as handle:
+            if handle.read(2) == b'\x1f\x8b':
+                return True
             else:
-                parse_handle = gzip.open(handle, 'rt')
-        
-        elif file_path and file_path.endswith('.gz'):
-            # Gzip detected by extension
-            logging.debug("Gzip file detected by .gz extension")
-            parse_handle = gzip.open(file_path, 'rt')
-        
-        elif hasattr(handle, 'mode') and 'b' in handle.mode:
-            # Binary mode but not gzip
-            logging.debug("Binary mode handle (non-gzip), converting to text")
-            parse_handle = TextIOWrapper(handle, encoding='utf-8')
-        
-        else:
-            # Text mode handle
-            logging.debug("Using handle directly")
-            parse_handle = handle
-        
-        # ===== STEP 2: Validate FASTA format =====
-        
-        if not is_fasta_handle(parse_handle):
-            raise ValueError(
-                "The input file does not appear to be in FASTA format. "
-                "FASTA files should contain headers starting with '>'. "
-                "Comments starting with ';' or '#' are ignored."
-            )
-        
-        # ===== STEP 3: Parse sequences =====
-        
-        # Reset position to beginning
-        if hasattr(parse_handle, 'seekable') and parse_handle.seekable():
-            parse_handle.seek(0)
-        
-        # Parse FASTA records (streaming)
-        logging.debug("Starting FASTA parsing")
-        records = SeqIO.parse(parse_handle, 'fasta')
-        result = records_to_dict(records)
-        logging.debug(f"FASTA parsing complete: {len(result)} sequences")
-        
-        return result
-        
-    except ValueError:
-        # Re-raise ValueError as is (for FASTA format errors)
-        raise
-    except Exception as e:
-        logging.error(f"Error in read_genome: {e}")
-        # Fallback to original behavior
-        try:
-            if hasattr(original_handle, 'seekable') and original_handle.seekable():
-                original_handle.seek(0)
-            records = SeqIO.parse(original_handle, 'fasta')
-            return records_to_dict(records)
-        except Exception as e2:
-            raise IOError(f"Error reading genome: {e2}")
+                return False
     
-    finally:
-        # Clean up the parse handle only if we created it
-        if parse_handle is not None and parse_handle != original_handle:
-            try:
-                parse_handle.close()
-                logging.debug("Closed parse handle")
-            except:
-                pass
 
-
+def read_genome(filepath):
+    """
+    Read sequence from an Path object
+    
+    :param filepath: An file Path object (fasta.(.gz))
+    :return: Dictionary with sequence IDs as keys and sequences as values
+    """
+    if is_fasta_gzip(filepath):
+        with gzip.open(filepath, 'rt') as handle:
+            records = SeqIO.parse(handle, 'fasta')
+            return records_to_dict(records)
+    else:
+        with filepath.open('rt') as handle:
+            records = SeqIO.parse(handle, 'fasta')
+            return records_to_dict(records)
+    
+def handle_fasta_file(filepath):
+    """
+    Open handle from an Path object
+    
+    :param filepath: An file Path object (fasta.(.gz))
+    """
+    if is_fasta_gzip(filepath):
+        return gzip.open(filepath, 'rt')
+    else:
+        return filepath.open('rt')
 
 
 def write_genome(genome_dict, handle):
@@ -221,22 +71,11 @@ def write_genome(genome_dict, handle):
         handle.write('>' + str(seq_id) + '\n' + str(seq) + '\n')
 
 
-def file_name(handle):
-    """Extract file name without extension from a file handle."""
-    filename = os.path.basename(handle.name)
-    if filename.endswith(".fasta"):
-        return filename.rstrip(".fasta")
-    if filename.endswith(".fna"):
-        return filename.rstrip(".fna")
-    else:
-        return filename.split('.')[0]
-    
-
-def strip_file(file):
-    """Read lines from a file and strip newline characters."""
+def strip_file(handle):
+    """Read lines from a file handle and strip newline characters."""
     found = []  
-    if file is not None:
-        for line in file:
+    if handle is not None:
+        for line in handle:
             found.append(line.rstrip('\n'))
     return found
 
@@ -260,13 +99,25 @@ def write_count(count, texte):
 
 
 def validate_sequence(sequence):
-    """Validate that a sequence is a valid coding sequence."""
+    """Validate that a sequence is a valid coding sequence and doesnt contains ambigus bases"""
+    if contains_ambigus(sequence):
+        return False
     try:
         sequence.translate(cds=True, table=11)
     except TranslationError:
         return False
     else:
         return True
+
+
+def contains_ambigus(sequence):
+    """Validate that sequence doesnt contains ambigues bases"""
+    seqtmp = sequence.upper()
+    a = seqtmp.count('A') + seqtmp.count('T') + seqtmp.count('G') + seqtmp.count('C')
+    if a != len(sequence):
+        return True
+    else:
+        return False
 
 
 def create_logger():

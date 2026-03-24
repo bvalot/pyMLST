@@ -1,7 +1,7 @@
 """search CLI command file."""
 
 import os
-
+import pathlib
 import click
 
 import pymlst
@@ -24,7 +24,8 @@ from pymlst.common import utils, exceptions
 @click.argument('database',
                 type=click.Path(exists=True))
 @click.argument('genomes',
-                type=click.File('r'), nargs=-1)
+                type=click.Path(exists=True, dir_okay=False, path_type=pathlib.Path),
+                nargs=-1)
 
 
 def cli(genomes, database, **kwargs):

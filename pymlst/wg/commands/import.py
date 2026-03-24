@@ -3,12 +3,14 @@
 import logging
 import os
 import tempfile
+from pathlib import Path
 
 import click
 import requests
 
 import pymlst
 from pymlst.common import utils, web, exceptions
+
 
 
 @click.command(name='import')
@@ -55,7 +57,7 @@ def cli(force, prompt, database, species):
                 logging.info('Skipped the following malformed file(s): %s', ', '.join(skipped))
             infos = web.get_cgmlst_info(url)
             with pymlst.open_wg(os.path.abspath(database)) as mlst:
-                mlst.create(tmp.name)
+                mlst.create(Path(tmp.name))
                 mlst.add_infos("cgmlst.org", infos[0], infos[1])
                 
     except requests.exceptions.HTTPError:

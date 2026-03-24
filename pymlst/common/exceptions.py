@@ -66,6 +66,8 @@ class EmptyDatabase(PyMLSTError):
 class BadInputForCreate(PyMLSTError):
     pass
 
+class BadInputForBlat(PyMLSTError):
+    pass
 
 class PyMLSTWebError(PyMLSTError):
     pass

@@ -2,6 +2,7 @@
 
 import os
 import click
+import pathlib
 
 import pymlst
 from pymlst.pytyper import model
@@ -27,7 +28,7 @@ from pymlst.common import utils, exceptions
                 type=click.Choice([FIM, SPA, CLMT]),
                 required=True)
 @click.argument('genomes',
-                type=click.File('r'),
+                type=click.Path(exists=True, dir_okay=False, path_type=pathlib.Path),
                 required=True,
                 nargs=-1)
 

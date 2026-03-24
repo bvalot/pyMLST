@@ -349,7 +349,7 @@ class ClassicalMLST:
     def search_st(self, genome, identity=0.90, coverage=0.90, fasta=None):
         """Search the **Sequence Type** number of a strain.
 
-        :param genome: The strain genome we want to add as a `fasta`_ file.
+        :param genome: The strain genome we want to add as a `fasta`_ path.
         :param identity: Sets the minimum identity used by `BLAT`_
                          for sequences research (in percent).
         :param coverage: Sets the minimum accepted gene coverage for found sequences.
@@ -371,7 +371,7 @@ class ClassicalMLST:
 
             sorted_genes = [gene for gene in core_genome]
             sorted_genes.sort()
-            genome_name = os.path.basename(genome.name).split('.')[0]
+            genome_name = genome.stem
 
             # BLAT analysis
             #logging.info("Search coregene with BLAT")
@@ -409,6 +409,10 @@ class ClassicalMLST:
                         logging.debug("Align incomplet gene : %s", core_gene)
                         sequence = gene.get_aligned_sequence(seq, core_seq)
 
+                    # Check ambigus for not into account as new
+                    if utils.contains_ambigus(sequence):
+                         logging.debug("Gene %s contains ambigus bases and are removed", core_gene)
+                         continue
                     sequence = str(sequence)
 
                     # write fasta file with coregene
@@ -428,18 +432,6 @@ class ClassicalMLST:
                     else:
                         allele.get(gene.gene_id()).append("new")
 
-            # if only know allele or not found
-            # Seach st
-            # st_val = []
-            # if sum([len(i) == 1 and i[0] != "new" for i in allele.values()]) == len(allele):
-            #     tmp = None
-            #     for st_value in sequence_type.values():
-            #         if st_value:
-            #             if tmp is None:
-            #                 tmp = st_value
-            #             else:
-            #                 tmp = tmp.intersection(st_value)
-            #     st_val = list(tmp)
             st_val = self.__determined_ST(allele, sequence_type)
                 
             return ST_result(genome_name, st_val, allele)
@@ -454,7 +446,7 @@ class ClassicalMLST:
     def multi_search(self, genomes, identity=0.90, coverage=0.90, fasta=None, output=sys.stdout):
         """Searches the **Sequence Type** number of one or multi strain(s) from an assembly genome.
             
-        :param genomes: Tuple of one or more strain genomes given as input
+        :param genomes: Tuple of one or more strain genomes given as input Path
         :param output: An output for the sequence type research results.
         :param identity: Sets the minimum identity used by `BLAT`_
                          for sequences research (in percent).
@@ -463,7 +455,7 @@ class ClassicalMLST:
         """
         header = True
         for genome in genomes:
-            logging.info("Search ST from files: %s", os.path.basename(genome.name)) 
+            logging.info("Search ST from files: %s", genome.stem) 
             res = self.search_st(genome, identity, coverage, fasta)
             res.write(output, header)
             if header:
@@ -513,9 +505,9 @@ class ClassicalMLST:
             ## test minus
             b = (sequence.count('a') + sequence.count('t') + sequence.count('c') + \
                  sequence.count('g'))
-            if b != 0:
+            if b != 0 or utils.contains_ambigus(sequence):
                 logging.debug("%s Remove incertain", res)
-                continue
+                continue         
             
             ##add sequence and MLST
             gene = res.split("_")[0]
@@ -562,7 +554,7 @@ class ClassicalMLST:
         :param identity: Sets the minimum identity used by `KMA`_
                          for sequences research (in percent).
         :param reads: Sets the minimum reads coverage to conserve an mapping
-        :param paired: Defined if the raxw reads are by paired or single
+        :param paired: Defined if the raw reads are by paired or single
         :param fasta: A file where to export genes alleles results in a fasta format.
         :param coverage: Sets the minimum accepted coverage for found sequences.
         
