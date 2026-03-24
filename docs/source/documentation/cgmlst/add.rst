@@ -22,7 +22,7 @@ You can also add a reference genome for comparison.
 Genome data
 ^^^^^^^^^^^
 
-You can add strains using GENOME fasta sequence file.
+You can add strains using GENOME fasta(.gz) sequence file.
 
 .. code-block:: bash
    

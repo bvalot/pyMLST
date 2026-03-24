@@ -40,7 +40,7 @@ Create from external scheme
 ===========================
 
 The cg/wgMLST database can be created using a **scheme** corresponding to
-a list of different genes (a multi-fasta file containing gene
+a list of different genes (a multi-fasta(.gz) file containing gene
 sequences in nucleotide format).
 
 .. code::
