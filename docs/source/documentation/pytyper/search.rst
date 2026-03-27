@@ -36,7 +36,7 @@ Clermont typing
 Genome data
 ^^^^^^^^^^^
 
-You can search typing METHOD from GENOME fasta sequence files.
+You can search typing METHOD from GENOME fasta(.gz) sequence files.
 
 .. code-block:: bash
 

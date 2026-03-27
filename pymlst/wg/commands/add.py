@@ -1,6 +1,7 @@
 """add CLI command file."""
 
 import os
+import pathlib
 
 import click
 
@@ -18,9 +19,9 @@ from pymlst.common import utils, exceptions
               type=click.FLOAT,
               help='Minimum coverage to search gene (default=0.9).')
 @click.argument('database',
-                type=click.Path(exists=True))
+                type=click.Path(exists=True, dir_okay=False))
 @click.argument('genome',
-                type=click.File("r"))
+                type=click.Path(exists=True, dir_okay=False, path_type=pathlib.Path))
 
 def cli(genome, database, **kwargs):
     """Adds a strain GENOME to the wgMLST DATABASE."""

@@ -2,6 +2,7 @@
 
 import os
 import click
+import pathlib
 
 import pymlst
 from pymlst.common import exceptions, utils
@@ -23,7 +24,7 @@ from pymlst.common import exceptions, utils
               type=click.STRING,
               help='Version of the database')
 @click.argument('database', type=click.Path(exists=False))
-@click.argument('coregene', type=click.File('r'))
+@click.argument('coregene', type=click.Path(exists=False, path_type=pathlib.Path))
 
 def cli(force, species, version, database, **kwargs):
     """Creates a wgMLST DATABASE from a template COREGENE."""

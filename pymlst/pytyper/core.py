@@ -27,7 +27,7 @@ from pymlst.pytyper.method import FIM, SPA, CLMT
 from pymlst.pytyper.url import SPA_URL_TYPE, SPA_URL_SEQ, FIM_URL
 from pymlst import config
 from pymlst.common import blat, kma, utils, exceptions, web
-from pymlst.common.utils import create_logger, read_genome, file_name
+from pymlst.common.utils import create_logger, read_genome
 
 # Creates generator function for pytyper objects (and add context manager decorator) 
 @contextmanager
@@ -212,7 +212,7 @@ class PyTyper(ABC):
         :param genomes: List of path to the fasta genomes
         :param identity: Minimum identity treshold
         :param coverage: Minimum coverage threshold
-        :param fasta: Path to a file to write alleles in fasta format (None)
+        :param fasta: Handle to a file to write alleles in fasta format (None)
         :param output: Write result on this output (stdout)
         """
         pass
@@ -242,13 +242,13 @@ class PyTyper(ABC):
         """
         Export allele in fasta output for a list of psl results
 
-        :param genome: Handle of genome fasta file
+        :param genome: Path of genome fasta file
         :param fasta: handle of fasta output
         :param psl: Blat alignement results {gene:[alignements]}
         """
         logging.info("Export allele result to fasta output %s", os.path.basename(fasta.name))
         seqs = read_genome(genome)
-        genome_name = file_name(genome)
+        genome_name = genome.stem
         for gene,aligns in psl.items():
             for al in aligns:
                 seq = seqs.get(al.chro, None)
@@ -269,7 +269,7 @@ class FimH(PyTyper):
         self.typing = FIM
 
     def search_genome(self, genome, identity, coverage, fasta):
-        genome_name = file_name(genome)
+        genome_name = genome.stem
         logging.info("Search %s typing for %s genome", self.typing, genome_name)
         result = TypingResult(genome_name, self.typing)
         with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:
@@ -342,7 +342,7 @@ class Spa(PyTyper):
         self.typing = SPA
 
     def search_genome(self, genome, identity, coverage, fasta):
-        genome_name = file_name(genome)
+        genome_name = genome.stem
         logging.info("Search %s typing for %s genome", self.typing, genome_name)
         result = TypingResult(genome_name, self.typing)
         with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:
@@ -467,7 +467,7 @@ class Clmt(PyTyper):
         self.typing = CLMT
 
     def search_genome(self, genome, identity, coverage, fasta):
-        genome_name = file_name(genome)
+        genome_name = genome.stem
         logging.info("Search %s typing for %s genome", self.typing, genome_name)
         result = TypingResult(genome_name, self.typing)
         with tempfile.NamedTemporaryFile(mode='w+t', suffix='.psl', delete=True) as tmpout:

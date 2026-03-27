@@ -20,7 +20,7 @@ data to find the MLST profile.
 Genome data
 ^^^^^^^^^^^
 
-You can search ST from GENOME fasta sequence files.
+You can search ST from GENOME fasta(.gz) sequence files.
 
 .. code-block:: bash
    

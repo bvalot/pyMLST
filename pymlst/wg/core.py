@@ -486,7 +486,7 @@ class WholeGenomeMLST:
     def create(self, coregene, concatenate=False, remove=False):
         """Creates a whole genome MLST database from a core genome `fasta`_ file.
 
-        :param coregene: The fasta file containing the reference core genome.
+        :param coregene: The fasta Path containing the reference core genome.
         :param concatenate: Whether we should concatenate genes with identical sequences.
         :param remove: Whether we should remove genes with identical sequences.
 
@@ -501,7 +501,7 @@ class WholeGenomeMLST:
             rc_genes = 0
             invalid_genes = 0
 
-            for gene in SeqIO.parse(coregene, 'fasta'):
+            for gene in SeqIO.parse(utils.handle_fasta_file(coregene), 'fasta'):
                 if not utils.validate_sequence(gene.seq):
                     gene.seq = gene.seq.reverse_complement()
                     if utils.validate_sequence(gene.seq):
@@ -570,7 +570,7 @@ class WholeGenomeMLST:
         3. An MLST entry is created, referencing the sequence,
            the gene it belongs to, and the strain it was found in.
 
-        :param genome: The strain genome we want to add as a `fasta`_ file.
+        :param genome: The strain genome we want to add as a `fasta`_ Path.
         :param strain: The name that will be given to the new strain in the database.
         :param identity: Sets the minimum identity used by `BLAT`_ for sequences research (in percent).
         :param coverage: Sets the minimum accepted coverage for found sequences.
@@ -583,9 +583,10 @@ class WholeGenomeMLST:
 
             name = strain
             if name is None:
-                name = genome.name.split('/')[-1]
+                name = genome.stem
             self.__database.check_name(name, strain=True)
-
+            logging.debug("Strain name %s", name)
+            
             tmpfile, tmpout = blat.blat_tmp()
             tmpout.close()
 
@@ -630,7 +631,7 @@ class WholeGenomeMLST:
                             coregene_seq = self.__database.core_genome[core_gene]
                             sequence = gene.get_aligned_sequence(seq, coregene_seq)
 
-                        if sequence and psl.test_cds(sequence):
+                        if sequence and utils.validate_sequence(sequence):
                             if gene.coverage != 1:
                                 logging.debug("Gene %s fill: added", gene.gene_id())
                                 partial_filled += 1
@@ -712,15 +713,13 @@ class WholeGenomeMLST:
                 ## test minus
                 b = (seq.count('a') + seq.count('t') + seq.count('c') + \
                      seq.count('g'))
-                if b != 0:
+                if b != 0 or utils.contains_ambigus(seq):
                     minus +=1
                     logging.debug("%s Remove incertain", res)
                     continue
 
                 ## test CDS
-                try:
-                    seq.translate(cds=True, table=11)
-                except:
+                if utils.validate_sequence(seq) is False:
                     frame += 1
                     logging.debug("%s Remove bad CDS", res)
                     continue

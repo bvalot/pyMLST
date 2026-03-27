@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 from io import BytesIO
 import os
+from pathlib import Path
 
 from pymlst import config
 from pymlst.common import utils
@@ -55,7 +56,7 @@ def run_kma(fastq, basename, identity, coverage, reads):
 
     with open(baseout + ".res", 'r') as kma:
         kma_res = read_kma_res(kma, coverage, identity, reads)
-    seqs = utils.read_genome(baseout + ".fsa")
+    seqs = utils.read_genome(Path(baseout + ".fsa"))
 
     del_kma_tmp(baseout)
     if len(kma_res) == 0:

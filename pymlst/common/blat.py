@@ -14,26 +14,39 @@ from io import BytesIO
 from pymlst import config
 from pymlst.common.psl import Psl
 from pymlst.common import exceptions
+from pymlst.common import utils
 
 
 def run_blat(genome, tmpfile, tmpout, identity, coverage, maxintron=20):
-    """Run Blat and return Psl Object"""
+    """
+    Run Blat and return Psl Object
+    
+    :param genome: The path to the fasta(.gz) file to analysis.
+    :param tmpfile: Open handle of temporary fasta input create by blat_tmp()
+    :param tmpout: Open handle of temporary psl output create by blat_tmp()
+    :param identity: Identity threshold between 0 to 1
+    :param coverage: Coverage Threshold between 0 to 1 
+    :param maxintron: Size of potentiel insertion in gene (default: 20)    
+    """
     path = config.get_binary_path('blat')
     if path is None:
         raise exceptions.BinaryNotFound('BLAT binary was not found')
 
+    if utils.is_fasta_gzip(genome) and genome.suffix != '.gz':
+        raise exceptions.BadInputForBlat('BLAT can not run gzip file without extension gz, please uncompress or rename file.')
+    
     command = [path, '-maxIntron='+str(maxintron), '-fine', \
                '-minIdentity='+str(identity*100), \
-               genome.name, tmpfile.name, tmpout.name]
+               genome, tmpfile.name, tmpout.name]
     proc = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
     output, error = proc.communicate()
     for line in BytesIO(output).readlines():
-        logging.debug(line.decode().rstrip())
+        logging.debug(line.decode(errors='replace').rstrip())
     have_error = False
     for line in BytesIO(error).readlines():
         have_error = True
-        logging.error(line.decode().rstrip())
+        logging.error(line.decode(errors='replace').rstrip())
     if have_error:
         raise exceptions.PyMLSTError(
             'An error occurred while running BLAT')
