@@ -21,6 +21,6 @@ pandas>=1.2
 numpy>=1.20
 beautifulsoup4>=4.9
 questionary>=1.9
-setuptools>=44.0
+setuptools>=44.0,<82
 alembic>=1.6
 GitPython>=3.1
