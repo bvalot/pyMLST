@@ -272,7 +272,7 @@ class MlstExtractor(TableExtractor):
             if self.duplicate:
                 logging.warnings("Export grapetree table " +
                              "using duplicate genes is not recommended.")
-            table = table.fillna(-1)
+            table = table.fillna('-')
             table = table.transpose()
         else:
             table = table.fillna("")
